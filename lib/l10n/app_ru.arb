@@ -32,6 +32,10 @@
   "@libraryEmptyHint": {
     "description": "Second line on the empty library screen"
   },
+  "libraryBackToBook": "Назад к книге",
+  "@libraryBackToBook": {
+    "description": "Library button that opens the book read last"
+  },
   "addBook": "Добавить книгу",
   "@addBook": {
     "description": "Button that opens the file picker"

@@ -89,20 +89,48 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         _showSummary(finished);
       }
     });
+    // The book read last, to go back to (the library is the root screen).
+    final last = switch (books) {
+      AsyncData(value: final list) =>
+        list
+            .where((b) => b.openedAt != null)
+            .fold<BookRow?>(
+              null,
+              (best, b) => best == null || b.openedAt!.isAfter(best.openedAt!)
+                  ? b
+                  : best,
+            ),
+      _ => null,
+    };
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.appTitle)),
-      body: Column(
-        children: [
-          if (queue.busy) _ImportProgress(queue: queue),
-          Expanded(
-            child: switch (books) {
-              AsyncData(value: final list) when list.isEmpty =>
-                const _EmptyLibrary(),
-              AsyncData(value: final list) => _BookList(books: list),
-              _ => const SizedBox.shrink(),
-            },
-          ),
-        ],
+      // No app bar: the name is not needed here (owner, 2026-10-20).
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            if (last != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.arrow_back),
+                    label: Text(l10n.libraryBackToBook),
+                    onPressed: () => _openBook(context, last.id),
+                  ),
+                ),
+              ),
+            if (queue.busy) _ImportProgress(queue: queue),
+            Expanded(
+              child: switch (books) {
+                AsyncData(value: final list) when list.isEmpty =>
+                  const _EmptyLibrary(),
+                AsyncData(value: final list) => _BookList(books: list),
+                _ => const SizedBox.shrink(),
+              },
+            ),
+          ],
+        ),
       ),
       // The picker replaces its previous copies, so it waits for the queue.
       floatingActionButton: queue.busy
@@ -228,6 +256,12 @@ class _EmptyLibrary extends StatelessWidget {
   }
 }
 
+void _openBook(BuildContext context, int bookId) => unawaited(
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => ReaderScreen(bookId: bookId))),
+);
+
 class _BookList extends ConsumerWidget {
   const _BookList({required this.books});
 
@@ -242,23 +276,73 @@ class _BookList extends ConsumerWidget {
       itemCount: books.length,
       itemBuilder: (context, i) {
         final book = books[i];
-        return ListTile(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ReaderScreen(bookId: book.id),
-            ),
-          ),
-          leading: _Cover(file: repository.coverFile(book), title: book.title),
-          title: Text(book.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-          subtitle: book.authors.isEmpty
-              ? null
-              : Text(
-                  book.authors.join(', '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+        return BookTile(
+          onTap: () => _openBook(context, book.id),
+          cover: _Cover(file: repository.coverFile(book), title: book.title),
+          title: book.title,
+          authors: book.authors.join(', '),
         );
       },
+    );
+  }
+}
+
+/// One book of the list: cover, title (up to two lines), authors. Every
+/// row is at least as tall as the cover, with the same gap between rows.
+class BookTile extends StatelessWidget {
+  const BookTile({
+    super.key,
+    required this.onTap,
+    required this.cover,
+    required this.title,
+    required this.authors,
+  });
+
+  final VoidCallback onTap;
+  final Widget cover;
+  final String title;
+
+  /// Empty when unknown.
+  final String authors;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            cover,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (authors.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      authors,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

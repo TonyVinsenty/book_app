@@ -105,12 +105,12 @@ void main() {
     );
     await settleUntil(
       tester,
-      () => find.byType(ListTile).evaluate().isNotEmpty || readerShown(),
+      () => find.byType(BookTile).evaluate().isNotEmpty || readerShown(),
     );
   }
 
   Future<void> openSample(WidgetTester tester) async {
-    await tester.tap(find.byType(ListTile));
+    await tester.tap(find.byType(BookTile));
     await settleUntil(tester, readerShown);
   }
 
@@ -145,7 +145,7 @@ void main() {
     expect(openBookId(tester), isNot(sampleId));
     expect(File(paths.single).existsSync(), isFalse, reason: 'copy deleted');
     await expectOverLibrary(tester);
-    expect(find.byType(ListTile), findsNWidgets(2));
+    expect(find.byType(BookTile), findsNWidgets(2));
     await closeApp(tester);
   });
 
@@ -205,7 +205,7 @@ void main() {
     expect(openBookId(tester), first);
     expect(find.textContaining('уже в библиотеке'), findsOneWidget);
     await expectOverLibrary(tester);
-    expect(find.byType(ListTile), findsNWidgets(2), reason: 'no copy');
+    expect(find.byType(BookTile), findsNWidgets(2), reason: 'no copy');
     await closeApp(tester);
   });
 
@@ -223,7 +223,7 @@ void main() {
 
     expect(openBookId(tester), sampleId);
     await expectOverLibrary(tester);
-    expect(find.byType(ListTile), findsNWidgets(3));
+    expect(find.byType(BookTile), findsNWidgets(3));
     await closeApp(tester);
   });
 

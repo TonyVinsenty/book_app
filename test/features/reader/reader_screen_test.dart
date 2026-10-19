@@ -106,7 +106,7 @@ void main() {
   }
 
   Future<void> openBook(WidgetTester tester) async {
-    await tester.tap(find.byType(ListTile));
+    await tester.tap(find.byType(BookTile));
     for (
       var i = 0;
       i < 100 && find.byType(ReaderView).evaluate().isEmpty;
@@ -198,7 +198,19 @@ void main() {
 
     await tester.binding.handlePopRoute(); // system "back"
     await tester.pumpAndSettle();
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(BookTile), findsOneWidget);
+
+    // «Назад к книге» opens it again.
+    await tester.tap(find.text('Назад к книге'));
+    for (
+      var i = 0;
+      i < 100 && find.byType(ReaderView).evaluate().isEmpty;
+      i++
+    ) {
+      await settle(tester);
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(ReaderView), findsOneWidget);
     await closeApp(tester);
   });
 
@@ -212,13 +224,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Не удалось открыть последнюю книгу'), findsOneWidget);
     expect(find.byType(ReaderScreen), findsNothing);
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(BookTile), findsOneWidget);
     await closeApp(tester);
   });
 
   testWidgets('a lost book opened by hand shows the way back', (tester) async {
     await pumpApp(tester, lostFiles: true);
-    await tester.tap(find.byType(ListTile));
+    await tester.tap(find.byType(BookTile));
     for (
       var i = 0;
       i < 100 && find.text('К библиотеке').evaluate().isEmpty;

@@ -5,6 +5,7 @@ import 'package:book_app/app/app.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -85,7 +86,7 @@ void main() {
 
     await addBooks(tester);
 
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(BookTile), findsOneWidget);
     expect(find.textContaining('Книга добавлена'), findsOneWidget);
     expect(File(paths.single).existsSync(), isFalse, reason: 'copy deleted');
     await closeApp(tester);
@@ -110,10 +111,10 @@ void main() {
 
     await addBooks(tester);
 
-    expect(find.byType(ListTile), findsNWidgets(2));
+    expect(find.byType(BookTile), findsNWidgets(2));
     final withCover = find.ancestor(
       of: find.text('Вечер'),
-      matching: find.byType(ListTile),
+      matching: find.byType(BookTile),
     );
     expect(
       find.descendant(of: withCover, matching: find.byType(Image)),
@@ -125,7 +126,7 @@ void main() {
     );
     final plain = find.ancestor(
       of: find.textContaining('utf8_lines'),
-      matching: find.byType(ListTile),
+      matching: find.byType(BookTile),
     );
     expect(
       find.descendant(of: plain, matching: find.byType(Image)),
@@ -146,7 +147,7 @@ void main() {
 
     await addBooks(tester);
 
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(BookTile), findsOneWidget);
     expect(
       find.text(
         'Добавлено книг: 1, уже были в библиотеке: 1, не удалось добавить: 1',
