@@ -1,0 +1,176 @@
+{
+  "meta": {
+    "title": "Одна книга",
+    "authors": [],
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Одна книга",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Часть первая",
+      "level": 0,
+      "section": 1
+    },
+    {
+      "title": "I",
+      "level": 1,
+      "section": 2
+    },
+    {
+      "title": "II",
+      "level": 1,
+      "section": 3
+    },
+    {
+      "title": "III",
+      "level": 1,
+      "section": 3
+    },
+    {
+      "title": "Часть вторая",
+      "level": 0,
+      "section": 4
+    },
+    {
+      "title": "IV",
+      "level": 1,
+      "section": 5
+    },
+    {
+      "title": "Приложения",
+      "level": 0,
+      "section": 6
+    },
+    {
+      "title": "Письма",
+      "level": 1,
+      "section": 6
+    }
+  ],
+  "sections": [
+    {
+      "title": "Одна книга",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Одна книга",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Предисловие без ссылки в оглавлении.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Часть первая",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Часть первая",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "title": "I",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "I",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Первая глава, один абзац.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Второй абзац первой главы.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "II",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "II",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Вторая глава. Здесь якорь не тот.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "III",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Третья глава без своего якоря остаётся во второй.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Часть вторая",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Часть вторая",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Вступление ко второй части.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "IV",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "IV",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Четвёртая глава до конца файла.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Приложения",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Письма",
+          "level": 3
+        },
+        {
+          "type": "paragraph",
+          "text": "Письмо первое.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Продолжение писем, без ссылки и без заголовка.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

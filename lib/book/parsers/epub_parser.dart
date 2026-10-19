@@ -2,10 +2,11 @@
 /// (metadata, manifest, spine) → every spine file is read as a stream of
 /// XML events into blocks. Lenient: HTML5 entities, unclosed tags and
 /// broken markup are stepped over; a broken or missing spine file is
-/// skipped. For now a chapter is a spine file; pictures and footnotes are
-/// skipped, as in FB2.
+/// skipped. Chapters follow the book's contents (EPUB 3 `nav` or EPUB 2
+/// NCX); pictures and footnotes are skipped, as in FB2.
 library;
 
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -17,7 +18,7 @@ import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 /// Bump when the result for the same file changes (books get re-parsed).
-const epubParserVersion = 1;
+const epubParserVersion = 2;
 
 /// Not a readable EPUB: no OPF, an empty spine or no text at all.
 final class NotEpubException implements Exception {
@@ -58,31 +59,26 @@ BookContent parseEpub(Uint8List bytes, {required String title}) {
     throw const EpubDrmException();
   }
 
-  final sections = <Section>[];
-  final toc = <TocEntry>[];
+  final contents = _readContents(files, package, spine);
+  final entriesOf = <String, List<_Entry>>{};
+  for (final entry in contents) {
+    (entriesOf[entry.path] ??= []).add(entry);
+  }
+  final chapters = _Chapters(contents);
   for (final path in spine) {
     final text = files.text(path);
     if (text == null) continue;
-    final List<Block> blocks;
+    final entries = entriesOf[path] ?? const <_Entry>[];
+    final reader = _Xhtml({for (final e in entries) ?e.anchor});
     try {
-      blocks = (_Xhtml()..walk(text)).finish();
+      final blocks = (reader..walk(text)).finish();
+      chapters.addFile(blocks, entries, reader.anchorBlocks);
     } on Object {
       // A parser bug on one strange file must not lose the whole book.
       continue;
     }
-    // Covers and pictures without text.
-    if (!blocks.any((b) => b is TextBlock)) continue;
-    // A heading further down (`Примечания` after the text) is not the
-    // title of the file.
-    final first = blocks.first;
-    final sectionTitle = first is HeadingBlock ? tocTitle(first.text) : null;
-    if (sectionTitle != null) {
-      toc.add(
-        TocEntry(title: sectionTitle, level: 0, sectionIndex: sections.length),
-      );
-    }
-    sections.add(Section(title: sectionTitle, blocks: blocks));
   }
+  final (:sections, :toc) = chapters.finish();
   if (sections.isEmpty) {
     // DRM whose `encryption.xml` names the text some other way (Adobe
     // rights, Apple sinf); fonts alone are listed in DRM-free books too.
@@ -320,10 +316,13 @@ final class _Encryption extends _Walker {
 }
 
 final class _Item {
-  const _Item(this.path, this.mediaType);
+  const _Item(this.path, this.mediaType, this.properties);
 
   final String path;
   final String mediaType;
+
+  /// EPUB 3 `properties` (`nav`, `cover-image`).
+  final Set<String> properties;
 }
 
 final class _Creator {
@@ -341,6 +340,9 @@ final class _Package extends _Walker {
   final String _dir;
   final _manifest = <String, _Item>{};
   final _spine = <String>[];
+
+  /// The NCX id named by `<spine toc="…">` (EPUB 2).
+  String? _spineToc;
 
   final _titles = <(String, String?)>[];
   final _creators = <_Creator>[];
@@ -376,8 +378,11 @@ final class _Package extends _Walker {
           _manifest[id] = _Item(
             _resolve(_dir, href),
             attributes['media-type']?.toLowerCase() ?? '',
+            {...?attributes['properties']?.split(whitespacePattern)},
           );
         }
+      case 'spine':
+        _spineToc = attributes['toc'];
       case 'itemref':
         final id = attributes['idref'];
         if (id != null) _spine.add(id);
@@ -455,6 +460,20 @@ final class _Package extends _Walker {
         type.contains('font') ||
         type.contains('ncx'));
   }
+
+  /// The EPUB 3 navigation document.
+  String? navPath() => _manifest.values
+      .where((i) => i.properties.contains('nav'))
+      .firstOrNull
+      ?.path;
+
+  /// The EPUB 2 NCX: named by the spine or found by its type.
+  String? ncxPath() =>
+      (_manifest[_spineToc] ??
+              _manifest.values
+                  .where((i) => i.mediaType == 'application/x-dtbncx+xml')
+                  .firstOrNull)
+          ?.path;
 
   String? _refined(String? id, String property) =>
       id == null ? null : _refines[id]?[property];
@@ -765,6 +784,19 @@ final class _Text {
 /// `li`… → paragraphs, `hr` → a separator, `em`/`i` and `strong`/`b` →
 /// spans; poems and epigraphs by `class`; CSS is not read.
 final class _Xhtml extends _Walker {
+  _Xhtml([this._anchors = const {}]);
+
+  /// Ids the contents links to.
+  final Set<String> _anchors;
+
+  /// Id from [_anchors] → index of the first block at or after it; the text
+  /// being collected there belongs to that block.
+  final anchorBlocks = <String, int>{};
+
+  /// Anchors met inside a paragraph after some of its text: they point
+  /// after it.
+  final _afterText = <String>[];
+
   final _blocks = <Block>[];
   final _stack = <_Element>[];
 
@@ -781,6 +813,23 @@ final class _Xhtml extends _Walker {
     final element = _Element(name);
     _stack.add(element);
     if (_skip == null) _open(element, attributes);
+    if (_anchors.isNotEmpty) {
+      final id = attributes['id'] ?? (name == 'a' ? attributes['name'] : null);
+      if (id != null &&
+          _anchors.contains(id) &&
+          !anchorBlocks.containsKey(id) &&
+          !_afterText.contains(id)) {
+        // `<p>Конец части.<a id="ch4"/></p>`: the paragraph stays before
+        // the anchor; a heading begun (`<h2>Глава <a id="ch1"/>I</h2>`)
+        // goes after it.
+        if (_text case final text?
+            when text.heading == null && text.length > 0) {
+          _afterText.add(id);
+        } else {
+          anchorBlocks[id] = _blocks.length;
+        }
+      }
+    }
     if (selfClosing || _voidTags.contains(name)) _pop();
   }
 
@@ -965,6 +1014,14 @@ final class _Xhtml extends _Walker {
     final text = _text;
     if (text == null) return;
     _text = null;
+    _addText(text);
+    for (final id in _afterText) {
+      anchorBlocks[id] = _blocks.length;
+    }
+    _afterText.clear();
+  }
+
+  void _addText(_Text text) {
     final value = text.finish();
     if (value == null) return;
     if (text.heading case final level?) {
@@ -983,4 +1040,503 @@ final class _Xhtml extends _Walker {
       _blocks.add(const SeparatorBlock());
     }
   }
+}
+
+/// A line of the contents as written: [href] is null for a label without
+/// a link (`<span>Часть 1</span>` over its chapters).
+typedef _Link = ({String title, int level, String? href});
+
+/// A line of the contents pointing into a spine file.
+final class _Entry {
+  _Entry(this.title, this.level, this.path, this.anchor);
+
+  final String title;
+  final int level;
+
+  /// The spine path, as in [_Package.spinePaths].
+  final String path;
+  final String? anchor;
+}
+
+/// The book's contents (EPUB 3 `nav`, else EPUB 2 NCX) as links into
+/// [spine] files; empty when there is none or it leads nowhere.
+List<_Entry> _readContents(_Files files, _Package package, List<String> spine) {
+  final navPath = package.navPath();
+  for (final path in [?navPath, ?package.ncxPath()]) {
+    final xml = files.text(path);
+    if (xml == null) continue;
+    final List<_Link> links;
+    try {
+      links = path == navPath
+          ? (_Nav()..walk(xml)).links()
+          : (_Ncx()..walk(xml)).links;
+    } on Object {
+      continue;
+    }
+    final entries = _entries(links, path, spine);
+    if (entries.isNotEmpty) return entries;
+  }
+  return const [];
+}
+
+/// [links] of the contents file at [path] that lead into [spine]. A label
+/// without a link points where the next link does; levels start at 0.
+List<_Entry> _entries(List<_Link> links, String path, List<String> spine) {
+  final spineSet = spine.toSet();
+  final spineByLower = {for (final p in spine) p.toLowerCase(): p};
+  final dir = _dirOf(path);
+  final entries = <_Entry>[];
+  final labels = <_Link>[];
+  for (final link in links) {
+    if (link.title.isEmpty) continue;
+    final href = link.href?.trim() ?? '';
+    if (href.isEmpty) {
+      labels.add(link);
+      continue;
+    }
+    final hash = href.indexOf('#');
+    final file = hash < 0 ? href : href.substring(0, hash);
+    final resolved = file.isEmpty ? path : _resolve(dir, file);
+    final target = spineSet.contains(resolved)
+        ? resolved
+        : spineByLower[resolved.toLowerCase()];
+    // Links to the web or to files out of the spine.
+    if (target == null) continue;
+    final anchor = hash < 0 ? null : _decoded(href.substring(hash + 1));
+    for (final l in [...labels, link]) {
+      entries.add(_Entry(l.title, l.level, target, anchor));
+    }
+    labels.clear();
+  }
+  if (entries.isEmpty) return entries;
+  final top = entries.map((e) => e.level).reduce((a, b) => a < b ? a : b);
+  return [
+    for (final e in entries) _Entry(e.title, e.level - top, e.path, e.anchor),
+  ];
+}
+
+String? _decoded(String anchor) {
+  var value = anchor.trim();
+  try {
+    value = Uri.decodeComponent(value);
+  } on ArgumentError {
+    // A stray `%`: keep it as is.
+  }
+  return value.isEmpty ? null : value;
+}
+
+/// One `nav` of a navigation document.
+typedef _NavList = ({bool toc, bool hidden, List<_Link> links});
+
+/// EPUB 3 navigation document: the `<nav epub:type="toc">` (or the first
+/// shown `nav`); the `ol` nesting gives the levels.
+final class _Nav extends _Walker {
+  final _navs = <_NavList>[];
+  final _stack = <String>[];
+  int? _navDepth;
+  var _lists = 0;
+
+  /// Open `li`s: index of the line each one gave, -1 before it has one.
+  final _items = <int>[];
+
+  /// The link or label being read: its element depth, text and target.
+  int? _labelDepth;
+  StringBuffer? _label;
+  String? _href;
+
+  List<_Link> links() =>
+      (_navs.where((n) => n.toc).firstOrNull ??
+              _navs.where((n) => !n.hidden).firstOrNull)
+          ?.links ??
+      const [];
+
+  @override
+  void start(
+    String name,
+    Map<String, String> attributes, {
+    required bool selfClosing,
+  }) {
+    if (selfClosing || _voidTags.contains(name)) return;
+    _stack.add(name);
+    if (_navDepth == null) {
+      if (name != 'nav') return;
+      final types = _Xhtml._epubTypes(attributes);
+      _navDepth = _stack.length;
+      _lists = 0;
+      _items.clear();
+      _navs.add((
+        toc: types.contains('toc'),
+        hidden:
+            attributes.containsKey('hidden') ||
+            types.any(_hiddenNavTypes.contains),
+        links: <_Link>[],
+      ));
+      return;
+    }
+    if (name == 'ol' || name == 'ul') _lists++;
+    if (name == 'li') _items.add(-1);
+    // A line is the first link or label of its `li`; a heading over the
+    // list is not one.
+    if (_label == null &&
+        _items.isNotEmpty &&
+        (name == 'a' || name == 'span')) {
+      _labelDepth = _stack.length;
+      _label = StringBuffer();
+      _href = name == 'a' ? attributes['href'] : null;
+    }
+  }
+
+  @override
+  void end(String name) {
+    // Unclosed tags inside are closed together with this one.
+    final i = _stack.lastIndexOf(name);
+    if (i < 0) return;
+    while (_stack.length > i) {
+      _pop();
+    }
+  }
+
+  void _pop() {
+    final depth = _stack.length;
+    final name = _stack.removeLast();
+    if (_navDepth == null) return;
+    if (depth == _labelDepth) {
+      _line((
+        title: cleanSpaces(_label.toString()),
+        level: _lists < 1 ? 0 : _lists - 1,
+        href: _href,
+      ));
+      _label = _href = _labelDepth = null;
+    }
+    if (name == 'ol' || name == 'ul') _lists--;
+    if (name == 'li' && _items.isNotEmpty) _items.removeLast();
+    if (depth == _navDepth) _navDepth = null;
+  }
+
+  /// `<li><span>1.</span> <a href="…">Глава</a></li>`: the link wins over
+  /// a label before it; anything after is decoration.
+  void _line(_Link line) {
+    final links = _navs.last.links;
+    final at = _items.last;
+    if (line.title.isEmpty) return;
+    if (at < 0) {
+      _items.last = links.length;
+      links.add(line);
+    } else if (links[at].href == null && line.href != null) {
+      links[at] = line;
+    }
+  }
+
+  @override
+  void text(String value) => _label?.write(value);
+}
+
+/// An open `navPoint`: its label, target and whether it is listed yet.
+final class _NavPoint {
+  final label = StringBuffer();
+  String? src;
+  var listed = false;
+}
+
+/// EPUB 2 NCX: `navMap` → nested `navPoint`s with a label and `content`.
+final class _Ncx extends _Walker {
+  final links = <_Link>[];
+  final _points = <_NavPoint>[];
+  var _inMap = false;
+  var _inLabel = false;
+
+  @override
+  void start(
+    String name,
+    Map<String, String> attributes, {
+    required bool selfClosing,
+  }) {
+    if (name == 'navmap') _inMap = !selfClosing;
+    if (!_inMap) return;
+    switch (name) {
+      case 'navpoint':
+        // A parent is listed before its children.
+        if (_points.isNotEmpty) _list(_points.length - 1);
+        _points.add(_NavPoint());
+        if (selfClosing) end(name);
+      case 'navlabel':
+        _inLabel = !selfClosing;
+      case 'content' when _points.isNotEmpty:
+        _points.last.src ??= attributes['src'];
+    }
+  }
+
+  @override
+  void end(String name) {
+    switch (name) {
+      case 'navmap':
+        while (_points.isNotEmpty) {
+          end('navpoint');
+        }
+        _inMap = false;
+      case 'navlabel':
+        _inLabel = false;
+      case 'navpoint' when _points.isNotEmpty:
+        _list(_points.length - 1);
+        _points.removeLast();
+    }
+  }
+
+  void _list(int level) {
+    final point = _points[level];
+    if (point.listed) return;
+    point.listed = true;
+    links.add((
+      title: cleanSpaces(point.label.toString()),
+      level: level,
+      href: point.src,
+    ));
+  }
+
+  @override
+  void text(String value) {
+    if (_inLabel && _points.isNotEmpty && !_points.last.listed) {
+      _points.last.label.write(value);
+    }
+  }
+}
+
+/// Spine files → chapters (ADR 0005, addendum 1). With contents: a chapter
+/// starts at each link (a file or an anchor in it) and at a file that
+/// begins with a heading; any other file goes on the chapter before (books
+/// cut by size). Without contents: a chapter is a file. A chapter is named
+/// by its link, else by the heading it starts with.
+final class _Chapters {
+  _Chapters(List<_Entry> contents)
+    : _contents = [...contents],
+      _byContents = contents.isNotEmpty;
+
+  /// The links in order; chapters found by the parser are put in.
+  final List<_Entry> _contents;
+  final bool _byContents;
+
+  /// Where the next found chapters go in [_contents], and the level of
+  /// the chapters numbered `I`, `II`… in them.
+  var _foundAt = 0;
+  var _numberLevel = 0;
+
+  /// The number a run of `I`, `II`… goes on from in the next file.
+  var _nextNumber = 1;
+
+  final _sections = <Section>[];
+  final _sectionOf = HashMap<_Entry, int>.identity();
+
+  /// The chapter being collected.
+  List<Block>? _blocks;
+  String? _title;
+
+  /// Links to places without text (a cover), waiting for the next text.
+  final _waiting = <_Entry>[];
+
+  /// Links with a lost anchor: they go to the chapter of the next text
+  /// without starting or naming it.
+  final _unnamed = <_Entry>[];
+
+  /// A link with a lost anchor → the link it goes with.
+  final _follows = HashMap<_Entry, _Entry>.identity();
+
+  /// [anchors]: anchor → block index, as [_Xhtml.anchorBlocks].
+  void addFile(
+    List<Block> blocks,
+    List<_Entry> entries,
+    Map<String, int> anchors,
+  ) {
+    final starts = SplayTreeMap<int, List<_Entry>>();
+    // A link whose anchor is not in the file cuts nothing (no text is
+    // lost) and points where the link before it does, or to the file
+    // start without naming the chapter there.
+    _Entry? before;
+    for (final e in entries) {
+      final at = e.anchor == null ? 0 : anchors[e.anchor];
+      if (at == null) {
+        if (before != null) {
+          _follows[e] = before;
+        } else {
+          _unnamed.add(e);
+        }
+        continue;
+      }
+      (starts[at] ??= []).add(e);
+      before = e;
+    }
+    if (entries.isNotEmpty) {
+      _foundAt = _contents.indexOf(entries.last) + 1;
+      _numberLevel = entries.first.level + 1;
+      _nextNumber = 1;
+    }
+    // A file not in the contents that starts with a heading is a chapter
+    // of its own, next to the one before.
+    if (blocks.firstOrNull case HeadingBlock(:final text)
+        when _byContents && starts[0] == null) {
+      if (entries.isEmpty) {
+        final level = _numberLevel < 1 ? 0 : _numberLevel - 1;
+        final entry = _Entry(tocTitle(text), level, '', null);
+        _contents.insert(_foundAt++, entry);
+        starts[0] = [entry];
+        _numberLevel = level + 1;
+        _nextNumber = 1;
+      } else {
+        // Before the links further down the file.
+        final entry = _Entry(tocTitle(text), entries.first.level, '', null);
+        _contents.insert(_contents.indexOf(entries.first), entry);
+        _foundAt++;
+        starts[0] = [entry];
+      }
+    }
+    // Wikisource: chapters `I`, `II`… as plain paragraphs, not in the
+    // contents. They are taken when the contents does not cut the file;
+    // the run goes on into files cut by size.
+    if (!starts.keys.any((at) => at > 0)) {
+      final numbered = _numbered(blocks, _nextNumber);
+      _nextNumber += numbered.length;
+      for (final i in numbered) {
+        final number = blocks[i] as ParagraphBlock;
+        blocks[i] = HeadingBlock(
+          text: number.text,
+          level: _numberLevel + 1,
+          spans: number.spans,
+        );
+        if (starts[i] != null) continue;
+        final entry = _Entry(number.text, _numberLevel, '', null);
+        starts[i] = [entry];
+        if (_byContents) _contents.insert(_foundAt++, entry);
+      }
+    }
+    final cuts = {0, ...starts.keys}.toList()..sort();
+    for (var i = 0; i < cuts.length; i++) {
+      final from = cuts[i];
+      final to = i + 1 < cuts.length ? cuts[i + 1] : blocks.length;
+      final piece = blocks.sublist(from, to);
+      final own = starts[from] ?? const <_Entry>[];
+      _add(
+        piece,
+        own,
+        newChapter: own.isNotEmpty || (from == 0 && !_byContents),
+      );
+    }
+  }
+
+  static final _roman = RegExp(
+    r'^(C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\.?$',
+  );
+
+  static const _romanValues = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100};
+
+  /// Indexes of the paragraphs `I`, `II`, `III`… in a run from [first]:
+  /// two or more from I, any going on from a file before.
+  static List<int> _numbered(List<Block> blocks, int first) {
+    final found = <int>[];
+    for (final (i, block) in blocks.indexed) {
+      if (block is ParagraphBlock &&
+          block.style == ParagraphStyle.normal &&
+          _romanNumber(block.text) == first + found.length) {
+        found.add(i);
+      }
+    }
+    return first == 1 && found.length < 2 ? const [] : found;
+  }
+
+  static int? _romanNumber(String text) {
+    if (text.length > 10 || text.isEmpty || !_roman.hasMatch(text)) {
+      return null;
+    }
+    final digits = text.endsWith('.')
+        ? text.substring(0, text.length - 1)
+        : text;
+    var value = 0;
+    for (var i = 0; i < digits.length; i++) {
+      final digit = _romanValues[digits[i]]!;
+      final next = i + 1 < digits.length ? _romanValues[digits[i + 1]]! : 0;
+      value += digit < next ? -digit : digit;
+    }
+    return value;
+  }
+
+  void _add(List<Block> blocks, List<_Entry> own, {required bool newChapter}) {
+    _waiting.addAll(own);
+    // Covers and pictures without text.
+    if (!blocks.any((b) => b is TextBlock)) return;
+    final current = _blocks;
+    final glue = current != null && !newChapter && _waiting.isEmpty;
+    if (!glue) _close();
+    for (final e in _unnamed) {
+      _sectionOf[e] = _sections.length;
+    }
+    _unnamed.clear();
+    if (glue) {
+      current.addAll(
+        current.last is SeparatorBlock
+            ? blocks.skipWhile((b) => b is SeparatorBlock)
+            : blocks,
+      );
+      return;
+    }
+    final chapter = blocks.skipWhile((b) => b is SeparatorBlock).toList();
+    final first = chapter.first;
+    // A heading further down (`Примечания` after the text) is not the
+    // title of the file.
+    final heading = first is HeadingBlock ? tocTitle(first.text) : null;
+    final link = own.firstOrNull;
+    _title = link?.title ?? heading;
+    // `I` as a plain paragraph (Wikisource): the contents says it is the
+    // chapter title.
+    if (link != null &&
+        first is ParagraphBlock &&
+        first.text.length <= _maxHeadingLength &&
+        _titleKey(first.text) == _titleKey(link.title)) {
+      chapter[0] = HeadingBlock(
+        text: first.text,
+        level: link.level + 1,
+        spans: first.spans,
+      );
+    }
+    for (final e in _waiting) {
+      _sectionOf[e] = _sections.length;
+    }
+    _waiting.clear();
+    _blocks = chapter;
+  }
+
+  void _close() {
+    final blocks = _blocks;
+    if (blocks == null) return;
+    while (blocks.last is SeparatorBlock) {
+      blocks.removeLast();
+    }
+    _sections.add(Section(title: _title, blocks: blocks));
+    _blocks = null;
+  }
+
+  ({List<Section> sections, List<TocEntry> toc}) finish() {
+    _close();
+    // Links after the last text point to the last chapter.
+    for (final e in [..._waiting, ..._unnamed]) {
+      _sectionOf[e] = _sections.length - 1;
+    }
+    for (final MapEntry(:key, :value) in _follows.entries) {
+      if (_sectionOf[value] case final i?) _sectionOf[key] = i;
+    }
+    final toc = !_byContents
+        ? [
+            for (final (i, s) in _sections.indexed)
+              if (s.title case final title?)
+                TocEntry(title: title, level: 0, sectionIndex: i),
+          ]
+        : [
+            for (final e in _contents)
+              if (_sectionOf[e] case final i? when i >= 0)
+                TocEntry(title: e.title, level: e.level, sectionIndex: i),
+          ];
+    return (sections: _sections, toc: toc);
+  }
+
+  static final _titleEnd = RegExp(r'[.:\s]+$');
+
+  static String _titleKey(String s) =>
+      cleanSpaces(s).toLowerCase().replaceAll(_titleEnd, '');
 }

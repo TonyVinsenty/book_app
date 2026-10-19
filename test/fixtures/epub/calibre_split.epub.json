@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "title": "Split Book",
+    "authors": [],
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Part One",
+      "level": 0,
+      "section": 1
+    },
+    {
+      "title": "Chapter 1",
+      "level": 1,
+      "section": 2
+    },
+    {
+      "title": "Chapter 2",
+      "level": 1,
+      "section": 3
+    },
+    {
+      "title": "A Letter",
+      "level": 2,
+      "section": 4
+    },
+    {
+      "title": "Afterword",
+      "level": 1,
+      "section": 5
+    }
+  ],
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "SPLIT BOOK",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Part One",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Part One",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "title": "Chapter 1",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Chapter 1",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "The first chapter begins here.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "It goes on in the next file, cut by size.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Chapter 2",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Chapter 2",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "The second chapter.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "A Letter",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Dear friend, this is a letter.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Afterword",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Afterword",
+          "level": 3
+        },
+        {
+          "type": "paragraph",
+          "text": "Not in the contents, but a heading of its own.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

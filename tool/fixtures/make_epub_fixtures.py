@@ -1,5 +1,5 @@
 """Builds the small EPUB books in test/fixtures/epub/ (EPUB 2 and 3, broken
-markup, encodings, DRM, empty spine). Run from the project root:
+markup, encodings, DRM, empty spine, chapters by the contents). Run from the project root:
 python tool/fixtures/make_epub_fixtures.py
 The texts are written for the tests, no copyright."""
 
@@ -307,9 +307,116 @@ def empty_spine():
     ])
 
 
+# --- Chapters from the contents (step 7.3) ---
+
+def one_file():
+    """The whole book in one file, chapters by anchors (Wikisource-like:
+    `I` as a paragraph), a nested nav with a label without a link, a
+    missing anchor, an appendix file and a notes file without a link."""
+    opf = """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Одна книга</dc:title></metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="book" href="book.xhtml" media-type="application/xhtml+xml"/>
+    <item id="app" href="appendix.xhtml" media-type="application/xhtml+xml"/>
+    <item id="more" href="more.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="book"/><itemref idref="app"/><itemref idref="more"/></spine>
+</package>"""
+    nav = xhtml("""<nav epub:type="landmarks" hidden=""><ol>
+  <li><a href="book.xhtml#c2">Не оглавление</a></li></ol></nav>
+<nav epub:type="toc"><h1>Содержание</h1><ol>
+  <li><a href="book.xhtml#p1">Часть первая</a><ol>
+    <li><a href="book.xhtml#c1">I</a></li>
+    <li><a href="book.xhtml#c2">II</a></li>
+    <li><a href="book.xhtml#nowhere">III</a></li>
+  </ol></li>
+  <li><a href="book.xhtml#p2">Часть
+     вторая</a><ol><li><a href="book.xhtml#c4">IV</a></li></ol></li>
+  <li><span>Приложения</span><ol>
+    <li><a href="appendix.xhtml">Письма</a></li>
+    <li><a href="https://example.com/">Сайт</a></li>
+  </ol></li>
+</ol></nav>""")
+    book = xhtml("""<h1>Одна книга</h1>
+<p>Предисловие без ссылки в оглавлении.</p>
+<h2 id="p1">Часть первая</h2>
+<p class="center" id="c1">I</p>
+<p>Первая глава, один абзац.</p>
+<p>Второй абзац первой главы.</p>
+<hr/>
+<div id="c2"><p class="center">II</p>
+<p>Вторая глава. Здесь <span id="nowhere-else">якорь</span> не тот.</p>
+<p>III</p>
+<p>Третья глава без своего якоря остаётся во второй.</p></div>
+<h2><a id="p2"></a>Часть вторая</h2>
+<p>Вступление ко второй части.<a id="c4"></a></p>
+<p>IV</p>
+<p>Четвёртая глава до конца файла.</p>""")
+    appendix = xhtml('<h3>Письма</h3>\n<p>Письмо первое.</p>')
+    more = xhtml('<p>Продолжение писем, без ссылки и без заголовка.</p>')
+    write('one_file.epub', [
+        ('META-INF/container.xml', CONTAINER.format(path='content.opf')),
+        ('content.opf', opf),
+        ('nav.xhtml', nav),
+        ('book.xhtml', book),
+        ('appendix.xhtml', appendix),
+        ('more.xhtml', more),
+    ])
+
+
+def calibre_split():
+    """EPUB 2 cut by size (Calibre): a nested NCX, a file going on the
+    chapter before, a file starting with a heading of its own, links to
+    a picture and to a file start by its anchor."""
+    files = ['index_split_000.html', 'index_split_001.html',
+             'index_split_002.html', 'index_split_003.html']
+    opf = """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Split Book</dc:title></metadata>
+  <manifest>
+    <item id="toc" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="cover" href="cover.jpeg" media-type="image/jpeg"/>
+""" + ''.join(f'    <item id="s{i}" href="{f}" media-type="application/xhtml+xml"/>\n'
+              for i, f in enumerate(files)) + """  </manifest>
+  <spine toc="toc">""" + ''.join(f'<itemref idref="s{i}"/>' for i in range(len(files))) + """</spine>
+</package>"""
+    ncx = """<?xml version="1.0" encoding="utf-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><navMap>
+  <navPoint id="n0"><navLabel><text>Cover</text></navLabel><content src="cover.jpeg"/></navPoint>
+  <navPoint id="n1"><navLabel><text>Part One</text></navLabel><content src="index_split_000.html#part1"/>
+    <navPoint id="n2"><navLabel><text>Chapter 1</text></navLabel><content src="index_split_000.html#ch1"/></navPoint>
+    <navPoint id="n3"><navLabel><text>Chapter 2</text></navLabel><content src="index_split_002.html#ch2"/>
+      <navPoint id="n4"><navLabel><text>A Letter</text></navLabel><content src="index_split_002.html#letter"/></navPoint>
+    </navPoint>
+  </navPoint>
+</navMap></ncx>"""
+    bodies = [
+        """<p class="title">SPLIT BOOK</p>
+<h1 id="part1">Part One</h1>
+<h2 id="ch1">Chapter 1</h2>
+<p>The first chapter begins here.</p>""",
+        """<p>It goes on in the next file, cut by size.</p>""",
+        """<h2 id="ch2">Chapter 2</h2>
+<p>The second chapter.</p>
+<p id="letter">Dear friend, this is a letter.</p>""",
+        """<h3>Afterword</h3>
+<p>Not in the contents, but a heading of its own.</p>""",
+    ]
+    write('calibre_split.epub', [
+        ('META-INF/container.xml', CONTAINER.format(path='content.opf')),
+        ('content.opf', opf),
+        ('toc.ncx', ncx),
+        ('cover.jpeg', b'\xff\xd8\xff\xe0' + bytes(20)),
+    ] + [(f, xhtml(b)) for f, b in zip(files, bodies)])
+
+
 if __name__ == '__main__':
     epub3()
     epub2()
     cp1251()
     drm()
     empty_spine()
+    one_file()
+    calibre_split()

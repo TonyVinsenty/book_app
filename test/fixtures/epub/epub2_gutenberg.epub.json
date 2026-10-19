@@ -18,7 +18,7 @@
     {
       "title": "CHAPTER II.",
       "level": 0,
-      "section": 3
+      "section": 2
     }
   ],
   "sections": [
@@ -58,11 +58,7 @@
           "type": "paragraph",
           "text": "The fog lies over the river,\nThe sun is hiding in the wood.",
           "style": "poem"
-        }
-      ]
-    },
-    {
-      "blocks": [
+        },
         {
           "type": "paragraph",
           "text": "The chapter goes on in a second file, cut by size.\nNext line.",
