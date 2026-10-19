@@ -1,0 +1,213 @@
+<title>Концепт стиля читалки</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:wght@400;600&family=Lora:wght@400;600&family=Manrope:wght@400;600;700&family=Noto+Serif:wght@400;600&family=PT+Serif:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky control bar (palette, night, font, size) -> phone mockups grid -> live RSVP demo -> names -> tap zones */
+:root{--pg:#F2F0EC;--pgtx:#2B2926;--pgmut:#6A645B;--pg2:#E4E0D8;--pgline:#D2CDC3;--ui:'Manrope',system-ui,sans-serif;--book:'Literata',Georgia,serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg:#171615;--pgtx:#EAE6DF;--pgmut:#A29B90;--pg2:#242220;--pgline:#37342F;color-scheme:dark}}
+:root[data-theme="dark"]{--pg:#171615;--pgtx:#EAE6DF;--pgmut:#A29B90;--pg2:#242220;--pgline:#37342F;color-scheme:dark}
+body{background:var(--pg);color:var(--pgtx);font:15px/1.5 var(--ui);padding-block:0 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--pg);z-index:10}
+h1{font-size:24px;margin:20px 0 4px;text-wrap:balance}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--pgmut);margin:44px 0 16px;font-weight:700}
+p.lead{margin:0;color:var(--pgmut)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--pg);border-bottom:1px solid var(--pgline);padding:10px 0;margin-top:12px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.bar .g{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bar label,.bar .lb{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--pgmut);font-weight:700}
+.sw,.fb,.nt{min-height:44px;border:2px solid transparent;background:var(--pg2);color:var(--pgtx);border-radius:22px;padding:0 14px;font:600 13px var(--ui);display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.sw[aria-pressed=true],.fb[aria-pressed=true],.nt[aria-pressed=true]{border-color:var(--pgtx)}
+.sw i{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid #0003}
+.fb{font-size:16px}
+:focus-visible{outline:3px solid #4A7499;outline-offset:2px}
+.grid{display:flex;flex-wrap:wrap;gap:36px 28px}
+figure{margin:0;width:340px;max-width:100%}
+figcaption{margin-top:10px;font-size:13px;color:var(--pgmut);padding:0 6px}
+figcaption b{color:var(--pgtx)}
+/* ---- app theme (mockups) ---- */
+#stage{--bg:#F6F0E4;--tx:#3A332B;--t2:#6E6455;--sf:#EBE2D0;--ac:#9A6B43;--orp:#C2492F;--hl:#F3DFA2;--fs:16px}
+#stage[data-pal=sage]{--bg:#EAF0E6;--tx:#2F3A31;--t2:#5F6E61;--sf:#DAE5D4;--ac:#4F7A59;--orp:#BF4A38;--hl:#CDE5B0}
+#stage[data-pal=lav]{--bg:#F0ECF6;--tx:#342F42;--t2:#6B6483;--sf:#E2DAEE;--ac:#7462A6;--orp:#BC4A3C;--hl:#DFD2F4}
+#stage[data-pal=blue]{--bg:#E9EFF4;--tx:#2B3541;--t2:#5C6978;--sf:#D8E3EC;--ac:#4A7499;--orp:#C4472F;--hl:#FBD9C4}
+#stage[data-night="1"]{--bg:#1F1B17;--tx:#E6DCCB;--t2:#A09484;--sf:#2D2822;--ac:#D0A070;--orp:#FF8A6B;--hl:#5A4A25}
+#stage[data-night="1"][data-pal=sage]{--bg:#182019;--tx:#DDE7DA;--t2:#8FA091;--sf:#243026;--ac:#8FB597;--orp:#FF8F77;--hl:#3A5236}
+#stage[data-night="1"][data-pal=lav]{--bg:#1C1925;--tx:#E4DFF0;--t2:#9D95B3;--sf:#2A253C;--ac:#A99BD3;--orp:#FF8F7A;--hl:#4A3F6B}
+#stage[data-night="1"][data-pal=blue]{--bg:#151C24;--tx:#DCE5EE;--t2:#8D9BAA;--sf:#222D39;--ac:#86AACB;--orp:#FF9272;--hl:#5A4234}
+.ph{width:340px;max-width:100%;height:680px;border:8px solid #232226;border-radius:46px;background:var(--bg);color:var(--tx);overflow:hidden;position:relative;font-family:var(--ui);box-shadow:0 12px 32px #0003;box-sizing:border-box;transition:background .3s,color .3s}
+.sb{position:absolute;inset:0 0 auto;height:34px;display:flex;justify-content:space-between;padding:12px 26px 0;font-size:11px;font-weight:700;color:var(--t2);z-index:3}
+.pg{position:absolute;inset:48px 24px 26px;font:400 var(--fs)/1.7 var(--book);text-align:justify;hyphens:auto;overflow:hidden;transition:opacity .3s}
+.pg p{margin:0 0 .5em;text-indent:1.3em}
+.pg.dim{opacity:.28}
+.w.last{animation:fade 3.6s infinite;border-radius:4px;box-shadow:0 0 0 2px var(--hl)}
+@keyframes fade{0%,55%{background:var(--hl);box-shadow:0 0 0 2px var(--hl)}100%{background:transparent;box-shadow:0 0 0 2px transparent}}
+.w.g{background:var(--hl);box-shadow:0 0 0 2px var(--hl);border-radius:4px}
+.btn{min-height:44px;min-width:44px;border:0;border-radius:22px;background:var(--sf);color:var(--tx);display:inline-flex;align-items:center;justify-content:center;gap:6px;font:600 14px var(--ui);padding:0 12px;cursor:pointer}
+.btn.sq{padding:0}
+.btn.pri{background:var(--ac);color:var(--bg);padding:0 16px}
+.top{position:absolute;inset:38px 14px auto;display:flex;justify-content:space-between;z-index:2}
+.sheet{position:absolute;inset:auto 10px 12px;background:var(--sf);border-radius:26px;padding:16px;display:flex;flex-direction:column;gap:10px;z-index:2;box-shadow:0 -6px 24px #0002}
+.sheet .btn{background:var(--bg)}.sheet .btn.pri{background:var(--ac)}
+.r1{display:flex;justify-content:space-between;gap:10px}.r1 small{display:block;color:var(--t2);font-size:11px}.r1 b{font:600 17px/1.25 var(--book)}
+.st{text-align:right;font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sl{height:4px;border-radius:2px;background:color-mix(in oklab,var(--t2) 30%,transparent);position:relative;margin:8px 0 2px}
+.sl i{position:absolute;inset:0 auto 0 0;background:var(--ac);border-radius:2px}
+.sl u{position:absolute;top:-6px;width:16px;height:16px;border-radius:50%;background:var(--ac);margin-left:-8px;box-shadow:0 0 0 4px var(--sf)}
+.r2{display:flex;justify-content:space-between;font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums}
+.r3{display:flex;gap:8px;align-items:center}.r3 .pri{flex:1}.grp{display:flex;gap:4px}
+.rs{position:absolute;left:0;right:0;top:46%;transform:translateY(-50%)}
+.wd{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);font:400 38px/1.2 var(--book);white-space:nowrap}
+.wd .a{justify-self:end}.wd .b{justify-self:start}.wd .o{color:var(--orp);font-weight:600}
+.tk{display:block;width:2px;height:14px;background:var(--t2);opacity:.55;margin:0 auto;border-radius:1px}
+.tk.t{margin-bottom:18px}.tk.b{margin-top:18px}
+.hair{position:absolute;inset:auto 0 0;height:3px;background:color-mix(in oklab,var(--t2) 22%,transparent)}.hair i{display:block;height:100%;background:var(--ac)}
+.ctx,.ctl{opacity:0;pointer-events:none;transition:opacity .4s}
+.paused .ctx{opacity:1}.paused .ctl{opacity:1;pointer-events:auto}
+.ctx{position:absolute;left:26px;right:26px;top:48px;bottom:calc(54% + 40px);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;font:400 15px/1.7 var(--book);color:var(--t2);-webkit-mask-image:linear-gradient(transparent,#000 65%);mask-image:linear-gradient(transparent,#000 65%)}
+.ctl{position:absolute;inset:auto 14px 26px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.ctl .r{display:flex;align-items:flex-start;justify-content:center;gap:26px}
+.cb{display:flex;flex-direction:column;align-items:center;gap:3px;width:56px}.cb small{font-size:11px;color:var(--t2)}
+.cb .btn{width:48px;height:48px}
+.btn.play{width:68px;height:68px;border-radius:50%;background:var(--ac);color:var(--bg);padding:0}
+.spd{display:flex;align-items:center;background:var(--sf);border-radius:26px;padding:2px}
+.spd span{min-width:112px;text-align:center;font-size:13px;color:var(--t2);font-variant-numeric:tabular-nums}.spd b{color:var(--tx);font-size:16px}
+.spd .btn{background:transparent}
+.cap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:60px 24px 34px}
+.cap .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);font-weight:700}
+.cap h3{font:600 26px/1.2 var(--book);margin:0}
+.pv{background:var(--sf);border-radius:18px;padding:14px 16px;height:150px;overflow:hidden;font:400 13px/1.6 var(--book);-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
+.cap .btn.pri{height:54px;font-size:16px;border-radius:27px}
+.lib{position:absolute;inset:44px 18px 0;display:flex;flex-direction:column;gap:14px}
+.lib h3{font:600 28px/1.1 var(--book);margin:4px 0 0}.lib h3 small{display:block;font:500 12px var(--ui);color:var(--t2);margin-top:4px}
+.chips{display:flex;gap:6px;overflow:hidden;margin-right:-18px}
+.chip{min-height:40px;padding:0 14px;border-radius:20px;background:var(--sf);color:var(--tx);font:600 13px var(--ui);display:inline-flex;align-items:center;white-space:nowrap;border:0}
+.chip.on{background:var(--ac);color:var(--bg)}
+.cont{display:flex;gap:12px;background:var(--sf);border-radius:20px;padding:12px;align-items:center}
+.cont .cv{width:50px;flex:none}.cont small{color:var(--t2);font-size:11px}.cont b{display:block;font:600 15px/1.2 var(--book);margin:2px 0 8px}
+.cont>div{flex:1;min-width:0}
+.pr{height:3px;border-radius:2px;background:color-mix(in oklab,var(--t2) 28%,transparent);overflow:hidden}.pr i{display:block;height:100%;background:var(--ac)}
+.books{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 12px}
+.bk{display:flex;flex-direction:column;gap:5px}.bk>span{font-size:11px;color:var(--t2)}
+.cv{aspect-ratio:2/3;border-radius:5px 10px 10px 5px;padding:8px 7px;display:flex;flex-direction:column;justify-content:space-between;color:var(--tx);box-shadow:inset 3px 0 0 #0001}
+.cv b{font:600 11.5px/1.2 var(--book)}.cv small{font-size:9px;opacity:.8}
+.c1{background:color-mix(in oklab,var(--ac) 50%,var(--sf))}.c2{background:color-mix(in oklab,var(--orp) 32%,var(--sf))}.c3{background:color-mix(in oklab,var(--t2) 38%,var(--sf))}.c4{background:color-mix(in oklab,var(--hl) 85%,var(--sf))}.c5{background:color-mix(in oklab,var(--ac) 22%,var(--bg))}
+.fab{position:absolute;right:4px;bottom:24px;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.fab .btn.pri{width:58px;height:58px;border-radius:50%;box-shadow:0 6px 16px #0003}
+.fm{background:var(--sf);border-radius:18px;padding:6px;box-shadow:0 6px 20px #0003}.fm .btn{background:transparent;justify-content:flex-start;width:100%;padding:0 14px}
+.demo{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.panel{flex:1;min-width:240px;max-width:380px;display:flex;flex-direction:column;gap:14px}
+.panel input[type=range]{width:100%;accent-color:#B5654A}
+.big{font:700 34px var(--ui);font-variant-numeric:tabular-nums}
+.names{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.names li{background:var(--pg2);border-radius:16px;padding:12px 16px;min-width:0}
+.names b{font-size:18px}.names em{color:var(--pgmut);font-style:normal;font-size:12px;margin-left:6px}.names span{display:block;font-size:13px;color:var(--pgmut)}
+.tzs{display:flex;gap:28px;flex-wrap:wrap}
+.tz{width:96px;height:170px;border:2px solid var(--pgmut);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:1fr 2fr 1fr;font-size:11px;text-align:center}
+.tz.one{grid-template-columns:1fr}
+.tz div{display:flex;align-items:center;justify-content:center;padding:2px;color:var(--pgtx)}
+.tz div+div{border-left:2px dashed var(--pgmut)}.tz.one div{border:0;background:var(--pg2)}.tz div:nth-child(2){background:var(--pg2)}
+.tzs figure{width:auto;display:flex;flex-direction:column;align-items:center}
+@media (prefers-reduced-motion:reduce){.w.last{animation:none;background:var(--hl)}.ctx,.ctl{transition:none}}
+</style>
+
+<h1>Концепт стиля читалки</h1>
+<p class="lead">Палитры, шрифты, главные экраны. Переключайте сверху, всё меняется сразу.</p>
+
+<div class="bar" role="toolbar" aria-label="Стиль">
+  <div class="g" id="pals"><span class="lb">Палитра</span></div>
+  <div class="g"><button class="nt" id="night" aria-pressed="false">Ночь</button></div>
+  <div class="g" id="fonts"><span class="lb">Шрифт</span></div>
+  <div class="g"><label for="fs">Размер</label><input type="range" id="fs" min="14" max="21" value="16" style="width:90px;accent-color:#B5654A"></div>
+</div>
+
+<div id="stage" data-pal="paper" data-night="0" lang="ru">
+  <h2>Экраны</h2>
+  <div class="grid" id="frames"></div>
+
+  <h2>Живое скорочтение</h2>
+  <div class="demo">
+    <figure><div class="ph live paused" id="demo"></div><figcaption><b>Нажмите на экран</b>: пауза и пуск. Слово не двигается, буква опоры стоит на месте.</figcaption></figure>
+    <div class="panel" style="color:var(--pgtx)">
+      <div class="big"><span id="wv">450</span> <small style="font:600 14px var(--ui);color:var(--pgmut)">сл/мин</small></div>
+      <input type="range" id="wpm" min="200" max="700" step="25" value="450" aria-label="Скорость">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--pgmut)"><span>200</span><span>700</span></div>
+      <p class="lead" style="font-size:13px">Паузы на запятых и точках, длиннее на длинных словах.</p>
+    </div>
+  </div>
+</div>
+
+<h2>Название</h2>
+<ul class="names">
+  <li><b>Ритм</b><em>Ritm</em><span>читаешь в своём темпе</span></li>
+  <li><b>Поток</b><em>Potok / Flow</em><span>слова текут сами</span></li>
+  <li><b>Фокус</b><em>Fokus</em><span>точка, где замирает взгляд</span></li>
+  <li><b>Опора</b><em>Opora</em><span>опорная буква, на которой держится взгляд</span></li>
+  <li><b>Слово</b><em>Slovo</em><span>по одному слову, коротко и тепло</span></li>
+  <li><b>Лист</b><em>List / Leaf</em><span>спокойное, про страницу</span></li>
+  <li><b>Чтец</b><em>Chtets</em><span>просто и по-русски, чуть старинно</span></li>
+  <li><b>Неспеша</b><em>Nespesha</em><span>быстро, но без спешки</span></li>
+</ul>
+
+<h2>Тапы по экрану</h2>
+<div class="tzs">
+  <figure><div class="tz"><div>назад</div><div>меню</div><div>вперёд</div></div><figcaption>Текст</figcaption></figure>
+  <figure><div class="tz one"><div>пауза +<br>управление</div></div><figcaption>Скорочтение</figcaption></figure>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),stage=$('#stage');
+const I={menu:'<path d="M4 7h16M4 12h16M4 17h10"/>',sliders:'<path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/>',play:'<path d="M8 5l11 7-11 7z" fill="currentColor"/>',back:'<path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',chev:'<path d="M15 5l-7 7 7 7"/>',folder:'<path d="M3 7h6l2 2h10v10H3z"/>',file:'<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',ff:'<path d="M5 6l7 6-7 6zM13 6l7 6-7 6z" fill="currentColor"/>',text:'<path d="M4 7h16M4 12h16M4 17h9"/>',redo:'<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/>'};
+const ic=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+/* controls */
+const PALS=[['paper','Бумага','#F6F0E4','#9A6B43'],['sage','Шалфей','#EAF0E6','#4F7A59'],['lav','Лаванда','#F0ECF6','#7462A6'],['blue','Дымка','#E9EFF4','#4A7499']];
+const FONTS=[['Literata','Literata'],['PT Serif','PT Serif'],['Lora','Lora'],['Noto Serif','Noto Serif']];
+const bar=(box,items,fn,cls,html)=>items.forEach((it,i)=>{const b=document.createElement('button');b.className=cls;b.innerHTML=html(it);b.setAttribute('aria-pressed',i==0);b.onclick=()=>{box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x==b));fn(it)};box.append(b)});
+bar($('#pals'),PALS,p=>stage.dataset.pal=p[0],'sw',p=>`<i style="background:linear-gradient(90deg,${p[2]} 50%,${p[3]} 50%)"></i>${p[1]}`);
+bar($('#fonts'),FONTS,f=>stage.style.setProperty('--book',`'${f[0]}',Georgia,serif`),'fb',f=>`<span style="font-family:'${f[0]}',serif">Аа</span><small style="font-size:11px">${f[1]}</small>`);
+$('#night').onclick=e=>{const n=stage.dataset.night=='1'?'0':'1';stage.dataset.night=n;e.target.setAttribute('aria-pressed',n=='1')};
+$('#fs').oninput=e=>stage.style.setProperty('--fs',e.target.value+'px');
+
+/* text */
+const P=["Говорили, что на набережной появилось новое лицо: дама с собачкой. Дмитрий Дмитрич Гуров, проживший в Ялте уже две недели и привыкший тут, тоже стал интересоваться новыми лицами. Сидя в павильоне у Верне, он видел, как по набережной прошла молодая дама, невысокого роста блондинка, в берете; за нею бежал белый шпиц.","И потом он встречал её в городском саду и на сквере по нескольку раз в день. Она гуляла одна, всё в том же берете, с белым шпицем; никто не знал, кто она, и называли её просто так: дама с собачкой.","«Если она здесь без мужа и без знакомых, — соображал Гуров, — то было бы не лишнее познакомиться с ней».","Ему не было ещё и тридцати шести лет, но у него была уже дочь двенадцати лет и два сына-гимназиста."];
+const WORDS=P.join(' ').split(' ');
+const page=(o={})=>{let k=0;return `<div class="pg${o.dim?' dim':''}">`+P.map(p=>'<p>'+p.split(' ').map(w=>{const c=(o.mark===k?' last':'');k++;return `<span class="w${c}">${w} </span>`}).join('')+'</p>').join('')+'</div>'};
+const orp=n=>n<2?0:n<6?1:n<10?2:n<14?3:4;
+const split=w=>{const m=w.match(/^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u),c=m[2];if(!c)return`<span class="a"></span><span class="o">${w[0]||''}</span><span class="b">${w.slice(1)}</span>`;const i=orp(c.length);return`<span class="a">${m[1]+c.slice(0,i)}</span><span class="o">${c[i]}</span><span class="b">${c.slice(i+1)+m[3]}</span>`};
+const rs=w=>`<div class="rs"><i class="tk t"></i><div class="wd">${split(w)}</div><i class="tk b"></i></div>`;
+const ctl=(wpm,t3)=>`<div class="ctl"><div class="r"><div class="cb"><button class="btn sq" data-act="back" aria-label="Назад на предложение">${ic('back')}</button><small>назад</small></div><button class="btn play" data-act="play" aria-label="Пуск">${ic('play',30)}</button><div class="cb"><button class="btn sq" data-act="${t3[0]}" aria-label="${t3[2]}">${ic(t3[1])}</button><small>${t3[2]}</small></div></div><div class="spd"><button class="btn sq" data-act="slow" aria-label="Медленнее">${ic('minus')}</button><span><b data-wpm>${wpm}</b> сл/мин</span><button class="btn sq" data-act="fast" aria-label="Быстрее">${ic('plus')}</button></div></div>`;
+const SB='<div class="sb"><span>9:41</span><span>100%</span></div>';
+const iShpitz=WORDS.indexOf('шпиц.');
+const ctxText=WORDS.slice(0,iShpitz).join(' ');
+const BK=[['Дама с собачкой','А. П. Чехов',32,1],['Капитанская дочка','А. С. Пушкин',78,2],['Детство','Л. Н. Толстой',0,3],['Шинель','Н. В. Гоголь',100,4],['Степь','А. П. Чехов',12,5]];
+const SCR=[
+['Чтение','Только книга. Ни одной кнопки.',()=>SB+page()],
+['Тап: меню','Сверху вход и оглавление, снизу всё остальное в четыре строки.',()=>SB+page({dim:1})+`<div class="top"><button class="btn">${ic('chev',18)}Библиотека</button><button class="btn sq" aria-label="Оглавление">${ic('menu')}</button></div><div class="sheet"><div class="r1"><div><small>Рассказы · Чехов</small><b>Дама с собачкой</b></div><div class="st">≈ 320 сл/мин<br>ещё 5 ч 40 мин</div></div><div><div class="sl"><i style="width:32%"></i><u style="left:32%"></u></div><div class="r2"><span>стр. 124 / 386</span><span>32%</span></div></div><div class="r3"><div class="grp"><button class="btn sq" aria-label="Мельче">A−</button><button class="btn sq" aria-label="Крупнее">A+</button></div><button class="btn sq" aria-label="Настройки">${ic('sliders')}</button><button class="btn pri">${ic('ff',18)}Скорочтение</button></div></div>`],
+['Скорочтение: идёт','Слово, метки, тонкая линия прогресса.',()=>SB+rs('набережной')+'<div class="hair"><i style="width:34%"></i></div>'],
+['Скорочтение: пауза','Текст до слова проступает, слово на месте.',()=>`<div class="paused" style="position:absolute;inset:0">${SB}<div class="ctx">${ctxText}</div>${rs('шпиц.')}${ctl(450,['exit','text','в текст'])}</div>`],
+['Конец главы','Автопауза, вид следующей страницы, «Старт».',()=>SB+`<div class="cap"><div class="k">Глава 1 прочитана</div><h3>Глава 2 · Знакомство</h3><div class="pv">${P[1]} ${P[2]} ${P[3]}</div><button class="btn pri">Старт</button></div>`],
+['Возврат в текст','Последнее слово скорочтения мягко подсвечено и гаснет.',()=>SB+page({mark:iShpitz})],
+['Библиотека','Обложки, прогресс, подборки, добавление файлов и папок.',()=>SB+`<div class="lib"><h3>Библиотека<small>5 книг</small></h3><div class="chips"><span class="chip on">Все</span><span class="chip">Читаю</span><span class="chip">Классика</span><span class="chip">На потом</span></div><div class="cont"><div class="cv c1"><b>Дама с собачкой</b></div><div><small>Продолжить</small><b>Дама с собачкой</b><div class="pr"><i style="width:32%"></i></div></div></div><div class="books">${BK.map(b=>`<div class="bk"><div class="cv c${b[3]}"><b>${b[0]}</b><small>${b[1]}</small></div><div class="pr"><i style="width:${b[2]}%"></i></div><span>${b[2]==100?'прочитана':b[2]?b[2]+'%':'новая'}</span></div>`).join('')}</div><div class="fab"><div class="fm"><button class="btn">${ic('file',20)}Файлы</button><button class="btn">${ic('folder',20)}Папка</button></div><button class="btn pri" aria-label="Добавить">${ic('plus',26)}</button></div></div>`],
+['Ведущая подсветка','Мягкий маркер бежит по словам обычной страницы.',()=>SB+page()],
+];
+$('#frames').innerHTML=SCR.map((s,i)=>`<figure><div class="ph" data-i="${i}">${s[2]()}</div><figcaption><b>${'абвгдежз'[i]}. ${s[0]}</b><br>${s[1]}</figcaption></figure>`).join('');
+/* guided sweep */
+(()=>{const ws=[...document.querySelectorAll('.ph[data-i="7"] .w')];let k=4;const t=()=>{ws.forEach((w,j)=>w.classList.toggle('g',j>=k&&j<k+3));k=(k+1)%(ws.length-3)};t();setInterval(t,420)})();
+
+/* live demo */
+const demo=$('#demo');
+demo.innerHTML=SB+`<div class="ctx" id="dctx"></div><div id="drs"></div>`+ctl(450,['reset','redo','сначала'])+`<div class="hair"><i id="dh" style="width:0"></i></div>`;
+let i=iShpitz,wpm=450,playing=false,timer;
+const end=w=>/[.!?…]["»”]?$/.test(w);
+const delay=w=>{const n=w.replace(/[^\p{L}\p{N}]/gu,'').length;let m=n>=13?1.5:n>=9?1.25:1;if(/[.!?…]["»”]?$/.test(w))m*=2.6;else if(/[,;:—–]["»”]?$/.test(w))m*=1.8;return 60000/wpm*m};
+const show=()=>{$('#drs').innerHTML=rs(WORDS[i]);$('#dh').style.width=(i/(WORDS.length-1)*100)+'%';$('#dctx').textContent=WORDS.slice(Math.max(0,i-60),i).join(' ')};
+const setW=v=>{wpm=Math.max(200,Math.min(700,v));$('#wpm').value=wpm;$('#wv').textContent=wpm;demo.querySelector('[data-wpm]').textContent=wpm};
+const tick=()=>{if(!playing)return;if(i>=WORDS.length-1){pause();return}i++;show();timer=setTimeout(tick,delay(WORDS[i]))};
+const play=()=>{if(i>=WORDS.length-1)i=0;playing=true;demo.classList.remove('paused');show();timer=setTimeout(tick,delay(WORDS[i]))};
+const pause=()=>{playing=false;clearTimeout(timer);demo.classList.add('paused');show()};
+demo.onclick=e=>{const b=e.target.closest('button');if(!b){playing?pause():play();return}const a=b.dataset.act;
+ if(a=='play')play();else if(a=='slow')setW(wpm-25);else if(a=='fast')setW(wpm+25);else if(a=='reset'){i=0;show()}
+ else if(a=='back'){let j=Math.max(0,i-1);while(j>0&&!end(WORDS[j-1]))j--;i=j;show()}};
+$('#wpm').oninput=e=>setW(+e.target.value);
+show();
+</script>
