@@ -13,6 +13,59 @@ void main() {
     ).readAsStringSync();
     expect(kotlin, contains('"$filesChannelName"'));
     expect(kotlin, contains('"$pickBooksMethod"'));
+    expect(kotlin, contains('"$hasInitialFilesMethod"'));
+    expect(kotlin, contains('"$onIncomingFilesMethod"'));
+  });
+
+  group('AndroidManifest.xml', () {
+    const android = 'http://schemas.android.com/apk/res/android';
+    final activity = XmlDocument.parse(
+      File('android/app/src/main/AndroidManifest.xml').readAsStringSync(),
+    ).findAllElements('activity').single;
+
+    List<String> values(XmlElement filter, String tag, String attribute) => [
+      for (final e in filter.findElements(tag))
+        ?e.getAttribute(attribute, namespaceUri: android),
+    ];
+
+    XmlElement filterFor(String action) => activity
+        .findElements('intent-filter')
+        .singleWhere((f) => values(f, 'action', 'name').contains(action));
+
+    test('one copy of the app takes every file (singleTask)', () {
+      expect(
+        activity.getAttribute('launchMode', namespaceUri: android),
+        'singleTask',
+      );
+    });
+
+    test('"Open with" takes book types, plain text included', () {
+      final view = filterFor('android.intent.action.VIEW');
+      expect(values(view, 'category', 'name'), [
+        'android.intent.category.DEFAULT',
+      ]);
+      expect(values(view, 'data', 'scheme'), ['content']);
+      expect(
+        values(view, 'data', 'mimeType'),
+        unorderedEquals([
+          ..._bookTypes,
+          'text/plain',
+          'application/octet-stream',
+        ]),
+      );
+    });
+
+    test('"Share" takes book types, but not plain text', () {
+      final send = filterFor('android.intent.action.SEND');
+      expect(
+        values(send, 'action', 'name'),
+        contains('android.intent.action.SEND_MULTIPLE'),
+      );
+      expect(
+        values(send, 'data', 'mimeType'),
+        unorderedEquals([..._bookTypes, 'application/octet-stream']),
+      );
+    });
   });
 
   test('AppDelegate.swift uses the Dart channel and method names', () {
@@ -46,6 +99,14 @@ void main() {
 }
 
 const _fb2Type = 'com.tonyvinsenty.bookapp.fb2';
+
+const _bookTypes = [
+  'application/epub+zip',
+  'application/x-fictionbook+xml',
+  'application/x-fictionbook',
+  'application/zip',
+  'application/x-zip-compressed',
+];
 
 Map<String, Object?> _plistDict(File file) {
   final root = XmlDocument.parse(file.readAsStringSync()).rootElement;

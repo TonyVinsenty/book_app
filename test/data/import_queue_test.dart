@@ -96,7 +96,10 @@ void main() {
     expect(state().finished, hasLength(4));
     // The count moves on inside the box too.
     expect(
-      [for (final s in states) if (s.current?.startsWith('box.zip-') ?? false) s.done],
+      [
+        for (final s in states)
+          if (s.current?.startsWith('box.zip-') ?? false) s.done,
+      ],
       [1, 2, 3],
     );
   });

@@ -28,9 +28,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     } on PlatformException {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.importPickFailed)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.importPickFailed)));
       return;
     }
     if (!mounted) return;
@@ -109,6 +108,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       floatingActionButton: queue.busy
           ? null
           : FloatingActionButton.extended(
+              // It hides and comes back with the queue; two of them in one
+              // page transition would clash as heroes.
+              heroTag: null,
               onPressed: _addBooks,
               icon: const Icon(Icons.add),
               label: Text(l10n.addBook),

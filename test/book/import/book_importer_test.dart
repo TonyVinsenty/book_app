@@ -185,11 +185,10 @@ void main() {
     );
 
     expect(told, [('Вторая.txt', 3), ('Первая.txt', 3), ('Битая.fb2', 3)]);
-    expect([for (final r in results) r.fileName], [
-      'Вторая.txt',
-      'Первая.txt',
-      'Битая.fb2',
-    ]);
+    expect(
+      [for (final r in results) r.fileName],
+      ['Вторая.txt', 'Первая.txt', 'Битая.fb2'],
+    );
     expect(results[0], isA<ImportAdded>());
     expect(results[1], isA<ImportAdded>());
     expect((results[2] as ImportFailed).error, ImportError.damaged);
