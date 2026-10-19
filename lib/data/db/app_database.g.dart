@@ -214,6 +214,28 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _touchedAtMeta = const VerificationMeta(
+    'touchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> touchedAt = GeneratedColumn<DateTime>(
+    'touched_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _coverFileMeta = const VerificationMeta(
+    'coverFile',
+  );
+  @override
+  late final GeneratedColumn<String> coverFile = GeneratedColumn<String>(
+    'cover_file',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -235,6 +257,8 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
     positionChar,
     addedAt,
     openedAt,
+    touchedAt,
+    coverFile,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -379,6 +403,20 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
         openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
       );
     }
+    if (data.containsKey('touched_at')) {
+      context.handle(
+        _touchedAtMeta,
+        touchedAt.isAcceptableOrUnknown(data['touched_at']!, _touchedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_touchedAtMeta);
+    }
+    if (data.containsKey('cover_file')) {
+      context.handle(
+        _coverFileMeta,
+        coverFile.isAcceptableOrUnknown(data['cover_file']!, _coverFileMeta),
+      );
+    }
     return context;
   }
 
@@ -468,6 +506,14 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}opened_at'],
       ),
+      touchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}touched_at'],
+      )!,
+      coverFile: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_file'],
+      ),
     );
   }
 
@@ -514,6 +560,14 @@ class BookRow extends DataClass implements Insertable<BookRow> {
   final int positionChar;
   final DateTime addedAt;
   final DateTime? openedAt;
+
+  /// Last add, open or repeated import: the library is sorted by it, so a
+  /// new book and a duplicate come on top (schema v2).
+  final DateTime touchedAt;
+
+  /// Name of the cover picture in the book folder (`cover.jpg`), or null
+  /// (schema v2).
+  final String? coverFile;
   const BookRow({
     required this.id,
     required this.title,
@@ -534,6 +588,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     required this.positionChar,
     required this.addedAt,
     this.openedAt,
+    required this.touchedAt,
+    this.coverFile,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -575,6 +631,10 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     if (!nullToAbsent || openedAt != null) {
       map['opened_at'] = Variable<DateTime>(openedAt);
     }
+    map['touched_at'] = Variable<DateTime>(touchedAt);
+    if (!nullToAbsent || coverFile != null) {
+      map['cover_file'] = Variable<String>(coverFile);
+    }
     return map;
   }
 
@@ -607,6 +667,10 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       openedAt: openedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(openedAt),
+      touchedAt: Value(touchedAt),
+      coverFile: coverFile == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverFile),
     );
   }
 
@@ -637,6 +701,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       positionChar: serializer.fromJson<int>(json['positionChar']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
       openedAt: serializer.fromJson<DateTime?>(json['openedAt']),
+      touchedAt: serializer.fromJson<DateTime>(json['touchedAt']),
+      coverFile: serializer.fromJson<String?>(json['coverFile']),
     );
   }
   @override
@@ -664,6 +730,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       'positionChar': serializer.toJson<int>(positionChar),
       'addedAt': serializer.toJson<DateTime>(addedAt),
       'openedAt': serializer.toJson<DateTime?>(openedAt),
+      'touchedAt': serializer.toJson<DateTime>(touchedAt),
+      'coverFile': serializer.toJson<String?>(coverFile),
     };
   }
 
@@ -687,6 +755,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     int? positionChar,
     DateTime? addedAt,
     Value<DateTime?> openedAt = const Value.absent(),
+    DateTime? touchedAt,
+    Value<String?> coverFile = const Value.absent(),
   }) => BookRow(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -707,6 +777,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     positionChar: positionChar ?? this.positionChar,
     addedAt: addedAt ?? this.addedAt,
     openedAt: openedAt.present ? openedAt.value : this.openedAt,
+    touchedAt: touchedAt ?? this.touchedAt,
+    coverFile: coverFile.present ? coverFile.value : this.coverFile,
   );
   BookRow copyWithCompanion(BooksCompanion data) {
     return BookRow(
@@ -751,6 +823,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
           : this.positionChar,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
       openedAt: data.openedAt.present ? data.openedAt.value : this.openedAt,
+      touchedAt: data.touchedAt.present ? data.touchedAt.value : this.touchedAt,
+      coverFile: data.coverFile.present ? data.coverFile.value : this.coverFile,
     );
   }
 
@@ -775,13 +849,15 @@ class BookRow extends DataClass implements Insertable<BookRow> {
           ..write('positionBlock: $positionBlock, ')
           ..write('positionChar: $positionChar, ')
           ..write('addedAt: $addedAt, ')
-          ..write('openedAt: $openedAt')
+          ..write('openedAt: $openedAt, ')
+          ..write('touchedAt: $touchedAt, ')
+          ..write('coverFile: $coverFile')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     title,
     authors,
@@ -801,7 +877,9 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     positionChar,
     addedAt,
     openedAt,
-  );
+    touchedAt,
+    coverFile,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -824,7 +902,9 @@ class BookRow extends DataClass implements Insertable<BookRow> {
           other.positionBlock == this.positionBlock &&
           other.positionChar == this.positionChar &&
           other.addedAt == this.addedAt &&
-          other.openedAt == this.openedAt);
+          other.openedAt == this.openedAt &&
+          other.touchedAt == this.touchedAt &&
+          other.coverFile == this.coverFile);
 }
 
 class BooksCompanion extends UpdateCompanion<BookRow> {
@@ -847,6 +927,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
   final Value<int> positionChar;
   final Value<DateTime> addedAt;
   final Value<DateTime?> openedAt;
+  final Value<DateTime> touchedAt;
+  final Value<String?> coverFile;
   const BooksCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -867,6 +949,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     this.positionChar = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.openedAt = const Value.absent(),
+    this.touchedAt = const Value.absent(),
+    this.coverFile = const Value.absent(),
   });
   BooksCompanion.insert({
     this.id = const Value.absent(),
@@ -888,6 +972,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     this.positionChar = const Value.absent(),
     required DateTime addedAt,
     this.openedAt = const Value.absent(),
+    required DateTime touchedAt,
+    this.coverFile = const Value.absent(),
   }) : title = Value(title),
        authors = Value(authors),
        sourceFormat = Value(sourceFormat),
@@ -896,7 +982,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
        sourceHash = Value(sourceHash),
        parserVersion = Value(parserVersion),
        wordCount = Value(wordCount),
-       addedAt = Value(addedAt);
+       addedAt = Value(addedAt),
+       touchedAt = Value(touchedAt);
   static Insertable<BookRow> custom({
     Expression<int>? id,
     Expression<String>? title,
@@ -917,6 +1004,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     Expression<int>? positionChar,
     Expression<DateTime>? addedAt,
     Expression<DateTime>? openedAt,
+    Expression<DateTime>? touchedAt,
+    Expression<String>? coverFile,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -938,6 +1027,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
       if (positionChar != null) 'position_char': positionChar,
       if (addedAt != null) 'added_at': addedAt,
       if (openedAt != null) 'opened_at': openedAt,
+      if (touchedAt != null) 'touched_at': touchedAt,
+      if (coverFile != null) 'cover_file': coverFile,
     });
   }
 
@@ -961,6 +1052,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     Value<int>? positionChar,
     Value<DateTime>? addedAt,
     Value<DateTime?>? openedAt,
+    Value<DateTime>? touchedAt,
+    Value<String?>? coverFile,
   }) {
     return BooksCompanion(
       id: id ?? this.id,
@@ -982,6 +1075,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
       positionChar: positionChar ?? this.positionChar,
       addedAt: addedAt ?? this.addedAt,
       openedAt: openedAt ?? this.openedAt,
+      touchedAt: touchedAt ?? this.touchedAt,
+      coverFile: coverFile ?? this.coverFile,
     );
   }
 
@@ -1049,6 +1144,12 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     if (openedAt.present) {
       map['opened_at'] = Variable<DateTime>(openedAt.value);
     }
+    if (touchedAt.present) {
+      map['touched_at'] = Variable<DateTime>(touchedAt.value);
+    }
+    if (coverFile.present) {
+      map['cover_file'] = Variable<String>(coverFile.value);
+    }
     return map;
   }
 
@@ -1073,7 +1174,9 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
           ..write('positionBlock: $positionBlock, ')
           ..write('positionChar: $positionChar, ')
           ..write('addedAt: $addedAt, ')
-          ..write('openedAt: $openedAt')
+          ..write('openedAt: $openedAt, ')
+          ..write('touchedAt: $touchedAt, ')
+          ..write('coverFile: $coverFile')
           ..write(')'))
         .toString();
   }
@@ -1319,6 +1422,8 @@ typedef $$BooksTableCreateCompanionBuilder = BooksCompanion Function({
   Value<int> positionChar,
   required DateTime addedAt,
   Value<DateTime?> openedAt,
+  required DateTime touchedAt,
+  Value<String?> coverFile,
 });
 typedef $$BooksTableUpdateCompanionBuilder = BooksCompanion Function({
   Value<int> id,
@@ -1340,6 +1445,8 @@ typedef $$BooksTableUpdateCompanionBuilder = BooksCompanion Function({
   Value<int> positionChar,
   Value<DateTime> addedAt,
   Value<DateTime?> openedAt,
+  Value<DateTime> touchedAt,
+  Value<String?> coverFile,
 });
 
 class $$BooksTableFilterComposer extends Composer<_$AppDatabase, $BooksTable> {
@@ -1444,6 +1551,16 @@ class $$BooksTableFilterComposer extends Composer<_$AppDatabase, $BooksTable> {
 
   ColumnFilters<DateTime> get openedAt => $composableBuilder(
     column: $table.openedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get touchedAt => $composableBuilder(
+    column: $table.touchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverFile => $composableBuilder(
+    column: $table.coverFile,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1551,6 +1668,16 @@ class $$BooksTableOrderingComposer
     column: $table.openedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get touchedAt => $composableBuilder(
+    column: $table.touchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverFile => $composableBuilder(
+    column: $table.coverFile,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BooksTableAnnotationComposer
@@ -1641,6 +1768,12 @@ class $$BooksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get openedAt =>
       $composableBuilder(column: $table.openedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get touchedAt =>
+      $composableBuilder(column: $table.touchedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get coverFile =>
+      $composableBuilder(column: $table.coverFile, builder: (column) => column);
 }
 
 class $$BooksTableTableManager
@@ -1690,6 +1823,8 @@ class $$BooksTableTableManager
                 Value<int> positionChar = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
                 Value<DateTime?> openedAt = const Value.absent(),
+                Value<DateTime> touchedAt = const Value.absent(),
+                Value<String?> coverFile = const Value.absent(),
               }) => BooksCompanion(
                 id: id,
                 title: title,
@@ -1710,6 +1845,8 @@ class $$BooksTableTableManager
                 positionChar: positionChar,
                 addedAt: addedAt,
                 openedAt: openedAt,
+                touchedAt: touchedAt,
+                coverFile: coverFile,
               ),
           createCompanionCallback:
               ({
@@ -1732,6 +1869,8 @@ class $$BooksTableTableManager
                 Value<int> positionChar = const Value.absent(),
                 required DateTime addedAt,
                 Value<DateTime?> openedAt = const Value.absent(),
+                required DateTime touchedAt,
+                Value<String?> coverFile = const Value.absent(),
               }) => BooksCompanion.insert(
                 id: id,
                 title: title,
@@ -1752,6 +1891,8 @@ class $$BooksTableTableManager
                 positionChar: positionChar,
                 addedAt: addedAt,
                 openedAt: openedAt,
+                touchedAt: touchedAt,
+                coverFile: coverFile,
               ),
           withReferenceMapper: (p0) => p0
               .map(

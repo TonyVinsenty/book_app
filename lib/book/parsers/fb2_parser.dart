@@ -1,7 +1,7 @@
 /// FictionBook 2 books (ADR 0002): sections, titles, paragraphs, poems,
-/// epigraphs and citations, bold and italic. Read as a stream of XML events,
-/// so 10 MB files with pictures stay cheap; a broken tail keeps the text
-/// read before it. Pictures and footnotes are skipped for now.
+/// epigraphs and citations, bold and italic, the cover. Read as a stream of
+/// XML events, so 10 MB files with pictures stay cheap; a broken tail keeps
+/// the text read before it. Other pictures and footnotes are skipped for now.
 library;
 
 import 'dart:convert';
@@ -9,12 +9,13 @@ import 'dart:typed_data';
 
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_cover.dart';
 import 'package:book_app/book/parsers/parse_utils.dart';
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 /// Bump when the result for the same file changes (books get re-parsed).
-const fb2ParserVersion = 1;
+const fb2ParserVersion = 2;
 
 /// The file is not FictionBook (no `<FictionBook>` root).
 final class NotFb2Exception implements Exception {
@@ -30,7 +31,14 @@ BookContent parseFb2(
   Uint8List bytes, {
   required String title,
   SourceFormat format = SourceFormat.fb2,
-}) => parseFb2String(
+}) => parseFb2WithCover(bytes, title: title, format: format).$1;
+
+/// [parseFb2] plus the `coverpage` picture, if the file has a usable one.
+(BookContent, BookCover?) parseFb2WithCover(
+  Uint8List bytes, {
+  required String title,
+  SourceFormat format = SourceFormat.fb2,
+}) => _parse(
   decodeText(bytes, declared: _declaredEncoding(bytes)).text,
   title: title,
   format: format,
@@ -40,6 +48,12 @@ BookContent parseFb2String(
   String xml, {
   required String title,
   SourceFormat format = SourceFormat.fb2,
+}) => _parse(xml, title: title, format: format).$1;
+
+(BookContent, BookCover?) _parse(
+  String xml, {
+  required String title,
+  required SourceFormat format,
 }) {
   final start = xml.indexOf('<');
   if (start < 0) throw const NotFb2Exception();
@@ -56,8 +70,11 @@ BookContent parseFb2String(
     if (!reader.hasText) throw const NotFb2Exception();
   }
   if (!reader.isFictionBook) throw const NotFb2Exception();
-  return reader.finish(fallbackTitle: title, format: format);
+  return (reader.finish(fallbackTitle: title, format: format), reader.cover());
 }
+
+/// Base64 of a picture bigger than [maxCoverBytes] is not collected.
+const _maxCoverText = maxCoverBytes * 4 ~/ 3 + 64 * 1024;
 
 final _encodingAttribute = RegExp(r'''encoding\s*=\s*["']([^"']+)["']''');
 
@@ -174,6 +191,11 @@ final class _Reader {
   String? _lang;
   String? _annotation;
 
+  /// The `binary` id the `coverpage` points to, and its base64 text.
+  String? _coverId;
+  StringBuffer? _coverText;
+  var _coverDone = false;
+
   // the main body
   var _inBody = false;
   var _sectionDepth = 0;
@@ -203,7 +225,12 @@ final class _Reader {
         }
         _pop();
       case XmlTextEvent(:final value) || XmlCDATAEvent(:final value):
-        if (_skip == null) _addText(value);
+        if (_skip == null) {
+          _addText(value);
+        } else if (_coverText case final cover? when !_coverDone) {
+          cover.write(value);
+          if (cover.length > _maxCoverText) _coverText = null;
+        }
       default:
         break;
     }
@@ -226,7 +253,10 @@ final class _Reader {
     final depth = _stack.length;
     final name = _stack.removeLast();
     if (_skip != null) {
-      if (depth == _skip) _skip = null;
+      if (depth == _skip) {
+        _skip = null;
+        if (_coverText != null) _coverDone = true;
+      }
       return;
     }
     _end(name, depth);
@@ -243,6 +273,10 @@ final class _Reader {
 
     if (name == 'binary') {
       _skip = depth;
+      final id = attribute('id');
+      if (id != null && id == _coverId && _coverText == null && !_coverDone) {
+        _coverText = StringBuffer();
+      }
       return;
     }
     if (_inTitleInfo) {
@@ -330,6 +364,10 @@ final class _Reader {
         _seriesNumber = int.tryParse(attribute('number')?.trim() ?? '');
       case 'annotation' when depth == 4:
         _text = _Text(_Kind.annotation, ParagraphStyle.normal, depth);
+      case 'image' when _parent == 'coverpage' && _coverId == null:
+        final href = attribute('href')?.trim() ?? '';
+        final id = href.startsWith('#') ? href.substring(1) : href;
+        if (id.isNotEmpty) _coverId = id;
       case 'p' when _text?.kind == _Kind.annotation:
         _text!.lineBreak();
     }
@@ -464,6 +502,21 @@ final class _Reader {
     }
     _blocks = <Block>[];
     _sectionTitle = null;
+  }
+
+  /// The cover picture: only a fully read `binary` that decodes.
+  BookCover? cover() {
+    final text = _coverText;
+    if (!_coverDone || text == null) return null;
+    try {
+      return coverFromBytes(
+        base64.decode(
+          base64.normalize(text.toString().replaceAll(whitespacePattern, '')),
+        ),
+      );
+    } on FormatException {
+      return null;
+    }
   }
 
   BookContent finish({

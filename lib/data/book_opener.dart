@@ -59,6 +59,7 @@ final class BookOpener {
       parserVersion: parsed.parserVersion,
       wordCount: parsed.wordCount,
       position: tokens.positionOf(word),
+      cover: parsed.cover,
     );
     return OpenedBook((await _books.findById(id))!, tokens, word);
   }

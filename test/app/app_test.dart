@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:book_app/app/app.dart';
@@ -87,6 +88,50 @@ void main() {
     expect(find.byType(ListTile), findsOneWidget);
     expect(find.textContaining('Книга добавлена'), findsOneWidget);
     expect(File(paths.single).existsSync(), isFalse, reason: 'copy deleted');
+    await closeApp(tester);
+  });
+
+  testWidgets('a row shows the cover or a letter, and the author', (
+    tester,
+  ) async {
+    final png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2];
+    final fb2 = File('${temp.path}/cover.fb2')
+      ..writeAsStringSync(
+        '<FictionBook xmlns:l="http://www.w3.org/1999/xlink"><description>'
+        '<title-info><author><first-name>Анна</first-name>'
+        '<last-name>Ахматова</last-name></author>'
+        '<book-title>Вечер</book-title>'
+        '<coverpage><image l:href="#c"/></coverpage></title-info>'
+        '</description><body><section><p>Раз два.</p></section></body>'
+        '<binary id="c">${base64.encode(png)}</binary></FictionBook>',
+      );
+    final txt = picked(['test/fixtures/txt/utf8_lines.txt']).single;
+    await pumpApp(tester, () async => [fb2.path, txt]);
+
+    await addBooks(tester);
+
+    expect(find.byType(ListTile), findsNWidgets(2));
+    final withCover = find.ancestor(
+      of: find.text('Вечер'),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      find.descendant(of: withCover, matching: find.byType(Image)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: withCover, matching: find.text('Анна Ахматова')),
+      findsOneWidget,
+    );
+    final plain = find.ancestor(
+      of: find.textContaining('utf8_lines'),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      find.descendant(of: plain, matching: find.byType(Image)),
+      findsNothing,
+    );
+    expect(find.descendant(of: plain, matching: find.text('P')), findsOne);
     await closeApp(tester);
   });
 

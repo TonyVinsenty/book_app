@@ -12,6 +12,7 @@ import 'package:book_app/book/import/format_detector.dart';
 import 'package:book_app/book/import/import_error.dart';
 import 'package:book_app/book/import/zip_box.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_cover.dart';
 import 'package:book_app/book/parsers/epub_parser.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
@@ -48,11 +49,17 @@ final class ImportFailed extends ImportResult {
 }
 
 final class ParsedBook {
-  const ParsedBook(this.content, this.parserVersion, this.wordCount);
+  const ParsedBook(
+    this.content,
+    this.parserVersion,
+    this.wordCount, {
+    this.cover,
+  });
 
   final BookContent content;
   final int parserVersion;
   final int wordCount;
+  final BookCover? cover;
 }
 
 /// The parser version books of [format] are parsed with now; a model
@@ -68,11 +75,12 @@ int parserVersionOf(SourceFormat format) => switch (format) {
 ParsedBook parseBook(Uint8List bytes, {required String fileName}) {
   final title = titleFromFileName(fileName);
   final BookContent content;
+  BookCover? cover;
   final int version;
   switch (detectFormat(bytes)) {
     case DetectedFormat.fb2:
       try {
-        content = parseFb2(bytes, title: title);
+        (content, cover) = parseFb2WithCover(bytes, title: title);
       } on NotFb2Exception {
         throw const ImportException(ImportError.damaged);
       } on NotTextException {
@@ -88,7 +96,7 @@ ParsedBook parseBook(Uint8List bytes, {required String fileName}) {
       version = txtParserVersion;
     case DetectedFormat.epub:
       try {
-        content = parseEpub(bytes, title: title);
+        (content, cover) = parseEpubWithCover(bytes, title: title);
       } on NotEpubException {
         throw const ImportException(ImportError.damaged);
       } on EpubDrmException {
@@ -101,7 +109,7 @@ ParsedBook parseBook(Uint8List bytes, {required String fileName}) {
   }
   final wordCount = tokenize(content).length;
   if (wordCount == 0) throw const ImportException(ImportError.damaged);
-  return ParsedBook(content, version, wordCount);
+  return ParsedBook(content, version, wordCount, cover: cover);
 }
 
 const _bookExtensions = ['.fb2.zip', '.fb2', '.txt', '.epub', '.zip'];
@@ -142,7 +150,9 @@ final class BookImporter {
       final path = book.path;
       final hash = await _hashInIsolate(path);
       final existing = await _books.findByHash(hash);
-      if (existing != null) return ImportDuplicate(name, existing);
+      // Deleted in the meantime → added again.
+      final touched = existing == null ? null : await _books.touch(existing.id);
+      if (touched != null) return ImportDuplicate(name, touched);
       final parsed = await _parseInIsolate(path, name);
       final row = await _books.addBook(
         content: parsed.content,
@@ -151,6 +161,7 @@ final class BookImporter {
         sourceHash: hash,
         parserVersion: parsed.parserVersion,
         wordCount: parsed.wordCount,
+        cover: parsed.cover,
       );
       return ImportAdded(name, row);
     } on ImportException catch (e) {

@@ -39,6 +39,14 @@ class Books extends Table {
   IntColumn get positionChar => integer().withDefault(const Constant(0))();
   DateTimeColumn get addedAt => dateTime()();
   DateTimeColumn get openedAt => dateTime().nullable()();
+
+  /// Last add, open or repeated import: the library is sorted by it, so a
+  /// new book and a duplicate come on top (schema v2).
+  DateTimeColumn get touchedAt => dateTime()();
+
+  /// Name of the cover picture in the book folder (`cover.jpg`), or null
+  /// (schema v2).
+  TextColumn get coverFile => text().nullable()();
 }
 
 /// App settings as key → value text; typed access lives in the settings
@@ -72,14 +80,55 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // A rebuilt table: SQLite can't add a NOT NULL column without a
+        // default. The rebuild forgets ids of deleted books; they must not
+        // come back.
+        final lastId = await _lastBookId();
+        await m.alterTable(
+          TableMigration(
+            books,
+            newColumns: [books.touchedAt, books.coverFile],
+            columnTransformer: {
+              books.touchedAt: coalesce([books.openedAt, books.addedAt]),
+            },
+          ),
+        );
+        if (lastId != null) await _keepLastBookId(lastId);
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// The AUTOINCREMENT counter of `books`: the biggest id ever given.
+  Future<int?> _lastBookId() async {
+    final row = await customSelect(
+      "SELECT seq FROM sqlite_sequence WHERE name = 'books'",
+    ).getSingleOrNull();
+    return row?.read<int>('seq');
+  }
+
+  Future<void> _keepLastBookId(int id) async {
+    final current = await _lastBookId();
+    if (current == null) {
+      await customStatement(
+        "INSERT INTO sqlite_sequence (name, seq) VALUES ('books', ?)",
+        [id],
+      );
+    } else if (current < id) {
+      await customStatement(
+        "UPDATE sqlite_sequence SET seq = ? WHERE name = 'books'",
+        [id],
+      );
+    }
+  }
 }
 
 extension BookRowPosition on BookRow {

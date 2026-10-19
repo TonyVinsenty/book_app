@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_cover.dart';
 import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -16,16 +17,11 @@ final class BookRepository {
   final ContentStore _store;
   final DateTime Function() _now;
 
-  /// All books, recently opened first, then recently added.
+  /// All books, last added, opened or imported again first.
   Stream<List<BookRow>> watchBooks() {
     final query = _db.select(_db.books)
       ..orderBy([
-        (b) => OrderingTerm(
-          expression: b.openedAt,
-          mode: OrderingMode.desc,
-          nulls: NullsOrder.last,
-        ),
-        (b) => OrderingTerm.desc(b.addedAt),
+        (b) => OrderingTerm.desc(b.touchedAt),
         (b) => OrderingTerm.desc(b.id),
       ]);
     return query.watch();
@@ -47,8 +43,8 @@ final class BookRepository {
     _db.books,
   )..where((b) => b.sourceHash.equals(sourceHash))).getSingleOrNull();
 
-  /// Adds a parsed book: a row, then the source copy and the model. If the
-  /// files can't be written, the row is removed again.
+  /// Adds a parsed book: a row, then the source copy, the model and the
+  /// cover. If the files can't be written, the row is removed again.
   Future<BookRow> addBook({
     required BookContent content,
     required File source,
@@ -56,8 +52,10 @@ final class BookRepository {
     required String sourceHash,
     required int parserVersion,
     required int wordCount,
+    BookCover? cover,
   }) async {
     final meta = content.meta;
+    final now = _now();
     final row = await _db
         .into(_db.books)
         .insertReturning(
@@ -74,7 +72,8 @@ final class BookRepository {
             sourceHash: sourceHash,
             parserVersion: parserVersion,
             wordCount: wordCount,
-            addedAt: _now(),
+            addedAt: now,
+            touchedAt: now,
           ),
         );
     try {
@@ -85,7 +84,20 @@ final class BookRepository {
       await _store.deleteBook(row.id);
       rethrow;
     }
-    return row;
+    if (cover == null) return row;
+    final coverFile = await _saveCover(row.id, cover);
+    return await _write(row.id, BooksCompanion(coverFile: Value(coverFile))) ??
+        row;
+  }
+
+  /// The cover is not worth a failed import or open: on a file error the
+  /// book is just without it.
+  Future<String?> _saveCover(int id, BookCover? cover) async {
+    try {
+      return await _store.saveCover(id, cover);
+    } on FileSystemException {
+      return null;
+    }
   }
 
   /// The stored model, or null when it is missing or was built by another
@@ -96,19 +108,30 @@ final class BookRepository {
   File sourceFile(BookRow book) =>
       _store.sourceFile(book.id, book.sourceFormat);
 
-  /// Stores a reparsed model and the position moved by its anchor.
+  /// The cover picture, or null when the book has none.
+  File? coverFile(BookRow book) => switch (book.coverFile) {
+    final name? => _store.coverFile(book.id, name),
+    null => null,
+  };
+
+  /// Stores a reparsed model with its cover and the position moved by its
+  /// anchor.
   Future<void> replaceContent(
     int id, {
     required BookContent content,
     required int parserVersion,
     required int wordCount,
     required ReadingPosition position,
+    BookCover? cover,
   }) async {
     await _store.saveContent(id, parserVersion, content);
-    await (_db.update(_db.books)..where((b) => b.id.equals(id))).write(
+    final coverFile = await _saveCover(id, cover);
+    await _write(
+      id,
       _positionCompanion(position).copyWith(
         parserVersion: Value(parserVersion),
         wordCount: Value(wordCount),
+        coverFile: Value(coverFile),
       ),
     );
   }
@@ -126,16 +149,29 @@ final class BookRepository {
     _db.books,
   )..where((b) => b.id.equals(id))).write(_positionCompanion(position));
 
-  Future<void> markOpened(int id) =>
-      (_db.update(_db.books)..where((b) => b.id.equals(id))).write(
-        BooksCompanion(openedAt: Value(_now())),
-      );
+  Future<void> markOpened(int id) {
+    final now = _now();
+    return _write(
+      id,
+      BooksCompanion(openedAt: Value(now), touchedAt: Value(now)),
+    );
+  }
+
+  /// Brings the book on top of the library (it was imported again); null
+  /// when it is gone.
+  Future<BookRow?> touch(int id) =>
+      _write(id, BooksCompanion(touchedAt: Value(_now())));
 
   /// Removes the row and all files of the book.
   Future<void> deleteBook(int id) async {
     await (_db.delete(_db.books)..where((b) => b.id.equals(id))).go();
     await _store.deleteBook(id);
   }
+
+  Future<BookRow?> _write(int id, BooksCompanion changes) async =>
+      (await (_db.update(
+        _db.books,
+      )..where((b) => b.id.equals(id))).writeReturning(changes)).singleOrNull;
 
   static BooksCompanion _positionCompanion(ReadingPosition p) => BooksCompanion(
     positionWord: Value(p.wordIndex),

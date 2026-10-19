@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_cover.dart';
 import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_repository.dart';
@@ -48,7 +50,7 @@ void main() {
     temp.deleteSync(recursive: true);
   });
 
-  Future<BookRow> add(String title, {String? hash}) {
+  Future<BookRow> add(String title, {String? hash, BookCover? cover}) {
     final content = bookTitled(title);
     final source = File('${temp.path}/$title.txt')
       ..writeAsStringSync('Раз два три.\n\nЧетыре пять.');
@@ -59,8 +61,12 @@ void main() {
       sourceHash: hash ?? 'hash-$title',
       parserVersion: 1,
       wordCount: tokenize(content).length,
+      cover: cover,
     );
   }
+
+  final png = BookCover(Uint8List.fromList(List.filled(16, 7)), 'png');
+  final jpg = BookCover(Uint8List.fromList(List.filled(16, 9)), 'jpg');
 
   test('adds a book: row with metadata, source and model on disk', () async {
     final row = await add('Книга');
@@ -73,7 +79,10 @@ void main() {
     expect(row.sourceSize, File('${temp.path}/Книга.txt').lengthSync());
     expect(row.wordCount, 5);
     expect(row.addedAt, clock);
+    expect(row.touchedAt, clock);
     expect(row.openedAt, isNull);
+    expect(row.coverFile, isNull);
+    expect(repo.coverFile(row), isNull);
     expect(row.position, ReadingPosition.start);
     expect(row.progress, 0);
 
@@ -134,7 +143,7 @@ void main() {
     expect(saved.progress, closeTo(0.6, 1e-9));
   });
 
-  test('lists recently opened first, then recently added', () async {
+  test('lists the last added, opened or imported again first', () async {
     final a = await add('А');
     clock = clock.add(const Duration(minutes: 1));
     final b = await add('Б');
@@ -151,6 +160,62 @@ void main() {
 
     expect(ids(await repo.watchBooks().first), [b.id, a.id, c.id]);
     expect((await repo.findById(b.id))!.openedAt, clock);
+
+    clock = clock.add(const Duration(minutes: 1));
+    final touched = (await repo.touch(c.id))!;
+
+    expect(touched.touchedAt, clock);
+    expect(touched.openedAt, isNull, reason: 'imported again, not opened');
+    expect(ids(await repo.watchBooks().first), [c.id, b.id, a.id]);
+    expect((await repo.lastOpened())!.id, b.id);
+  });
+
+  test('adds a book with its cover file', () async {
+    final row = await add('Книга', cover: png);
+
+    expect(row.coverFile, 'cover.png');
+    expect(repo.coverFile(row)!.readAsBytesSync(), png.bytes);
+    expect((await repo.findById(row.id))!.coverFile, 'cover.png');
+  });
+
+  test('a cover that cannot be written leaves the book without it', () async {
+    // A directory in place of the temporary file makes the write fail.
+    Directory('${store.bookDir(1).path}/cover.png.tmp')
+        .createSync(recursive: true);
+
+    final row = await add('Книга', cover: png);
+
+    expect(row.id, 1);
+    expect(row.coverFile, isNull);
+    expect(await repo.loadContent(row), isNotNull);
+  });
+
+  test('replaceContent stores, changes and removes the cover', () async {
+    final row = await add('Книга', cover: png);
+    Future<BookRow> replace(BookCover? cover) async {
+      await repo.replaceContent(
+        row.id,
+        content: bookTitled('Книга'),
+        parserVersion: 2,
+        wordCount: 5,
+        position: ReadingPosition.start,
+        cover: cover,
+      );
+      return (await repo.findById(row.id))!;
+    }
+
+    final changed = await replace(jpg);
+    expect(changed.coverFile, 'cover.jpg');
+    expect(repo.coverFile(changed)!.readAsBytesSync(), jpg.bytes);
+    expect(
+      store.coverFile(row.id, 'cover.png').existsSync(),
+      isFalse,
+      reason: 'the old cover is removed',
+    );
+
+    final removed = await replace(null);
+    expect(removed.coverFile, isNull);
+    expect(store.coverFile(row.id, 'cover.jpg').existsSync(), isFalse);
   });
 
   test('the last opened book; none before any was opened', () async {

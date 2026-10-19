@@ -3,7 +3,8 @@
 /// XML events into blocks. Lenient: HTML5 entities, unclosed tags and
 /// broken markup are stepped over; a broken or missing spine file is
 /// skipped. Chapters follow the book's contents (EPUB 3 `nav` or EPUB 2
-/// NCX); pictures and footnotes are skipped, as in FB2.
+/// NCX); the cover is taken, other pictures and footnotes are skipped, as
+/// in FB2.
 library;
 
 import 'dart:collection';
@@ -13,12 +14,13 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_cover.dart';
 import 'package:book_app/book/parsers/parse_utils.dart';
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 /// Bump when the result for the same file changes (books get re-parsed).
-const epubParserVersion = 2;
+const epubParserVersion = 3;
 
 /// Not a readable EPUB: no OPF, an empty spine or no text at all.
 final class NotEpubException implements Exception {
@@ -38,7 +40,14 @@ final class EpubDrmException implements Exception {
 
 /// [title] is used when the book has no `dc:title` (usually the file name).
 /// Throws [NotEpubException] or [EpubDrmException].
-BookContent parseEpub(Uint8List bytes, {required String title}) {
+BookContent parseEpub(Uint8List bytes, {required String title}) =>
+    parseEpubWithCover(bytes, title: title).$1;
+
+/// [parseEpub] plus the cover picture, if the book has a usable one.
+(BookContent, BookCover?) parseEpubWithCover(
+  Uint8List bytes, {
+  required String title,
+}) {
   final Archive archive;
   try {
     archive = ZipDecoder().decodeBytes(bytes);
@@ -65,6 +74,7 @@ BookContent parseEpub(Uint8List bytes, {required String title}) {
     (entriesOf[entry.path] ??= []).add(entry);
   }
   final chapters = _Chapters(contents);
+  String? firstPage;
   for (final path in spine) {
     final text = files.text(path);
     if (text == null) continue;
@@ -72,6 +82,7 @@ BookContent parseEpub(Uint8List bytes, {required String title}) {
     final reader = _Xhtml({for (final e in entries) ?e.anchor});
     try {
       final blocks = (reader..walk(text)).finish();
+      if (path == spine.first && _isCoverPage(blocks)) firstPage = text;
       chapters.addFile(blocks, entries, reader.anchorBlocks);
     } on Object {
       // A parser bug on one strange file must not lose the whole book.
@@ -85,11 +96,58 @@ BookContent parseEpub(Uint8List bytes, {required String title}) {
     if (_drmFiles.any(files.has)) throw const EpubDrmException();
     throw const NotEpubException();
   }
-  return BookContent(
+  final content = BookContent(
     meta: package.meta(fallbackTitle: title),
     toc: toc,
     sections: sections,
   );
+  return (content, _cover(files, package, spine.first, firstPage));
+}
+
+/// A first page with less text than this may hold the cover picture.
+const _coverPageText = 100;
+
+bool _isCoverPage(List<Block> blocks) {
+  var length = 0;
+  for (final b in blocks) {
+    if (b is TextBlock) length += b.text.length;
+  }
+  return length < _coverPageText;
+}
+
+final _pagePicture = RegExp(
+  r'''<(?:img\b[^>]*?\ssrc|image\b[^>]*?\s(?:xlink:)?href)\s*=\s*["']([^"']+)["']''',
+  caseSensitive: false,
+);
+final _comment = RegExp('<!--.*?-->', dotAll: true);
+
+/// The first usable picture of: the EPUB 3 `cover-image`, the EPUB 2
+/// `<meta name="cover">`, a picture with `cover` in its id or name, the
+/// first picture of [firstPage] (the text of the first spine file at
+/// [firstPath], when it has almost no text).
+BookCover? _cover(
+  _Files files,
+  _Package package,
+  String firstPath,
+  String? firstPage,
+) {
+  final candidates = [
+    ...package.coverPaths(),
+    if (firstPage != null)
+      for (final m in _pagePicture.allMatches(
+        firstPage.replaceAll(_comment, ''),
+      ))
+        _resolve(
+          _dirOf(firstPath),
+          const XmlDefaultEntityMapping.html5().decode(m[1]!),
+        ),
+  ];
+  for (final path in candidates) {
+    final bytes = files.bytes(path, maxCoverBytes);
+    final cover = bytes == null ? null : coverFromBytes(bytes);
+    if (cover != null) return cover;
+  }
+  return null;
 }
 
 const _drmFiles = ['META-INF/rights.xml', 'META-INF/sinf.xml'];
@@ -121,12 +179,20 @@ final class _Files {
 
   /// Null when the file is missing, too big or can't be unpacked.
   String? text(String path) {
+    final bytes = this.bytes(path, _maxEntrySize);
+    return bytes == null
+        ? null
+        : decodeText(bytes, declared: _declaredEncoding(bytes)).text;
+  }
+
+  /// Null when the file is missing, bigger than [maxSize] or can't be
+  /// unpacked.
+  Uint8List? bytes(String path, int maxSize) {
     final file = _find(path);
-    if (file == null || file.size > _maxEntrySize) return null;
+    if (file == null || file.size > maxSize) return null;
     try {
       final bytes = file.readBytes();
-      if (bytes == null) return null;
-      return decodeText(bytes, declared: _declaredEncoding(bytes)).text;
+      return bytes == null || bytes.length > maxSize ? null : bytes;
     } on Object {
       return null;
     }
@@ -333,6 +399,9 @@ final class _Creator {
   final String? role;
 }
 
+/// `cover` in a name, but not `backcover` or `back_cover`.
+final _coverName = RegExp(r'(?<!back[-_ ]?)cover', caseSensitive: false);
+
 /// The OPF package: metadata, manifest and spine.
 final class _Package extends _Walker {
   _Package(this._dir);
@@ -350,6 +419,9 @@ final class _Package extends _Walker {
   String? _description;
   String? _calibreSeries;
   String? _calibreSeriesIndex;
+
+  /// EPUB 2 `<meta name="cover" content="…">`: a manifest id (or a path).
+  String? _coverMeta;
 
   /// EPUB 3 `belongs-to-collection`: (id, name) in file order.
   final _collections = <(String?, String)>[];
@@ -392,6 +464,8 @@ final class _Package extends _Walker {
             _calibreSeries ??= attributes['content'];
           case 'calibre:series_index':
             _calibreSeriesIndex ??= attributes['content'];
+          case 'cover':
+            _coverMeta ??= attributes['content']?.trim();
         }
         if (attributes['property'] != null) _startField(name, attributes);
       case 'title' || 'creator' || 'language' || 'description' when _inMetadata:
@@ -459,6 +533,24 @@ final class _Package extends _Walker {
         type.contains('css') ||
         type.contains('font') ||
         type.contains('ncx'));
+  }
+
+  /// Pictures that may be the cover, most certain first; a guess by the
+  /// name skips back covers.
+  List<String> coverPaths() {
+    final pictures = _manifest.entries
+        .where((e) => e.value.mediaType.startsWith('image/'))
+        .toList();
+    final meta = _coverMeta;
+    return {
+      for (final e in pictures)
+        if (e.value.properties.contains('cover-image')) e.value.path,
+      if (meta != null && meta.isNotEmpty)
+        _manifest[meta]?.path ?? _resolve(_dir, meta),
+      for (final e in pictures)
+        if (_coverName.hasMatch(e.key) || _coverName.hasMatch(e.value.path))
+          e.value.path,
+    }.toList();
   }
 
   /// The EPUB 3 navigation document.

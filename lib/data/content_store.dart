@@ -3,10 +3,12 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_cover.dart';
 
 /// Files of the books on disk (ADR 0002): `<root>/<bookId>/` holds
-/// `source.<ext>` (a copy of the imported file, for reparsing) and
-/// `content.v<N>.json.gz` (the parsed model, N = parser version).
+/// `source.<ext>` (a copy of the imported file, for reparsing),
+/// `content.v<N>.json.gz` (the parsed model, N = parser version) and
+/// `cover.<ext>` (the cover picture as it was in the book).
 final class ContentStore {
   ContentStore(this.root);
 
@@ -25,6 +27,30 @@ final class ContentStore {
   Future<File> saveSource(int bookId, SourceFormat format, File from) async {
     await bookDir(bookId).create(recursive: true);
     return _replace(sourceFile(bookId, format), (tmp) => from.copy(tmp.path));
+  }
+
+  File coverFile(int bookId, String name) =>
+      File(_join(bookDir(bookId).path, name));
+
+  /// Writes the cover (or removes it when [cover] is null) and returns its
+  /// file name; covers with another extension are removed.
+  Future<String?> saveCover(int bookId, BookCover? cover) async {
+    final dir = bookDir(bookId);
+    await dir.create(recursive: true);
+    final name = cover == null ? null : 'cover.${cover.extension}';
+    if (cover != null) {
+      await _replace(
+        coverFile(bookId, name!),
+        (tmp) => tmp.writeAsBytes(cover.bytes, flush: true),
+      );
+    }
+    await for (final entity in dir.list()) {
+      final file = entity.uri.pathSegments.last;
+      if (entity is File && file.startsWith('cover.') && file != name) {
+        await entity.delete();
+      }
+    }
+    return name;
   }
 
   /// Writes the model (encoding in a background isolate) and removes models

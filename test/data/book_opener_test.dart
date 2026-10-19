@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/model/reading_position.dart';
+import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_opener.dart';
@@ -71,6 +73,38 @@ void main() {
     expect(row.parserVersion, parserVersionOf(SourceFormat.txt));
     expect(row.wordCount, 3);
     expect(firstText(await BookOpener(repo).open(id)), 'Новый разбор файла.');
+  });
+
+  test('a reparse brings the cover (books added before covers)', () async {
+    final png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2];
+    final source = File('${temp.path}/Книга.fb2')
+      ..writeAsStringSync(
+        '<FictionBook xmlns:l="http://www.w3.org/1999/xlink"><description>'
+        '<title-info><coverpage><image l:href="#c"/></coverpage>'
+        '</title-info></description><body><section><p>Раз два.</p>'
+        '</section></body><binary id="c">${base64.encode(png)}</binary>'
+        '</FictionBook>',
+      );
+    final row = await repo.addBook(
+      content: const BookContent(
+        meta: BookMeta(title: 'Книга', sourceFormat: SourceFormat.fb2),
+        sections: [
+          Section(blocks: [ParagraphBlock(text: 'Раз два.')]),
+        ],
+      ),
+      source: source,
+      sourceName: 'Книга.fb2',
+      sourceHash: 'hash',
+      parserVersion: fb2ParserVersion - 1,
+      wordCount: 2,
+    );
+    expect(row.coverFile, isNull);
+
+    await BookOpener(repo).open(row.id);
+
+    final reparsed = (await repo.findById(row.id))!;
+    expect(reparsed.coverFile, 'cover.png');
+    expect(repo.coverFile(reparsed)!.readAsBytesSync(), png);
   });
 
   test('a position from an older tokenizer moves by its anchor', () async {

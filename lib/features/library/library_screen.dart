@@ -140,13 +140,14 @@ class _EmptyLibrary extends StatelessWidget {
   }
 }
 
-class _BookList extends StatelessWidget {
+class _BookList extends ConsumerWidget {
   const _BookList({required this.books});
 
   final List<BookRow> books;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repository = ref.watch(bookRepositoryProvider);
     return ListView.builder(
       // Room for the button over the last item.
       padding: const EdgeInsets.only(bottom: 88),
@@ -159,6 +160,7 @@ class _BookList extends StatelessWidget {
               builder: (_) => ReaderScreen(bookId: book.id),
             ),
           ),
+          leading: _Cover(file: repository.coverFile(book), title: book.title),
           title: Text(book.title, maxLines: 2, overflow: TextOverflow.ellipsis),
           subtitle: book.authors.isEmpty
               ? null
@@ -169,6 +171,56 @@ class _BookList extends StatelessWidget {
                 ),
         );
       },
+    );
+  }
+}
+
+/// A small cover, decoded at the size it is shown; a book without one gets
+/// a plain tile with the first letter of its title (stage 9 draws better).
+class _Cover extends StatelessWidget {
+  const _Cover({required this.file, required this.title});
+
+  static const _width = 40.0;
+  static const _height = 60.0;
+
+  final File? file;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = this.file;
+    final placeholder = _placeholder(Theme.of(context));
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: SizedBox(
+        width: _width,
+        height: _height,
+        child: file == null
+            ? placeholder
+            : Image.file(
+                file,
+                fit: BoxFit.cover,
+                // Covers are portrait: decoded by height, they fill the box.
+                cacheHeight: (_height * MediaQuery.devicePixelRatioOf(context))
+                    .round(),
+                errorBuilder: (_, _, _) => placeholder,
+              ),
+      ),
+    );
+  }
+
+  Widget _placeholder(ThemeData theme) {
+    final letter = title.trim().characters.firstOrNull?.toUpperCase() ?? '';
+    return ColoredBox(
+      color: theme.colorScheme.secondaryContainer,
+      child: Center(
+        child: Text(
+          letter,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSecondaryContainer,
+          ),
+        ),
+      ),
     );
   }
 }

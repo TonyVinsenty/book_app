@@ -14,6 +14,19 @@ import 'package:crypto/crypto.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// An FB2 whose cover is a PNG-looking picture of [mark] bytes.
+String fb2WithCover(int mark) {
+  final png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, mark, mark];
+  return '<?xml version="1.0" encoding="utf-8"?>'
+      '<FictionBook xmlns:l="http://www.w3.org/1999/xlink">'
+      '<description><title-info><book-title>С обложкой</book-title>'
+      '<coverpage><image l:href="#c.png"/></coverpage>'
+      '</title-info></description>'
+      '<body><section><p>Раз два три.</p></section></body>'
+      '<binary id="c.png" content-type="image/png">${base64.encode(png)}'
+      '</binary></FictionBook>';
+}
+
 void main() {
   late Directory temp;
   late AppDatabase db;
@@ -156,6 +169,37 @@ void main() {
       expect((result as ImportAdded).fileName, 'utf8_nested.fb2');
     },
   );
+
+  test('the cover is stored with the book', () async {
+    final file = write('c.fb2', utf8.encode(fb2WithCover(5)));
+    final book = ((await importer.importFile(file)) as ImportAdded).book;
+
+    expect(book.coverFile, 'cover.png');
+    expect(repo.coverFile(book)!.readAsBytesSync().last, 5);
+  });
+
+  test('a duplicate comes on top of the list', () async {
+    var clock = DateTime(2026, 10, 19, 12);
+    final repo = BookRepository(
+      db,
+      ContentStore(Directory('${temp.path}/books')),
+      now: () => clock,
+    );
+    final importer = BookImporter(repo);
+    final first = write('a.txt', utf8.encode('Первая книга.'));
+    final a = ((await importer.importFile(first)) as ImportAdded).book;
+    clock = clock.add(const Duration(minutes: 1));
+    final b = ((await importer.importFile(
+      write('b.txt', utf8.encode('Вторая книга.')),
+    )) as ImportAdded).book;
+    expect([for (final r in await repo.watchBooks().first) r.id], [b.id, a.id]);
+
+    clock = clock.add(const Duration(minutes: 1));
+    final again = await importer.importFile(first);
+
+    expect((again as ImportDuplicate).book.touchedAt, clock);
+    expect([for (final r in await repo.watchBooks().first) r.id], [a.id, b.id]);
+  });
 
   test('FB2 and FB2.ZIP of one book are a duplicate', () async {
     final fb2 = copyFixture('test/fixtures/fb2/utf8_nested.fb2');
