@@ -34,7 +34,7 @@ Future<bool> _hasInitialFiles() async {
   try {
     return await _channel.invokeMethod<bool>(hasInitialFilesMethod) ?? false;
   } on MissingPluginException {
-    // A platform without incoming files yet (iOS before step 7.7).
+    // A platform without the native side (tests, desktop).
     return false;
   } on PlatformException {
     return false;

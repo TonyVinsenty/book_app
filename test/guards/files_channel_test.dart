@@ -72,6 +72,9 @@ void main() {
     final swift = File('ios/Runner/AppDelegate.swift').readAsStringSync();
     expect(swift, contains('"$filesChannelName"'));
     expect(swift, contains('"$pickBooksMethod"'));
+    expect(swift, contains('"$hasInitialFilesMethod"'));
+    expect(swift, contains('"$onIncomingFilesMethod"'));
+    expect(swift, contains('addSceneDelegate'));
   });
 
   group('Info.plist', () {
@@ -86,14 +89,26 @@ void main() {
       expect(tags['public.filename-extension'], contains('fb2'));
     });
 
-    test('opens FB2 and plain text as copies', () {
+    test('opens FB2, EPUB, ZIP and plain text as copies', () {
       final docs = plist['CFBundleDocumentTypes'] as List<Object?>;
       final contentTypes = [
         for (final d in docs.cast<Map<String, Object?>>())
           ...(d['LSItemContentTypes']! as List<Object?>),
       ];
-      expect(contentTypes, containsAll([_fb2Type, 'public.plain-text']));
+      expect(
+        contentTypes,
+        containsAll([
+          _fb2Type,
+          'public.plain-text',
+          'org.idpf.epub-container',
+          'public.zip-archive',
+        ]),
+      );
       expect(plist['LSSupportsOpeningDocumentsInPlace'], isFalse);
+    });
+
+    test('a file URL is not taken for a deep link', () {
+      expect(plist['FlutterDeepLinkingEnabled'], isFalse);
     });
   });
 }
