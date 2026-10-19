@@ -27,7 +27,15 @@
       "PowerShell(git diff *)",
       "PowerShell(git log *)",
       "PowerShell(git show *)",
-      "PowerShell(git branch --show-current)"
+      "PowerShell(git branch --show-current)",
+      "Bash(flutter build apk *)",
+      "Bash(flutter devices)",
+      "Bash(flutter emulators *)",
+      "Bash(flutter install *)",
+      "PowerShell(flutter build apk *)",
+      "PowerShell(flutter devices)",
+      "PowerShell(flutter emulators *)",
+      "PowerShell(flutter install *)"
     ],
     "ask": [
       "Bash(flutter pub add *)",
@@ -54,6 +62,20 @@
       "Read(./**/*.jks)",
       "Read(./**/*.keystore)",
       "Read(./**/*.p12)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-dart.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }
