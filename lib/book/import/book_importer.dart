@@ -55,6 +55,14 @@ final class ParsedBook {
   final int wordCount;
 }
 
+/// The parser version books of [format] are parsed with now; a model
+/// stored by an older one is parsed again from the source (ADR 0002).
+int parserVersionOf(SourceFormat format) => switch (format) {
+  SourceFormat.txt => txtParserVersion,
+  SourceFormat.fb2 || SourceFormat.fb2zip => fb2ParserVersion,
+  SourceFormat.epub => epubParserVersion,
+};
+
 /// Parses a book of any supported format. Pure and synchronous, so it can
 /// run in an isolate. Throws [ImportException].
 ParsedBook parseBook(Uint8List bytes, {required String fileName}) {

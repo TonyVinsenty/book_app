@@ -29,7 +29,9 @@ final class BookOpener {
   Future<OpenedBook> open(int id) async {
     final book = await _books.findById(id);
     if (book == null) throw StateError('No book $id');
-    final stored = await _books.loadContent(book);
+    final stored = book.parserVersion < parserVersionOf(book.sourceFormat)
+        ? null
+        : await _books.loadContent(book);
     if (stored != null) {
       final tokens = await _tokenizeInIsolate(stored);
       return OpenedBook(book, tokens, tokens.resolve(book.position));
