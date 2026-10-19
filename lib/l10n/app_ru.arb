@@ -97,6 +97,11 @@
     "description": "Page number inside the current chapter, at the bottom of the reader",
     "placeholders": {"page": {"type": "int"}, "count": {"type": "int"}}
   },
+  "readerPageOfChapterApprox": "≈ {page} / {count}",
+  "@readerPageOfChapterApprox": {
+    "description": "Approximate page number inside the chapter, while pages go from a shifted page after speed reading",
+    "placeholders": {"page": {"type": "int"}, "count": {"type": "int"}}
+  },
   "speedExit": "Выйти из скорочтения",
   "@speedExit": {
     "description": "Button that closes speed reading and returns to the page"

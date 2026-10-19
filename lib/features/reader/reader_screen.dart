@@ -86,6 +86,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   Size? _pageSize;
   PageStyle? _style;
 
+  /// The word whose line goes where speed reading showed it, on the next
+  /// build (it knows the screen size then).
+  int? _shiftTo;
+
   late int _section;
   int _page = 0;
 
@@ -186,6 +190,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   void _show(int section, int pageIndex) {
     final shown = _layoutOf(section).pages[pageIndex];
+    _leaveSection(section);
     setState(() {
       _section = section;
       _page = pageIndex;
@@ -227,12 +232,23 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (mounted && last != null) _showWord(last);
   }
 
-  /// Opens the page with [word], lights it and keeps the place on it.
+  /// The current chapter goes back to the normal split when the reader
+  /// moves to [section] (ADR 0003, addendum 1).
+  void _leaveSection(int section) {
+    final current = _layouts[_section];
+    if (section != _section && current != null) {
+      _layouts[_section] = current.unshifted();
+    }
+  }
+
+  /// Opens the page with [word], its line where speed reading showed it,
+  /// lights it and keeps the place on it.
   void _showWord(int word) {
     final section = widget.opened.tokens[word].sectionIndex;
+    _leaveSection(section);
     setState(() {
       _section = section;
-      _page = _layoutOf(section).pageOfWord(word);
+      _shiftTo = word;
       _word = word;
       _litWord = word;
       _barShown = false;
@@ -246,6 +262,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
             widget.opened.tokens.positionOf(word),
           ),
     );
+  }
+
+  /// Shifts the chapter so that the line of [_shiftTo] is in the middle of
+  /// the [height] tall safe area, as the word was in speed reading.
+  void _applyShift(double height) {
+    final word = _shiftTo;
+    if (word == null) return;
+    _shiftTo = null;
+    final shifted = _layoutOf(_section)
+        .shifted(word: word, lineCenterY: height / 2 - _margin.top);
+    _layouts[_section] = shifted;
+    _page = shifted.pageOfWord(word);
   }
 
   void _onTapUp(TapUpDetails details, double width) {
@@ -284,6 +312,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             constraints.maxHeight - _margin.vertical - _footerHeight,
           );
           _relayoutIfNeeded(pageSize, style);
+          _applyShift(constraints.maxHeight);
           final chapter = layout;
           final title = widget.opened.tokens.content.sections[_section].title;
           return Stack(
@@ -327,7 +356,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
                             ),
                             const SizedBox(width: 16),
                             Text(
-                              l10n.readerPageOfChapter(
+                              (chapter.isShifted
+                                  ? l10n.readerPageOfChapterApprox
+                                  : l10n.readerPageOfChapter)(
                                 _page + 1,
                                 chapter.pages.length,
                               ),

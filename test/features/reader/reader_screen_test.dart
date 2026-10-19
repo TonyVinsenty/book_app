@@ -324,6 +324,14 @@ void main() {
     final stopped = engine.wordIndex;
     expect(stopped, greaterThan(last));
 
+    // The word is painted in the middle of its painter's area.
+    final wordY = tester
+        .getCenter(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is RsvpWordPainter,
+          ),
+        )
+        .dy;
     await tester.tap(find.byTooltip('Выйти из скорочтения'));
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);
@@ -334,9 +342,43 @@ void main() {
     expect(reader(tester).litWord, stopped);
     expect(await tester.runAsync(savedWord), stopped);
 
+    // The word's line is where speed reading showed the word; the page
+    // number is approximate and pages go on from the shifted one.
+    final layout = reader(tester).layout;
+    expect(layout.isShifted, isTrue);
+    final box = layout.wordBoxes(layout.pageOfWord(stopped), stopped).first;
+    final pageTop = tester
+        .getTopLeft(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.size == layout.pageSize,
+          ),
+        )
+        .dy;
+    expect(
+      (pageTop + box.center.dy - wordY).abs(),
+      lessThanOrEqualTo(layout.style.bodyLine),
+    );
+    expect(find.textContaining('≈ '), findsOneWidget);
+    // Forward and back from the shifted page: no words lost or repeated.
+    final firstWords = [page.firstWord];
+    for (var i = 0; i < 3; i++) {
+      final before = reader(tester).page;
+      await tapAt(tester, 0.95);
+      expect(reader(tester).page.firstWord, before.endWord);
+      firstWords.add(before.endWord);
+    }
+    // Back to the book start, past the shifted page.
+    for (var i = 0; reader(tester).page.firstWord > 0; i++) {
+      final before = reader(tester).page;
+      if (i < 3) expect(before.firstWord, firstWords[3 - i]);
+      await tapAt(tester, 0.05);
+      expect(reader(tester).page.endWord, before.firstWord);
+    }
+    expect(firstWords.first, greaterThan(0), reason: 'pages before it');
+
     // The speed set before is kept; system back while playing also returns
     // to the page of the word.
-    await longPressWord(tester, page.firstWord);
+    await longPressWord(tester, reader(tester).page.firstWord);
     expect(find.text('325 сл/мин'), findsOneWidget);
     expect((rsvp(tester).engine.timing as SmartPace).wordsPerMinute, 325);
     await tapRsvp(tester);

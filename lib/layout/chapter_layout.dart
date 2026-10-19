@@ -52,8 +52,10 @@ final class ChapterLayout {
     this._section,
     this._blocks,
     this.pages,
-    this._tokens,
-  );
+    this._tokens, {
+    required this._normalPages,
+    this.isShifted = false,
+  });
 
   /// Lays out section [sectionIndex] of [tokens]' book. Must run on the main
   /// isolate (text layout).
@@ -68,7 +70,12 @@ final class ChapterLayout {
       for (final block in section.blocks)
         _BlockLayout.of(block, style, pageSize.width),
     ];
-    final pages = _paginate(tokens, sectionIndex, blocks, pageSize.height);
+    final pages = _withWords(
+      tokens,
+      sectionIndex,
+      blocks,
+      _split(blocks, pageSize.height, _chapterStart, (blocks.length, 0)),
+    );
     return ChapterLayout._(
       sectionIndex,
       pageSize,
@@ -77,6 +84,7 @@ final class ChapterLayout {
       blocks,
       pages,
       tokens,
+      normalPages: pages,
     );
   }
 
@@ -89,6 +97,132 @@ final class ChapterLayout {
 
   /// Empty when the chapter shows nothing (no text, no separators).
   final List<ChapterPage> pages;
+
+  /// The split from the chapter start, without a shift.
+  final List<ChapterPage> _normalPages;
+
+  /// Pages go from a shifted page (ADR 0003, addendum 1): page numbers are
+  /// approximate.
+  final bool isShifted;
+
+  /// The same chapter split so that the line with [word] has its middle as
+  /// near [lineCenterY] (page coordinates) as whole lines allow: one page
+  /// starts at an earlier line, the pages before it end there and the pages
+  /// after it go on from it (ADR 0003, addendum 1). Gives the normal split
+  /// when the word is not in this chapter, is near its start, or the best
+  /// start is a normal page start anyway.
+  ///
+  /// The result shares this layout's text painters: from now on dispose only
+  /// the result, never this layout.
+  ChapterLayout shifted({required int word, required double lineCenterY}) {
+    final start = _shiftStart(word, lineCenterY);
+    if (start == null ||
+        _normalPages.any(
+          (p) => (p.slices.first.blockIndex, p.slices.first.firstLine) == start,
+        )) {
+      return unshifted();
+    }
+    final before = _split(_blocks, pageSize.height, _chapterStart, start);
+    final after = _split(_blocks, pageSize.height, start, (_blocks.length, 0));
+    final split = _withWords(_tokens, sectionIndex, _blocks, [
+      ...before,
+      ...after,
+    ]);
+    // Rules for headings may move the word off the shifted page.
+    final page = split[before.length];
+    if (word < page.firstWord || word >= page.endWord) return unshifted();
+    return ChapterLayout._(
+      sectionIndex,
+      pageSize,
+      style,
+      _section,
+      _blocks,
+      split,
+      _tokens,
+      normalPages: _normalPages,
+      isShifted: true,
+    );
+  }
+
+  /// The chapter split from its start. Shares this layout's text painters:
+  /// from now on dispose only the result, never this layout.
+  ChapterLayout unshifted() => !isShifted
+      ? this
+      : ChapterLayout._(
+          sectionIndex,
+          pageSize,
+          style,
+          _section,
+          _blocks,
+          _normalPages,
+          _tokens,
+          normalPages: _normalPages,
+        );
+
+  /// The line a shifted page starts with so that the line of [word] is
+  /// nearest [lineCenterY], or null if the word is not in this chapter.
+  _Line? _shiftStart(int word, double lineCenterY) {
+    if (word < 0 || word >= _tokens.length || _normalPages.isEmpty) {
+      return null;
+    }
+    final token = _tokens[word];
+    if (token.sectionIndex != sectionIndex) return null;
+    final wordBlock = _blocks[token.blockIndex];
+    if (wordBlock == null || !wordBlock.isText) return null;
+    var line = 0;
+    while (line + 1 < wordBlock.lineCount &&
+        wordBlock.lineStarts[line + 1] <= token.charStart) {
+      line++;
+    }
+    final half = wordBlock.lineHeight(line) / 2;
+    final pageHeight = pageSize.height;
+    final target = lineCenterY.clamp(half, math.max(half, pageHeight - half));
+
+    // Walk back line by line; [y] is the word line's middle when the page
+    // starts at ([b], [line]), with the gaps [_split] puts between blocks.
+    var b = token.blockIndex;
+    var y = half;
+    _Line? best;
+    var bestDistance = double.infinity;
+    while (y + half <= pageHeight) {
+      final previous = _previousBlock(b);
+      if (_canStartAt(b, line, previous)) {
+        final distance = (y - target).abs();
+        if (distance < bestDistance) {
+          best = (b, line);
+          bestDistance = distance;
+        }
+        if (y >= target) break;
+      }
+      if (line > 0) {
+        line--;
+        y += _blocks[b]!.lineHeight(line);
+        continue;
+      }
+      if (previous == null) break;
+      final above = _blocks[previous]!;
+      y += math.max(above.spaceAfter, _blocks[b]!.spaceBefore);
+      b = previous;
+      line = above.lineCount - 1;
+      y += above.lineHeight(line);
+    }
+    return best;
+  }
+
+  /// A page may not start inside a heading or separator, nor right after a
+  /// heading (it would stay alone at the bottom of the page before).
+  bool _canStartAt(int b, int line, int? previous) {
+    if (line > 0) return !_blocks[b]!.keepTogether;
+    return previous == null || _blocks[previous]!.keepWithNext == 0;
+  }
+
+  /// The nearest block above [b] that shows lines.
+  int? _previousBlock(int b) {
+    for (var p = b - 1; p >= 0; p--) {
+      if ((_blocks[p]?.lineCount ?? 0) > 0) return p;
+    }
+    return null;
+  }
 
   /// The page showing [wordIndex]: the last page starting at or before it
   /// (0 for words before the chapter, the last page for words after it).
@@ -227,11 +361,13 @@ final class ChapterLayout {
     }
   }
 
-  static List<ChapterPage> _paginate(
-    BookTokens tokens,
-    int sectionIndex,
+  /// Pages of lines from [from] up to [to] (not included), filled from the
+  /// top as far as they go.
+  static List<List<PageSlice>> _split(
     List<_BlockLayout?> blocks,
     double pageHeight,
+    _Line from,
+    _Line to,
   ) {
     final slicesOfPages = <List<PageSlice>>[];
     var slices = <PageSlice>[];
@@ -245,8 +381,15 @@ final class ChapterLayout {
       y = 0;
     }
 
-    for (final (b, block) in blocks.indexed) {
+    final (fromBlock, fromLine) = from;
+    final (toBlock, toLine) = to;
+    for (var b = fromBlock; b < blocks.length && b <= toBlock; b++) {
+      final block = blocks[b];
       if (block == null) continue;
+      final firstLine = b == fromBlock ? fromLine : 0;
+      final endLine = b == toBlock ? toLine : block.lineCount;
+      // The lines of the last block from [toLine] on are not in the range.
+      if (b == toBlock && firstLine >= endLine) continue;
       var gap = slices.isEmpty
           ? 0.0
           : math.max(spaceAfterPrevious, block.spaceBefore);
@@ -260,12 +403,12 @@ final class ChapterLayout {
         }
       }
       y += gap;
-      var line = 0;
-      while (line < block.lineCount) {
+      var line = firstLine;
+      while (line < endLine) {
         final start = line;
         final top = y;
         // At least one line per page, even if it is taller than the page.
-        while (line < block.lineCount &&
+        while (line < endLine &&
             (y + block.lineHeight(line) <= pageHeight ||
                 (slices.isEmpty && line == start))) {
           y += block.lineHeight(line);
@@ -283,12 +426,21 @@ final class ChapterLayout {
             ),
           );
         }
-        if (line < block.lineCount) newPage();
+        if (line < endLine) newPage();
       }
       spaceAfterPrevious = block.spaceAfter;
     }
     newPage();
+    return slicesOfPages;
+  }
 
+  /// Pages of the whole chapter with their word ranges.
+  static List<ChapterPage> _withWords(
+    BookTokens tokens,
+    int sectionIndex,
+    List<_BlockLayout?> blocks,
+    List<List<PageSlice>> slicesOfPages,
+  ) {
     // A page's words start at its first text; pages without text share the
     // next page's start and so have no words.
     final chapterEnd = tokens.firstWordOfSection(sectionIndex + 1);
@@ -345,6 +497,11 @@ final class ChapterLayout {
 }
 
 const _separatorText = '* * *';
+
+/// A line of a chapter: (block index, line in the block).
+typedef _Line = (int, int);
+
+const _Line _chapterStart = (0, 0);
 
 /// First-line indent of a normal paragraph: one em.
 const _indent = ' ';
