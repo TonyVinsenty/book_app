@@ -5,8 +5,10 @@ The texts are written for the tests, no copyright."""
 
 import base64
 import pathlib
+import zipfile
 
 OUT = pathlib.Path('test/fixtures/fb2')
+ZIP_OUT = pathlib.Path('test/fixtures/zip')
 
 HEAD = ('<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" '
         'xmlns:l="http://www.w3.org/1999/xlink">')
@@ -145,7 +147,32 @@ def broken_tail() -> None:
     write('broken_tail.fb2', xml.encode('utf-8'))
 
 
+def write_zip(name: str, entries: list[tuple[str, bytes]]) -> None:
+    # Fixed dates, so the archives come out the same on every run.
+    ZIP_OUT.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(ZIP_OUT / name, 'w', zipfile.ZIP_DEFLATED) as z:
+        for entry, data in entries:
+            z.writestr(zipfile.ZipInfo(entry, (2020, 1, 1, 0, 0, 0)), data,
+                       zipfile.ZIP_DEFLATED)
+
+
+def zips() -> None:
+    # Packed FB2 the way libraries hand it out, and less tidy archives.
+    book = (OUT / 'utf8_nested.fb2').read_bytes()
+    pic = bytes(range(256)) * 4
+    write_zip('plain.fb2.zip', [('utf8_nested.fb2', book)])
+    write_zip('folder_first.zip', [('Книги/', b''),
+                                   ('Книги/utf8_nested.fb2', book)])
+    write_zip('fb2_not_first.zip', [('__MACOSX/._utf8_nested.fb2', b'mac'),
+                                    ('cover.jpg', pic),
+                                    ('utf8_nested.fb2', book)])
+    write_zip('only_picture.zip', [('cover.jpg', pic)])
+    full = (ZIP_OUT / 'plain.fb2.zip').read_bytes()
+    (ZIP_OUT / 'broken.fb2.zip').write_bytes(full[:len(full) // 2])
+
+
 if __name__ == '__main__':
     nested_utf8()
     cp1251_entities()
     broken_tail()
+    zips()

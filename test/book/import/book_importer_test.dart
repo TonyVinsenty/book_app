@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
@@ -77,11 +78,22 @@ void main() {
   test('failures come back as results, nothing is stored', () async {
     final cases = <String, (File, ImportError)>{
       'epub': (
-        write('a.epub', [
-          0x50, 0x4B, 3, 4, ...List.filled(22, 0), 8, 0, 0, 0, //
-          ...latin1.encode('mimetypeapplication/epub+zip'),
-        ]),
+        write(
+          'a.epub',
+          ZipEncoder().encodeBytes(
+            Archive()
+              ..addFile(ArchiveFile.string('META-INF/container.xml', '')),
+          ),
+        ),
         ImportError.unsupportedFormat,
+      ),
+      'zip without books': (
+        copyFixture('test/fixtures/zip/only_picture.zip'),
+        ImportError.unsupportedFormat,
+      ),
+      'broken zip': (
+        copyFixture('test/fixtures/zip/broken.fb2.zip'),
+        ImportError.damaged,
       ),
       'binary': (
         write('a.png', [for (var i = 0; i < 2000; i++) i * 7 % 256]),
@@ -102,6 +114,45 @@ void main() {
       expect((result as ImportFailed).error, error, reason: name);
     }
     expect(await db.select(db.books).get(), isEmpty);
+  });
+
+  test('a ZIP box is unpacked and its FB2 stored unpacked', () async {
+    const fb2 = 'test/fixtures/fb2/utf8_nested.fb2';
+    final fb2Bytes = File(fb2).readAsBytesSync();
+    for (final zip in ['plain.fb2.zip', 'folder_first.zip']) {
+      final file = copyFixture('test/fixtures/zip/$zip');
+      final result = await importer.importFile(file);
+
+      final book = (result as ImportAdded).book;
+      expect(result.fileName, 'utf8_nested.fb2', reason: zip);
+      expect(book.sourceFormat, SourceFormat.fb2);
+      expect(book.sourceName, 'utf8_nested.fb2');
+      expect(book.sourceHash, sha256.convert(fb2Bytes).toString());
+      expect(repo.sourceFile(book).readAsBytesSync(), fb2Bytes);
+      expect(file.parent.listSync().whereType<Directory>(), isEmpty);
+      await repo.deleteBook(book.id);
+    }
+  });
+
+  test(
+    'the book in a box need not be first; macOS forks are skipped',
+    () async {
+      final file = copyFixture('test/fixtures/zip/fb2_not_first.zip');
+      final result = await importer.importFile(file);
+
+      expect((result as ImportAdded).fileName, 'utf8_nested.fb2');
+    },
+  );
+
+  test('FB2 and FB2.ZIP of one book are a duplicate', () async {
+    final fb2 = copyFixture('test/fixtures/fb2/utf8_nested.fb2');
+    final added = (await importer.importFile(fb2)) as ImportAdded;
+
+    final zip = copyFixture('test/fixtures/zip/plain.fb2.zip');
+    final result = await importer.importFile(zip);
+
+    expect((result as ImportDuplicate).book.id, added.book.id);
+    expect(await db.select(db.books).get(), hasLength(1));
   });
 
   test('titleFromFileName drops book extensions only', () {

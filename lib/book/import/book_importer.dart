@@ -1,5 +1,6 @@
-/// The import pipeline (ADR 0005): file → SHA-256 and duplicate check →
-/// format by content → parse in a background isolate → library.
+/// The import pipeline (ADR 0005): file → a ZIP box is unpacked → SHA-256
+/// and duplicate check → format by content → parse in a background
+/// isolate → library.
 library;
 
 import 'dart:io';
@@ -8,6 +9,8 @@ import 'dart:typed_data';
 
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/import/format_detector.dart';
+import 'package:book_app/book/import/import_error.dart';
+import 'package:book_app/book/import/zip_box.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
@@ -16,17 +19,7 @@ import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:crypto/crypto.dart';
 
-/// Why a file was not added; screens turn it into a message.
-enum ImportError {
-  /// EPUB, ZIP, PDF, pictures… — not readable (yet).
-  unsupportedFormat,
-
-  /// Looks like a book but can't be parsed.
-  damaged,
-
-  /// The file could not be read or stored.
-  unreadable,
-}
+export 'package:book_app/book/import/import_error.dart';
 
 sealed class ImportResult {
   const ImportResult(this.fileName);
@@ -51,15 +44,6 @@ final class ImportFailed extends ImportResult {
   const ImportFailed(super.fileName, this.error);
 
   final ImportError error;
-}
-
-final class ImportException implements Exception {
-  const ImportException(this.error);
-
-  final ImportError error;
-
-  @override
-  String toString() => 'ImportException(${error.name})';
 }
 
 final class ParsedBook {
@@ -93,7 +77,8 @@ ParsedBook parseBook(Uint8List bytes, {required String fileName}) {
         throw const ImportException(ImportError.unsupportedFormat);
       }
       version = txtParserVersion;
-    case DetectedFormat.fb2zip || DetectedFormat.epub || DetectedFormat.zip:
+    // Boxes are unpacked before parsing; one inside a box is not opened.
+    case DetectedFormat.epub || DetectedFormat.zip:
       throw const ImportException(ImportError.unsupportedFormat);
   }
   final wordCount = tokenize(content).length;
@@ -120,18 +105,30 @@ final class BookImporter {
 
   final BookRepository _books;
 
-  /// Never throws: failures come back as [ImportFailed].
+  /// Never throws: failures come back as [ImportFailed]. A ZIP box is
+  /// unpacked next to [file] and its first book is imported (the queue
+  /// takes the rest, ADR 0005); the result names the book inside.
   Future<ImportResult> importFile(File file) async {
-    final path = file.path;
-    final name = path.split(RegExp(r'[/\\]')).last;
+    var name = _baseName(file.path);
+    Directory? unpackDir;
     try {
+      var book = file;
+      if (await _startsLikeZip(file)) {
+        final dir = unpackDir = await file.parent.createTemp('unzip_');
+        final unpacked = await _unpackInIsolate(file.path, dir.path);
+        if (unpacked != null) {
+          book = File(unpacked.first);
+          name = _baseName(book.path);
+        }
+      }
+      final path = book.path;
       final hash = await _hashInIsolate(path);
       final existing = await _books.findByHash(hash);
       if (existing != null) return ImportDuplicate(name, existing);
       final parsed = await _parseInIsolate(path, name);
       final row = await _books.addBook(
         content: parsed.content,
-        source: file,
+        source: book,
         sourceName: name,
         sourceHash: hash,
         parserVersion: parsed.parserVersion,
@@ -145,13 +142,33 @@ final class BookImporter {
     } on Object {
       // A parser bug on a strange file must not crash the app.
       return ImportFailed(name, ImportError.damaged);
+    } finally {
+      if (unpackDir != null) await _deleteQuietly(unpackDir);
     }
+  }
+}
+
+String _baseName(String path) => path.split(RegExp(r'[/\\]')).last;
+
+Future<bool> _startsLikeZip(File file) async {
+  final head = await file.openRead(0, 4).fold(<int>[], (a, b) => a..addAll(b));
+  return startsLikeZip(head);
+}
+
+Future<void> _deleteQuietly(Directory dir) async {
+  try {
+    if (dir.existsSync()) await dir.delete(recursive: true);
+  } on FileSystemException {
+    // A leftover in the cache folder is harmless.
   }
 }
 
 // Top-level, so the isolate closures capture only the path.
 Future<String> _hashInIsolate(String path) =>
     Isolate.run(() => sha256.convert(File(path).readAsBytesSync()).toString());
+
+Future<List<String>?> _unpackInIsolate(String path, String outDir) =>
+    Isolate.run(() => unpackBox(path, outDir));
 
 Future<ParsedBook> _parseInIsolate(String path, String name) =>
     Isolate.run(() => parseBook(File(path).readAsBytesSync(), fileName: name));
