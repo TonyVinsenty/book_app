@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Native file access (ADR 0005): `MainActivity.kt`, later `AppDelegate.swift`.
+/// Native file access (ADR 0005): `MainActivity.kt` and `AppDelegate.swift`.
 const filesChannelName = 'com.tonyvinsenty.bookapp/files';
 const pickBooksMethod = 'pickBooks';
 
