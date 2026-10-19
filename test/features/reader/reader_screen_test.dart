@@ -154,14 +154,16 @@ void main() {
       await tapAt(tester, 0.95);
     }
     expect(reader(tester).layout.sectionIndex, 1, reason: 'next chapter');
-    expect(
-      find.text('стр. 1 / ${reader(tester).layout.pages.length}'),
-      findsOne,
-    );
+    // Numbers go across the book, split while the reader was idle.
+    final book = reader(tester).pagination;
+    expect(book.isComplete, isTrue);
+    final total = book.pageCount.value;
+    expect(total, greaterThan(pages + reader(tester).layout.pages.length));
+    expect(find.text('стр. ${pages + 1} / $total'), findsOne);
 
     await tapAt(tester, 0.05);
     expect(reader(tester).layout.sectionIndex, 0);
-    expect(find.text('стр. $pages / $pages'), findsOneWidget);
+    expect(find.text('стр. $pages / $total'), findsOneWidget);
 
     // The middle shows the panels; «Библиотека» returns to the library.
     await tapAt(tester, 0.5);
@@ -296,12 +298,24 @@ void main() {
     expect(reader(tester).page.firstWord, start.firstWord);
     expect(reader(tester).page.endWord, start.endWord);
 
+    final before = reader(tester).pagination;
     await change((s) => s.copyWith(font: BookFont.lora));
+    final lora = reader(tester).pagination;
+    expect(lora, isNot(same(before)), reason: 'a new font: split again');
+    expect(lora.isComplete, isFalse);
+    await tester.pump(Duration.zero); // idle time
+    expect(lora.isComplete, isTrue);
     await change((s) => s.copyWith(lineHeight: 1.8));
     await change((s) => s.copyWith(margins: PageMargins.wide));
     await change((s) => s.copyWith(align: BookAlign.justify));
+    final justified = reader(tester).pagination;
     await change((s) => s.copyWith(palette: ReadingPalette.sage));
     await change((s) => s.copyWith(night: NightMode.night));
+    expect(
+      reader(tester).pagination,
+      same(justified),
+      reason: 'colors keep the pages',
+    );
     await change((_) => const ReadingSettings());
     expect(reader(tester).page.firstWord, start.firstWord);
     await closeApp(tester);
@@ -327,7 +341,10 @@ void main() {
     expect(statusBar, [false, true]);
     expect(find.text('Глава 1'), findsOneWidget);
     expect(
-      find.text('стр. 5 / $pages · до конца главы ${pages - 5} стр.'),
+      find.text(
+        'стр. 5 / ${reader(tester).pagination.pageCount.value} · '
+        'до конца главы ${pages - 5} стр.',
+      ),
       findsOneWidget,
     );
     expect(tester.getTopLeft(pageArea), top, reason: 'the page stays put');

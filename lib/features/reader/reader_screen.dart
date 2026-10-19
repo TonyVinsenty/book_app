@@ -11,6 +11,7 @@ import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
+import 'package:book_app/layout/book_pagination.dart';
 import 'package:book_app/layout/chapter_layout.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:book_app/platform/screen_channel.dart';
@@ -93,6 +94,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   Size? _pageSize;
   PageStyle? _style;
 
+  /// Pages of the whole book for this page size and layout.
+  BookPagination? _pagination;
+
   /// The word whose line goes where speed reading showed it, on the next
   /// build (it knows the screen size then).
   int? _shiftTo;
@@ -137,6 +141,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   ChapterPage get page => layout.pages[_page];
 
   @visibleForTesting
+  BookPagination get pagination => _pagination!;
+
+  @visibleForTesting
   int? get litWord => _litWord;
 
   @visibleForTesting
@@ -167,6 +174,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_showStatusBar(true));
     _lit.dispose();
     _clearLayouts();
+    _pagination?.dispose();
     super.dispose();
   }
 
@@ -186,21 +194,38 @@ class ReaderViewState extends ConsumerState<ReaderView>
       if (far) layout.dispose();
       return far;
     });
-    return _layouts[section] = ChapterLayout.build(
+    final layout = ChapterLayout.build(
       tokens: widget.opened.tokens,
       sectionIndex: section,
       style: _style!,
       pageSize: _pageSize!,
     );
+    _pagination!.addChapter(section, [
+      for (final page in layout.pages) page.firstWord,
+    ]);
+    return _layouts[section] = layout;
   }
 
-  /// New page size or style: lay out again and find the same word.
+  /// New page size or style: lay out again and find the same word. The
+  /// book is split again only if the pages change (not for a new color).
   void _relayoutIfNeeded(Size pageSize, PageStyle style) {
     if (pageSize == _pageSize && style == _style) return;
     _clearLayouts();
+    if (pageSize != _pageSize || !(_style?.sameLayoutAs(style) ?? false)) {
+      _pagination?.dispose();
+      _pagination = BookPagination(
+        tokens: widget.opened.tokens,
+        style: style,
+        pageSize: pageSize,
+      )..addListener(_onPagination);
+    }
     _pageSize = pageSize;
     _style = style;
     _page = _layoutOf(_section).pageOfWord(_word);
+  }
+
+  void _onPagination() {
+    if (mounted) setState(() {});
   }
 
   void _next() {
@@ -419,9 +444,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             _relayoutIfNeeded(pageSize, style);
             _applyShift(area.height);
             final chapter = layout;
-            final pageLabel = (chapter.isShifted
-                ? l10n.readerPageOfChapterApprox
-                : l10n.readerPageOfChapter)(_page + 1, chapter.pages.length);
+            final pageLabel = _pageLabel(l10n, chapter);
             return Stack(
               children: [
                 Padding(
@@ -494,6 +517,21 @@ class ReaderViewState extends ConsumerState<ReaderView>
           },
         ),
       ),
+    );
+  }
+
+  /// «стр. N / M» across the book; «≈» marks a number not known exactly
+  /// yet (chapters still being split, or a shifted page).
+  String _pageLabel(AppLocalizations l10n, ChapterLayout chapter) {
+    final pagination = _pagination!;
+    final before = pagination.pagesBefore(_section);
+    final total = pagination.pageCount;
+    final page = before.value + _page + 1;
+    String number(int value, {required bool exact}) =>
+        exact ? '$value' : l10n.readerApproxNumber(value);
+    return l10n.readerPageOfBook(
+      number(page, exact: before.exact && !chapter.isShifted),
+      number(max(total.value, page), exact: total.exact),
     );
   }
 
