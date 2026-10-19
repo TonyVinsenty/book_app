@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:book_app/book/import/book_importer.dart';
+import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -37,6 +38,11 @@ final settingsRepositoryProvider = Provider<SettingsRepository>(
 /// The library list, recently opened first.
 final booksProvider = StreamProvider<List<BookRow>>(
   (ref) => ref.watch(bookRepositoryProvider).watchBooks(),
+);
+
+/// A book prepared for the reader screen, by book id.
+final openedBookProvider = FutureProvider.autoDispose.family<OpenedBook, int>(
+  (ref, id) => BookOpener(ref.watch(bookRepositoryProvider)).open(id),
 );
 
 /// Opens the database and the book files in the app support directory

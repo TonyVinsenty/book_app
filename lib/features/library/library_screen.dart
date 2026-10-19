@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:flutter/material.dart';
@@ -152,6 +153,11 @@ class _BookList extends StatelessWidget {
       itemBuilder: (context, i) {
         final book = books[i];
         return ListTile(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ReaderScreen(bookId: book.id),
+            ),
+          ),
           title: Text(book.title, maxLines: 2, overflow: TextOverflow.ellipsis),
           subtitle: book.authors.isEmpty
               ? null
