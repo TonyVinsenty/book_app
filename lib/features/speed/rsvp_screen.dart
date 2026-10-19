@@ -44,6 +44,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 
   /// The speed shown for a moment after a swipe changed it while playing.
   bool _speedHint = false;
+
+  /// Played at least once: the hint says "continue", not "start".
+  bool _started = false;
   Timer? _hintTimer;
   Duration _lastTick = Duration.zero;
 
@@ -87,6 +90,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 
   void _play() {
     _engine.play();
+    _started = true;
     if (!_engine.isPlaying || _ticker.isActive) return;
     _lastTick = Duration.zero;
     unawaited(_ticker.start());
@@ -203,10 +207,13 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     final colors = context.readingColors;
     final tokens = widget.opened.tokens;
     final word = _engine.wordIndex;
-    // Clear of the word and its marks: they reach about 1.5 of the word
-    // font above the middle line.
+    // Clear of the word and its marks.
     final clearance =
-        MediaQuery.textScalerOf(context).scale(_wordSize) * 1.5 + 16;
+        RsvpWordPainter.reachAbove(
+          TextStyle(fontFamily: BookFont.literata.family, fontSize: _wordSize),
+          MediaQuery.textScalerOf(context),
+        ) +
+        16;
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 56, 24, box.maxHeight / 2 + clearance),
       child: ShaderMask(
@@ -234,7 +241,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                 children: [
                   TextSpan(text: textBefore(tokens, word)),
                   TextSpan(
-                    text: tokens[word].text,
+                    text: tokens.textOf(word),
                     style: TextStyle(
                       color: colors.text,
                       backgroundColor: colors.highlight,
@@ -298,15 +305,18 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                     ),
                   ),
                 Positioned.fill(
+                  // The word itself is announced by the painter above.
                   child: IgnorePointer(
-                    child: AnimatedOpacity(
-                      opacity: showText ? 1 : 0,
-                      duration: showText
-                          ? const Duration(milliseconds: 300)
-                          : Duration.zero,
-                      child: showText
-                          ? LayoutBuilder(builder: _pauseText)
-                          : const SizedBox(),
+                    child: ExcludeSemantics(
+                      child: AnimatedOpacity(
+                        opacity: showText ? 1 : 0,
+                        duration: showText
+                            ? const Duration(milliseconds: 300)
+                            : Duration.zero,
+                        child: showText
+                            ? LayoutBuilder(builder: _pauseText)
+                            : const SizedBox(),
+                      ),
                     ),
                   ),
                 ),
@@ -356,7 +366,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                           ),
                         ] else if (!_engine.isStopped)
                           Text(
-                            l10n.speedTapToContinue,
+                            _started
+                                ? l10n.speedTapToContinue
+                                : l10n.speedTapToStart,
                             style: secondary,
                             textAlign: TextAlign.center,
                           ),
@@ -433,6 +445,22 @@ class RsvpWordPainter extends CustomPainter {
     return orp + (pair ? 2 : 1);
   }
 
+  /// Marks: gap from the word and length, as shares of its line height.
+  static const _markGap = 0.15;
+  static const _markLength = 0.35;
+
+  /// How far the word and its upper mark reach above the middle line.
+  static double reachAbove(TextStyle style, TextScaler textScaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ж', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height * (0.5 + _markGap + _markLength);
+  }
+
   TextPainter _layout(double fontSize) => TextPainter(
     text: TextSpan(
       style: style.copyWith(fontSize: fontSize),
@@ -481,8 +509,8 @@ class RsvpWordPainter extends CustomPainter {
     final mark = Paint()
       ..color = markColor
       ..strokeWidth = 1.5;
-    final gap = painter.height * 0.15;
-    final length = painter.height * 0.35;
+    final gap = painter.height * _markGap;
+    final length = painter.height * _markLength;
     canvas
       ..drawLine(
         Offset(anchor, top - gap - length),

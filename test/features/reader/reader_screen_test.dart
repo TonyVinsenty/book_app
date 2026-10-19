@@ -265,7 +265,7 @@ void main() {
     // Opens paused on the pressed word, with the controls.
     expect(engine.isPlaying, isFalse);
     expect(engine.wordIndex, start);
-    expect(find.text('Коснитесь экрана, чтобы продолжить'), findsOneWidget);
+    expect(find.text('Коснитесь экрана, чтобы начать'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
     expect(engine.wordIndex, start);
     // Above it, the text before it, ending with the word itself.
@@ -288,6 +288,7 @@ void main() {
     // A tap pauses and shows the controls.
     await tapRsvp(tester);
     expect(engine.isPlaying, isFalse);
+    expect(find.text('Коснитесь экрана, чтобы продолжить'), findsOneWidget);
     final last = engine.wordIndex;
     await tester.pump(const Duration(seconds: 1));
     expect(engine.wordIndex, last);

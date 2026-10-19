@@ -122,6 +122,10 @@
     "description": "Speed reading pace, words per minute (short form)",
     "placeholders": {"wpm": {"type": "int"}}
   },
+  "speedTapToStart": "Коснитесь экрана, чтобы начать",
+  "@speedTapToStart": {
+    "description": "Hint under the word when speed reading has just opened, paused"
+  },
   "speedTapToContinue": "Коснитесь экрана, чтобы продолжить",
   "@speedTapToContinue": {
     "description": "Hint under the word while speed reading is paused"

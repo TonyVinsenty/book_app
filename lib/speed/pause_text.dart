@@ -16,10 +16,13 @@ String textBefore(BookTokens tokens, int word, {int maxWords = 60}) {
   }
   for (var i = first; i < word; i++) {
     out
-      ..write(tokens.textOf(i))
+      // A glued token ("— Привет") may keep a line break from the source.
+      ..write(tokens.textOf(i).replaceAll(_lineBreaks, ' '))
       ..write(
         tokens.flagsOf(i + 1) & TokenFlags.paragraphStart != 0 ? '\n' : ' ',
       );
   }
   return out.toString();
 }
+
+final _lineBreaks = RegExp(r'[\r\n]+');
