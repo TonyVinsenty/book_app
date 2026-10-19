@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_opener.dart';
@@ -70,5 +71,44 @@ void main() {
     expect(row.parserVersion, parserVersionOf(SourceFormat.txt));
     expect(row.wordCount, 3);
     expect(firstText(await BookOpener(repo).open(id)), 'Новый разбор файла.');
+  });
+
+  test('a position from an older tokenizer moves by its anchor', () async {
+    const text = 'Вот полуавтоматы-получеловеки идут домой.';
+    const content = BookContent(
+      meta: BookMeta(title: 'Книга', sourceFormat: SourceFormat.txt),
+      sections: [
+        Section(blocks: [ParagraphBlock(text: text)]),
+      ],
+    );
+    final source = File('${temp.path}/Книга.txt')..writeAsStringSync(text);
+    final row = await repo.addBook(
+      content: content,
+      source: source,
+      sourceName: 'Книга.txt',
+      sourceHash: 'hash',
+      parserVersion: txtParserVersion,
+      wordCount: 4, // counted by tokenizer 1: the long word was one
+    );
+    // «идут» was word 2 for tokenizer 1.
+    await repo.savePosition(
+      row.id,
+      ReadingPosition(
+        wordIndex: 2,
+        anchor: TextAnchor(
+          sectionIndex: 0,
+          blockIndex: 0,
+          charOffset: text.indexOf('идут'),
+        ),
+      ),
+    );
+
+    final opened = await BookOpener(repo).open(row.id);
+
+    expect(opened.tokens.textOf(opened.wordIndex), 'идут');
+    expect(opened.wordIndex, 3);
+    final stored = (await repo.findById(row.id))!;
+    expect(stored.wordCount, 5);
+    expect(stored.positionWord, 3);
   });
 }

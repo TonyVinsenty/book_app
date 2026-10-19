@@ -1,4 +1,5 @@
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
@@ -84,6 +85,83 @@ void main() {
       test(input.isEmpty ? '(empty)' : input, () {
         expect(textsOf(input), expected);
       });
+    });
+  });
+
+  group('long hyphenated words', () {
+    const cases = <String, List<String>>{
+      'полуавтоматы-получеловеки': ['полуавтоматы-', 'получеловеки'],
+      '«полуавтоматы-получеловеки»,': ['«полуавтоматы-', 'получеловеки»,'],
+      'научно-исследовательский': ['научно-', 'исследовательский'],
+      'Санкт-Петербург': ['Санкт-', 'Петербург'],
+      'научно-исследовательско-конструкторский': [
+        'научно-',
+        'исследовательско-',
+        'конструкторский',
+      ],
+      'Комсомольск-на-Амуре': ['Комсомольск-на-', 'Амуре'],
+      'по-русски': ['по-русски'],
+      'что-нибудь': ['что-нибудь'],
+      'кто-то': ['кто-то'],
+      'Ростов-на-Дону': ['Ростов-на-Дону'],
+      'по-французски': ['по-французски'],
+      'давным-давно': ['давным-давно'],
+      'иссиня-чёрный': ['иссиня-чёрный'],
+      'Мамин-Сибиряк': ['Мамин-Сибиряк'],
+      'полуавтоматы‑получеловеки': ['полуавтоматы‑получеловеки'], // U+2011
+      '1234567890-1234567890': ['1234567890-1234567890'],
+      'http://www.fun-with-words.com/anagrams': [
+        'http://www.fun-with-words.com/anagrams',
+      ],
+      'RateMy-Professors.com': ['RateMy-Professors.com'],
+    };
+    cases.forEach((input, expected) {
+      test(input, () {
+        expect(textsOf(input), expected);
+      });
+    });
+
+    test('glued dashes stay with their parts', () {
+      expect(
+        flagged(
+          '— Санкт-Петербург, — сказал он. — Полуавтоматы-получеловеки —',
+          TokenFlags.dash,
+        ),
+        ['— Санкт-', 'Петербург, —', '— Полуавтоматы-', 'получеловеки —'],
+      );
+    });
+
+    test('parts keep sentence flags and their own ORP', () {
+      final t = tokensOf(['Это полуавтоматы-получеловеки. Да']);
+      expect(t[1].sentenceEnd, isFalse);
+      expect(t[1].clauseEnd, isFalse);
+      expect(t[2].sentenceEnd, isTrue);
+      expect(t[1].text[t[1].orp], 'у'); // 12 letters → 4th
+      expect(t[2].text[t[2].orp], 'у');
+    });
+
+    test('a position on the whole word moves to its first part', () {
+      const text = 'Вот полуавтоматы-получеловеки идут';
+      final t = tokensOf([text]);
+      // Saved by the old tokenizer: «идут» was word 2, anchored at its start.
+      final old = ReadingPosition(
+        wordIndex: 2,
+        anchor: TextAnchor(
+          sectionIndex: 0,
+          blockIndex: 0,
+          charOffset: text.indexOf('идут'),
+        ),
+      );
+      expect(t.textOf(t.resolve(old)), 'идут');
+      final whole = ReadingPosition(
+        wordIndex: 1,
+        anchor: TextAnchor(
+          sectionIndex: 0,
+          blockIndex: 0,
+          charOffset: text.indexOf('полу'),
+        ),
+      );
+      expect(t.textOf(t.resolve(whole)), 'полуавтоматы-');
     });
   });
 

@@ -10,7 +10,10 @@ import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/chars.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 
-const tokenizerVersion = 1;
+/// Not stored: words are rebuilt on every open and the saved position is
+/// found by its anchor (`BookTokens.resolve`). 2 — long hyphenated words
+/// split into parts.
+const tokenizerVersion = 2;
 
 BookTokens tokenize(BookContent content) {
   final out = _Builder();
@@ -143,6 +146,8 @@ int _tokenizeBlock(
     }
   }
 
+  _splitHyphenated(text, starts, ends, dashes);
+
   var previousIsNumber = false;
   for (var k = 0; k < starts.length; k++) {
     final start = starts[k];
@@ -173,6 +178,106 @@ int _tokenizeBlock(
     out.add(section, block, start, end, orp > 0xFFFF ? 0xFFFF : orp, flags);
   }
   return starts.length;
+}
+
+/// Long hyphenated words are shown in parts, the hyphen stays with the
+/// first one (`полуавтоматы-` + `получеловеки`): a cut needs at least
+/// [_splitPartMin] letters since the previous cut and up to the next hyphen,
+/// and [_splitFrom] in the rest of the word, so `по-русски`, `что-нибудь`,
+/// `Ростов-на-Дону` stay whole.
+const _splitFrom = 13;
+const _splitPartMin = 5;
+
+void _splitHyphenated(
+  String text,
+  List<int> starts,
+  List<int> ends,
+  List<bool> dashes,
+) {
+  for (var k = starts.length - 1; k >= 0; k--) {
+    final s = starts[k];
+    final e = ends[k];
+    final cuts = _hyphenCuts(text, s, e);
+    if (cuts.isEmpty) continue;
+    // A glued free-standing dash stays with the part it touches.
+    var first = s;
+    while (!isWordCharAt(text, first)) {
+      first++;
+    }
+    var last = e;
+    while (!isWordCharAt(text, last - 1)) {
+      last--;
+    }
+    final leading = dashes[k] && _hasDash(text, s, first);
+    final trailing = dashes[k] && _hasDash(text, last, e);
+    starts.replaceRange(k, k + 1, [s, ...cuts]);
+    ends.replaceRange(k, k + 1, [...cuts, e]);
+    dashes.replaceRange(k, k + 1, [
+      for (var j = 0; j <= cuts.length; j++)
+        (j == 0 && leading) || (j == cuts.length && trailing),
+    ]);
+  }
+}
+
+/// Starts of the parts after the first one; empty when the word stays whole.
+List<int> _hyphenCuts(String text, int s, int e) {
+  var total = 0;
+  for (var i = s; i < e; i++) {
+    if (_isAlpha(text, i)) {
+      total++;
+      continue;
+    }
+    // Addresses stay whole: `http://fun-with-words.com`, `a-b@mail.ru`.
+    final c = text.codeUnitAt(i);
+    if (c == 0x2F || c == 0x40 || c == 0x5C) return const [];
+    if (c == 0x2E && i + 1 < e && isWordCharAt(text, i + 1)) {
+      return const [];
+    }
+  }
+  if (total < _splitFrom) return const [];
+  final cuts = <int>[];
+  var piece = 0; // letters since the last cut
+  var seen = 0;
+  for (var i = s; i < e; i++) {
+    if (_isAlpha(text, i)) {
+      piece++;
+      seen++;
+      continue;
+    }
+    final c = text.codeUnitAt(i);
+    if ((c == 0x2D || c == 0x2010) &&
+        i > s &&
+        i + 1 < e &&
+        _isAlpha(text, i - 1) &&
+        _isAlpha(text, i + 1)) {
+      var next = 0; // letters up to the next hyphen
+      for (var j = i + 1; j < e && _isAlpha(text, j); j++) {
+        next++;
+      }
+      if (piece >= _splitPartMin &&
+          next >= _splitPartMin &&
+          piece + total - seen >= _splitFrom) {
+        cuts.add(i + 1);
+        piece = 0;
+      }
+    }
+  }
+  return cuts;
+}
+
+/// A letter that counts for splitting (digits don't: `2026-10-19`).
+bool _isAlpha(String text, int i) {
+  if (!isLetterAt(text, i)) return false;
+  final c = text.codeUnitAt(i);
+  return c < 0x30 || c > 0x39;
+}
+
+bool _hasDash(String text, int s, int e) {
+  for (var i = s; i < e; i++) {
+    final c = text.codeUnitAt(i);
+    if (isDash(c) || c == 0x2D) return true;
+  }
+  return false;
 }
 
 enum _Chunk { dash, opening, straightQuote, punct, word }

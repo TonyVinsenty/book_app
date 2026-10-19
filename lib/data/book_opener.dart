@@ -18,7 +18,8 @@ final class OpenedBook {
 }
 
 /// Loads a book for the reader: the stored model, or a fresh parse of the
-/// source file when the parser changed (the position moves by its anchor).
+/// source file when the parser changed. Words are rebuilt on every open; a
+/// position saved by another tokenizer or parser moves by its anchor.
 final class BookOpener {
   BookOpener(this._books);
 
@@ -34,7 +35,17 @@ final class BookOpener {
         : await _books.loadContent(book);
     if (stored != null) {
       final tokens = await _tokenizeInIsolate(stored);
-      return OpenedBook(book, tokens, tokens.resolve(book.position));
+      final word = tokens.resolve(book.position);
+      if (tokens.length == book.wordCount && word == book.positionWord) {
+        return OpenedBook(book, tokens, word);
+      }
+      // The tokenizer changed: keep the progress shown in the library right.
+      await _books.updateWords(
+        id,
+        wordCount: tokens.length,
+        position: tokens.positionOf(word),
+      );
+      return OpenedBook((await _books.findById(id))!, tokens, word);
     }
 
     final (parsed, tokens) = await _parseInIsolate(

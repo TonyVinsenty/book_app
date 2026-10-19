@@ -113,6 +113,15 @@ final class BookRepository {
     );
   }
 
+  /// Word count and position after a tokenizer change.
+  Future<void> updateWords(
+    int id, {
+    required int wordCount,
+    required ReadingPosition position,
+  }) => (_db.update(_db.books)..where((b) => b.id.equals(id))).write(
+    _positionCompanion(position).copyWith(wordCount: Value(wordCount)),
+  );
+
   Future<void> savePosition(int id, ReadingPosition position) => (_db.update(
     _db.books,
   )..where((b) => b.id.equals(id))).write(_positionCompanion(position));
