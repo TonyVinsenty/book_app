@@ -13,6 +13,14 @@ final class SettingsRepository {
   Future<String?> get(String key) async =>
       (await _byKey(key).getSingleOrNull())?.value;
 
+  /// All values whose keys start with [prefix].
+  Future<Map<String, String>> getAll(String prefix) async {
+    final rows = await (_db.select(
+      _db.appSettings,
+    )..where((s) => s.key.like('$prefix%'))).get();
+    return {for (final row in rows) row.key: row.value};
+  }
+
   /// Current value, then each change of it (drift re-runs the query on any
   /// settings write, so repeats are dropped).
   Stream<String?> watch(String key) =>

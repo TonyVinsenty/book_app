@@ -566,9 +566,11 @@ final class _BlockLayout {
           style.paragraph(kind),
           width,
           inset: inset,
-          align: kind == ParagraphStyle.subtitle
-              ? TextAlign.center
-              : TextAlign.left,
+          align: switch (kind) {
+            ParagraphStyle.subtitle => TextAlign.center,
+            ParagraphStyle.normal || ParagraphStyle.note => style.align,
+            _ => TextAlign.left,
+          },
           indent: kind == ParagraphStyle.normal ? _indent : '',
           strut: kind == ParagraphStyle.normal ? style.bodyStrut : null,
           spaceBefore: spaced ? line / 2 : 0,

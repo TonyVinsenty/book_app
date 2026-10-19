@@ -2,8 +2,8 @@ import 'package:book_app/book/model/book_content.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
-/// Look of the book text on a page (ADR 0003). One font for now; the
-/// reading settings come in stage 8. Any change means a new layout.
+/// Look of the book text on a page (ADR 0003, addendum 2). Any change but
+/// [color] means a new layout (see [sameLayoutAs]).
 @immutable
 final class PageStyle {
   const PageStyle({
@@ -12,6 +12,7 @@ final class PageStyle {
     this.lineHeight = 1.45,
     required this.color,
     this.textScaler = TextScaler.noScaling,
+    this.align = TextAlign.left,
   });
 
   final String fontFamily;
@@ -21,6 +22,9 @@ final class PageStyle {
   final double lineHeight;
   final Color color;
   final TextScaler textScaler;
+
+  /// Alignment of ordinary paragraphs: left or justify.
+  final TextAlign align;
 
   /// Height of one body line on the page.
   double get bodyLine => textScaler.scale(fontSize) * lineHeight;
@@ -59,16 +63,19 @@ final class PageStyle {
     ParagraphStyle.note => body.copyWith(fontSize: fontSize * 0.85),
   };
 
-  @override
-  bool operator ==(Object other) =>
-      other is PageStyle &&
+  /// Same page breaks: everything but the color is equal.
+  bool sameLayoutAs(PageStyle other) =>
       other.fontFamily == fontFamily &&
       other.fontSize == fontSize &&
       other.lineHeight == lineHeight &&
-      other.color == color &&
-      other.textScaler == textScaler;
+      other.textScaler == textScaler &&
+      other.align == align;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PageStyle && sameLayoutAs(other) && other.color == color;
 
   @override
   int get hashCode =>
-      Object.hash(fontFamily, fontSize, lineHeight, color, textScaler);
+      Object.hash(fontFamily, fontSize, lineHeight, color, textScaler, align);
 }

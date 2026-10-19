@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:book_app/app/app.dart';
+import 'package:book_app/app/theme/app_fonts.dart';
+import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
@@ -237,6 +240,47 @@ void main() {
     final page = reader(tester).page;
     expect(page.firstWord, lessThanOrEqualTo(word));
     expect(page.endWord, greaterThan(word));
+    await closeApp(tester);
+  });
+
+  testWidgets('settings changes keep the place: A+ A+ A− A− → same page', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    for (var i = 0; i < 4; i++) {
+      await tapAt(tester, 0.95);
+    }
+    final start = reader(tester).page;
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    final notifier = container.read(readingSettingsProvider.notifier);
+    Future<void> change(ReadingSettings Function(ReadingSettings) edit) async {
+      notifier.set(edit(container.read(readingSettingsProvider)));
+      await tester.pumpAndSettle();
+      final page = reader(tester).page;
+      expect(page.firstWord, lessThanOrEqualTo(start.firstWord));
+      expect(page.endWord, greaterThan(start.firstWord));
+    }
+
+    const scale = TextScaler.noScaling;
+    await change((s) => s.larger(scale));
+    expect(reader(tester).layout.style.fontSize, 19);
+    await change((s) => s.larger(scale));
+    await change((s) => s.smaller(scale));
+    await change((s) => s.smaller(scale));
+    expect(reader(tester).page.firstWord, start.firstWord);
+    expect(reader(tester).page.endWord, start.endWord);
+
+    await change((s) => s.copyWith(font: BookFont.lora));
+    await change((s) => s.copyWith(lineHeight: 1.8));
+    await change((s) => s.copyWith(margins: PageMargins.wide));
+    await change((s) => s.copyWith(align: BookAlign.justify));
+    await change((s) => s.copyWith(palette: ReadingPalette.sage));
+    await change((s) => s.copyWith(night: NightMode.night));
+    await change((_) => const ReadingSettings());
+    expect(reader(tester).page.firstWord, start.firstWord);
     await closeApp(tester);
   });
 

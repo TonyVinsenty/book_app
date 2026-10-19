@@ -22,6 +22,31 @@ void main() {
     color: const Color(0xFF000000),
   );
 
+  /// Reading settings mixes (ADR 0003, addendum 2): fonts, sizes, line
+  /// heights, justify.
+  const mixes = [
+    PageStyle(
+      fontFamily: 'PT Serif',
+      fontSize: 14,
+      lineHeight: 1.3,
+      color: Color(0xFF000000),
+      align: TextAlign.justify,
+    ),
+    PageStyle(
+      fontFamily: 'Lora',
+      fontSize: 32,
+      lineHeight: 1.8,
+      color: Color(0xFF000000),
+      align: TextAlign.justify,
+    ),
+    PageStyle(
+      fontFamily: 'Noto Serif',
+      fontSize: 22,
+      lineHeight: 2,
+      color: Color(0xFF000000),
+    ),
+  ];
+
   ChapterLayout build(BookTokens tokens, int s, Size size, PageStyle st) =>
       ChapterLayout.build(
         tokens: tokens,
@@ -91,11 +116,15 @@ void main() {
     }
   }
 
-  void expectBookSplits(BookContent content, {List<Size> sizes = _sizes}) {
+  void expectBookSplits(
+    BookContent content, {
+    List<Size> sizes = _sizes,
+    PageStyle? pageStyle,
+  }) {
     final tokens = tokenize(content);
     for (final size in sizes) {
       for (var s = 0; s < content.sections.length; s++) {
-        final layout = build(tokens, s, size, style());
+        final layout = build(tokens, s, size, pageStyle ?? style());
         expectExactSplit(tokens, layout);
         expectWordsTouchable(layout);
         // Shifted after speed reading, with the word mid-page.
@@ -118,6 +147,40 @@ void main() {
 
   test('a generated book splits exactly at several page sizes', () {
     expectBookSplits(sampleBook());
+  });
+
+  test('settings mixes split exactly', () {
+    for (final mix in mixes) {
+      expectBookSplits(sampleBook(), pageStyle: mix);
+    }
+  });
+
+  test('only the color is not a layout change', () {
+    final base = style();
+    const black = Color(0xFF000000);
+    PageStyle with_({
+      String font = 'Literata',
+      double size = 18,
+      double height = 1.45,
+      Color color = black,
+      TextAlign align = TextAlign.left,
+    }) => PageStyle(
+      fontFamily: font,
+      fontSize: size,
+      lineHeight: height,
+      color: color,
+      align: align,
+    );
+    expect(with_(color: const Color(0xFFFFFFFF)).sameLayoutAs(base), isTrue);
+    expect(with_(color: const Color(0xFFFFFFFF)) == base, isFalse);
+    for (final other in [
+      with_(font: 'Lora'),
+      with_(size: 19),
+      with_(height: 1.6),
+      with_(align: TextAlign.justify),
+    ]) {
+      expect(other.sameLayoutAs(base), isFalse);
+    }
   });
 
   test('touching outside words finds nothing; other pages have no boxes', () {

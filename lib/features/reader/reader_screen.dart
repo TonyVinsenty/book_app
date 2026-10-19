@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -78,7 +78,8 @@ class ReaderView extends ConsumerStatefulWidget {
 
 class ReaderViewState extends ConsumerState<ReaderView>
     with SingleTickerProviderStateMixin {
-  static const _margin = EdgeInsets.fromLTRB(24, 20, 24, 0);
+  /// Page margins from the reading settings (the bottom one is the footer).
+  EdgeInsets _margin = EdgeInsets.zero;
   static const _footerHeight = 36.0;
 
   /// Chapters laid out for the current page size and style.
@@ -297,11 +298,21 @@ class ReaderViewState extends ConsumerState<ReaderView>
   Widget build(BuildContext context) {
     final colors = context.readingColors;
     final l10n = AppLocalizations.of(context);
+    final settings = ref.watch(readingSettingsProvider);
+    // The system text scale only picks the default size (ADR 0003,
+    // addendum 2 п. 2); the text itself is not scaled again.
     final style = PageStyle(
-      fontFamily: BookFont.literata.family,
+      fontFamily: settings.font.family,
+      fontSize: settings.fontSizeFor(MediaQuery.textScalerOf(context)),
+      lineHeight: settings.lineHeight,
       color: colors.text,
-      textScaler: MediaQuery.textScalerOf(context),
+      align: switch (settings.align) {
+        BookAlign.left => TextAlign.left,
+        BookAlign.justify => TextAlign.justify,
+      },
     );
+    final side = settings.margins.side;
+    _margin = EdgeInsets.fromLTRB(side, 20, side, 0);
     final secondary = Theme.of(context).textTheme.bodySmall
         ?.copyWith(color: colors.textSecondary);
     return SafeArea(
