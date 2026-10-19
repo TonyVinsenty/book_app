@@ -7,6 +7,7 @@ import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
+import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/rsvp_engine.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,10 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   late final Ticker _ticker;
   late final AppLifecycleListener _lifecycle;
   late int _wpm;
+
+  /// The speed shown for a moment after a swipe changed it while playing.
+  bool _speedHint = false;
+  Timer? _hintTimer;
   Duration _lastTick = Duration.zero;
 
   @visibleForTesting
@@ -59,6 +64,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _lifecycle.dispose();
     _ticker.dispose();
     super.dispose();
@@ -91,6 +97,30 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     if (mounted) setState(() {});
   }
 
+  /// Back to the start of the sentence (or the previous one); a playing
+  /// engine goes on from there.
+  void _back() {
+    setState(
+      () => _engine.seek(sentenceBack(widget.opened.tokens, _engine.wordIndex)),
+    );
+    if (!_engine.isPlaying) _savePosition();
+  }
+
+  void _onHorizontalSwipe(DragEndDetails details) {
+    if ((details.primaryVelocity ?? 0) > _swipeVelocity) _back();
+  }
+
+  void _onVerticalSwipe(DragEndDetails details) {
+    final v = details.primaryVelocity ?? 0;
+    if (v < -_swipeVelocity && _wpm < SpeedLimits.max) {
+      _changeSpeed(SpeedLimits.step);
+    } else if (v > _swipeVelocity && _wpm > SpeedLimits.min) {
+      _changeSpeed(-SpeedLimits.step);
+    }
+  }
+
+  static const _swipeVelocity = 300.0;
+
   void _toggle() {
     if (_engine.isPlaying) {
       _pause();
@@ -103,6 +133,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     setState(() {
       _wpm = SpeedLimits.clamp(_wpm + delta);
       _engine.timing = (_engine.timing as SmartPace).withSpeed(_wpm);
+      _speedHint = _engine.isPlaying;
+    });
+    _hintTimer?.cancel();
+    _hintTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _speedHint = false);
     });
     unawaited(
       ref.read(settingsRepositoryProvider).set(SettingKeys.speedWpm, '$_wpm'),
@@ -141,6 +176,8 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _toggle,
+            onHorizontalDragEnd: _onHorizontalSwipe,
+            onVerticalDragEnd: _onVerticalSwipe,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -162,6 +199,17 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                     ),
                   ),
                 ),
+                if (!paused && _speedHint)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 24,
+                    child: Text(
+                      l10n.speedWordsPerMinute(_wpm),
+                      style: secondary,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 if (paused) ...[
                   Positioned(
                     top: 4,
@@ -178,6 +226,12 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                     bottom: 24,
                     child: Column(
                       children: [
+                        TextButton.icon(
+                          icon: const Icon(Icons.undo),
+                          label: Text(l10n.speedBackSentence),
+                          onPressed: _engine.wordIndex > 0 ? _back : null,
+                        ),
+                        const SizedBox(height: 8),
                         Text(
                           _engine.isFinished
                               ? l10n.speedBookEnd

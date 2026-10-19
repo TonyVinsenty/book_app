@@ -101,6 +101,14 @@
   "@speedExit": {
     "description": "Button that closes speed reading and returns to the page"
   },
+  "speedBackSentence": "Назад на предложение",
+  "@speedBackSentence": {
+    "description": "Paused speed reading: go back to the start of the sentence"
+  },
+  "readerSpeedRead": "Скорочтение",
+  "@readerSpeedRead": {
+    "description": "Reader top bar button: speed reading from the first word of the page"
+  },
   "speedSlower": "Медленнее",
   "@speedSlower": {
     "description": "Button that lowers the speed reading pace"

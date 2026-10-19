@@ -151,4 +151,20 @@ void main() {
       reason: 'slow again',
     );
   });
+
+  test('seek jumps, shows the word in full and leaves the end', () {
+    final e = engine(words: 3)..play();
+    final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+    clock.run(const Duration(seconds: 1));
+    expect(e.isFinished, isTrue);
+
+    e
+      ..seek(1)
+      ..play();
+    expect(e.isFinished, isFalse);
+    expect(clock.run(const Duration(milliseconds: 99)), [1]);
+    expect(clock.run(const Duration(milliseconds: 2)), [1, 2]);
+    e.seek(99);
+    expect(e.wordIndex, 2);
+  });
 }

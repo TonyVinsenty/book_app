@@ -48,6 +48,15 @@ final class RsvpEngine {
 
   void pause() => _playing = false;
 
+  /// Jumps to [word] (e.g. back by a sentence); it is shown in full, and a
+  /// playing engine starts gently again.
+  void seek(int word) {
+    _word = word.clamp(0, wordCount - 1);
+    _finished = false;
+    _shown = Duration.zero;
+    _sincePlay = 0;
+  }
+
   void toggle() => _playing ? pause() : play();
 
   /// Moves time on by [elapsed]; true if the word on screen changed.

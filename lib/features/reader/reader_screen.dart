@@ -198,6 +198,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final word = layout.wordAt(_page, details.localPosition - _margin.topLeft);
     if (word == null) return;
     unawaited(HapticFeedback.selectionClick());
+    await _speedRead(word);
+  }
+
+  /// Speed reading from [word]; back on the page of the last word shown.
+  Future<void> _speedRead(int word) async {
     final saved = await ref
         .read(settingsRepositoryProvider)
         .get(SettingKeys.speedWpm);
@@ -346,7 +351,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        TextButton.icon(
+                          icon: const Icon(Icons.speed),
+                          label: Text(l10n.readerSpeedRead),
+                          onPressed: () => _speedRead(page.firstWord),
+                        ),
+                        const SizedBox(width: 8),
                       ],
                     ),
                   ),

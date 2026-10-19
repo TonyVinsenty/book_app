@@ -11,6 +11,7 @@ import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -314,6 +315,61 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('the top bar button reads from the page; back and swipes', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    await tapAt(tester, 0.95);
+    final first = reader(tester).page.firstWord;
+    final tokens = reader(tester).widget.opened.tokens;
+
+    await tapAt(tester, 0.5);
+    await tester.tap(find.text('Скорочтение'));
+    await settle(tester);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    final engine = rsvp(tester).engine;
+    expect(engine.isPlaying, isTrue);
+    expect(engine.wordIndex, inInclusiveRange(first, first + 3));
+
+    // A few seconds in, a swipe right goes back by a sentence and plays on.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    final at = engine.wordIndex;
+    await tester.fling(find.byType(RsvpScreen), const Offset(300, 0), 1000);
+    expect(engine.wordIndex, sentenceBack(tokens, at));
+    expect(engine.isPlaying, isTrue);
+
+    // A swipe up: faster, the speed shows for a moment.
+    await tester.fling(find.byType(RsvpScreen), const Offset(0, -300), 1000);
+    await tester.pump();
+    expect(find.text('325 сл/мин'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('325 сл/мин'), findsNothing);
+    await tester.fling(find.byType(RsvpScreen), const Offset(0, 300), 1000);
+    await tester.pump();
+    expect(find.text('300 сл/мин'), findsOneWidget);
+
+    // Paused: the button goes back too and the place is saved.
+    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
+    await tester.pump();
+    final paused = engine.wordIndex;
+    await tester.tap(find.text('Назад на предложение'));
+    await tester.pump();
+    expect(engine.wordIndex, sentenceBack(tokens, paused));
+    expect(engine.isPlaying, isFalse);
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), engine.wordIndex);
+
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     await closeApp(tester);
   });
