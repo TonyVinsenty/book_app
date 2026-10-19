@@ -70,11 +70,12 @@ final class ChapterLayout {
       for (final block in section.blocks)
         _BlockLayout.of(block, style, pageSize.width),
     ];
+    final metrics = [for (final block in blocks) block?.metrics];
     final pages = _withWords(
       tokens,
       sectionIndex,
-      blocks,
-      _split(blocks, pageSize.height, _chapterStart, (blocks.length, 0)),
+      metrics,
+      _split(metrics, pageSize.height, _chapterStart, (blocks.length, 0)),
     );
     return ChapterLayout._(
       sectionIndex,
@@ -93,6 +94,9 @@ final class ChapterLayout {
   final PageStyle style;
   final Section _section;
   final List<_BlockLayout?> _blocks;
+  late final List<_BlockMetrics?> _metrics = [
+    for (final block in _blocks) block?.metrics,
+  ];
   final BookTokens _tokens;
 
   /// Empty when the chapter shows nothing (no text, no separators).
@@ -122,9 +126,9 @@ final class ChapterLayout {
         )) {
       return unshifted();
     }
-    final before = _split(_blocks, pageSize.height, _chapterStart, start);
-    final after = _split(_blocks, pageSize.height, start, (_blocks.length, 0));
-    final split = _withWords(_tokens, sectionIndex, _blocks, [
+    final before = _split(_metrics, pageSize.height, _chapterStart, start);
+    final after = _split(_metrics, pageSize.height, start, (_blocks.length, 0));
+    final split = _withWords(_tokens, sectionIndex, _metrics, [
       ...before,
       ...after,
     ]);
@@ -167,7 +171,7 @@ final class ChapterLayout {
     }
     final token = _tokens[word];
     if (token.sectionIndex != sectionIndex) return null;
-    final wordBlock = _blocks[token.blockIndex];
+    final wordBlock = _metrics[token.blockIndex];
     if (wordBlock == null || !wordBlock.isText) return null;
     var line = 0;
     while (line + 1 < wordBlock.lineCount &&
@@ -196,12 +200,12 @@ final class ChapterLayout {
       }
       if (line > 0) {
         line--;
-        y += _blocks[b]!.lineHeight(line);
+        y += _metrics[b]!.lineHeight(line);
         continue;
       }
       if (previous == null) break;
-      final above = _blocks[previous]!;
-      y += math.max(above.spaceAfter, _blocks[b]!.spaceBefore);
+      final above = _metrics[previous]!;
+      y += math.max(above.spaceAfter, _metrics[b]!.spaceBefore);
       b = previous;
       line = above.lineCount - 1;
       y += above.lineHeight(line);
@@ -212,14 +216,14 @@ final class ChapterLayout {
   /// A page may not start inside a heading or separator, nor right after a
   /// heading (it would stay alone at the bottom of the page before).
   bool _canStartAt(int b, int line, int? previous) {
-    if (line > 0) return !_blocks[b]!.keepTogether;
-    return previous == null || _blocks[previous]!.keepWithNext == 0;
+    if (line > 0) return !_metrics[b]!.keepTogether;
+    return previous == null || _metrics[previous]!.keepWithNext == 0;
   }
 
   /// The nearest block above [b] that shows lines.
   int? _previousBlock(int b) {
     for (var p = b - 1; p >= 0; p--) {
-      if ((_blocks[p]?.lineCount ?? 0) > 0) return p;
+      if ((_metrics[p]?.lineCount ?? 0) > 0) return p;
     }
     return null;
   }
@@ -257,7 +261,8 @@ final class ChapterLayout {
   int? wordAt(int index, Offset point) {
     final page = pages[index];
     for (final slice in page.slices) {
-      final block = _blocks[slice.blockIndex]!;
+      final layout = _blocks[slice.blockIndex]!;
+      final block = layout.metrics;
       final top = block.tops[slice.firstLine];
       final bottom = slice.top + block.tops[slice.endLine] - top;
       if (!block.isText || point.dy < slice.top || point.dy >= bottom) {
@@ -269,7 +274,7 @@ final class ChapterLayout {
       while (line + 1 < slice.endLine && block.tops[line + 1] <= local.dy) {
         line++;
       }
-      final caret = block.painter.getPositionForOffset(local).offset;
+      final caret = layout.painter.getPositionForOffset(local).offset;
       final char = (caret - block.prefix).clamp(0, block.textLength);
       // The caret is between letters: the word holding it or the one ending
       // right before it; take the nearer one on the touched line.
@@ -288,7 +293,7 @@ final class ChapterLayout {
             _tokens[word].blockIndex != slice.blockIndex) {
           continue;
         }
-        for (final box in _boxesOf(block, word)) {
+        for (final box in _boxesOf(layout, word)) {
           final middle = box.center.dy;
           if (middle < block.tops[line] || middle >= block.tops[line + 1]) {
             continue;
@@ -317,10 +322,11 @@ final class ChapterLayout {
     final boxes = <Rect>[];
     for (final slice in pages[index].slices) {
       if (slice.blockIndex != token.blockIndex) continue;
-      final block = _blocks[slice.blockIndex]!;
+      final layout = _blocks[slice.blockIndex]!;
+      final block = layout.metrics;
       final top = block.tops[slice.firstLine];
       final bottom = block.tops[slice.endLine];
-      for (final box in _boxesOf(block, wordIndex)) {
+      for (final box in _boxesOf(layout, wordIndex)) {
         final middle = box.center.dy;
         if (middle < top || middle >= bottom) continue;
         boxes.add(box.shift(Offset(block.dx, slice.top - top)));
@@ -330,13 +336,14 @@ final class ChapterLayout {
   }
 
   /// Boxes of a word in its block painter's coordinates.
-  Iterable<Rect> _boxesOf(_BlockLayout block, int wordIndex) {
+  Iterable<Rect> _boxesOf(_BlockLayout layout, int wordIndex) {
     final token = _tokens[wordIndex];
-    return block.painter
+    final prefix = layout.metrics.prefix;
+    return layout.painter
         .getBoxesForSelection(
           TextSelection(
-            baseOffset: token.charStart + block.prefix,
-            extentOffset: token.charEnd + block.prefix,
+            baseOffset: token.charStart + prefix,
+            extentOffset: token.charEnd + prefix,
           ),
         )
         .map((box) => box.toRect());
@@ -344,13 +351,14 @@ final class ChapterLayout {
 
   void paintPage(Canvas canvas, int index) {
     for (final slice in pages[index].slices) {
-      final block = _blocks[slice.blockIndex]!;
+      final layout = _blocks[slice.blockIndex]!;
+      final block = layout.metrics;
       final top = block.tops[slice.firstLine];
       final height = block.tops[slice.endLine] - top;
       canvas
         ..save()
         ..clipRect(Rect.fromLTWH(0, slice.top, pageSize.width, height));
-      block.painter.paint(canvas, Offset(block.dx, slice.top - top));
+      layout.painter.paint(canvas, Offset(block.dx, slice.top - top));
       canvas.restore();
     }
   }
@@ -364,23 +372,12 @@ final class ChapterLayout {
   /// Pages of lines from [from] up to [to] (not included), filled from the
   /// top as far as they go.
   static List<List<PageSlice>> _split(
-    List<_BlockLayout?> blocks,
+    List<_BlockMetrics?> blocks,
     double pageHeight,
     _Line from,
     _Line to,
   ) {
-    final slicesOfPages = <List<PageSlice>>[];
-    var slices = <PageSlice>[];
-    var y = 0.0;
-    var spaceAfterPrevious = 0.0;
-
-    void newPage() {
-      if (slices.isEmpty) return;
-      slicesOfPages.add(slices);
-      slices = [];
-      y = 0;
-    }
-
+    final splitter = _Splitter(pageHeight);
     final (fromBlock, fromLine) = from;
     final (toBlock, toLine) = to;
     for (var b = fromBlock; b < blocks.length && b <= toBlock; b++) {
@@ -390,55 +387,16 @@ final class ChapterLayout {
       final endLine = b == toBlock ? toLine : block.lineCount;
       // The lines of the last block from [toLine] on are not in the range.
       if (b == toBlock && firstLine >= endLine) continue;
-      var gap = slices.isEmpty
-          ? 0.0
-          : math.max(spaceAfterPrevious, block.spaceBefore);
-      // A heading or separator moves to the next page whole; a heading also
-      // takes at least one following line with it.
-      if (block.keepTogether && slices.isNotEmpty) {
-        final needed = block.height + block.keepWithNext;
-        if (needed <= pageHeight && y + gap + needed > pageHeight) {
-          newPage();
-          gap = 0;
-        }
-      }
-      y += gap;
-      var line = firstLine;
-      while (line < endLine) {
-        final start = line;
-        final top = y;
-        // At least one line per page, even if it is taller than the page.
-        while (line < endLine &&
-            (y + block.lineHeight(line) <= pageHeight ||
-                (slices.isEmpty && line == start))) {
-          y += block.lineHeight(line);
-          line++;
-        }
-        if (line > start) {
-          slices.add(
-            PageSlice(
-              blockIndex: b,
-              firstLine: start,
-              endLine: line,
-              top: top,
-              charStart: block.lineStarts[start],
-              charEnd: block.lineStarts[line],
-            ),
-          );
-        }
-        if (line < endLine) newPage();
-      }
-      spaceAfterPrevious = block.spaceAfter;
+      splitter.add(b, block, firstLine, endLine);
     }
-    newPage();
-    return slicesOfPages;
+    return splitter.finish();
   }
 
   /// Pages of the whole chapter with their word ranges.
   static List<ChapterPage> _withWords(
     BookTokens tokens,
     int sectionIndex,
-    List<_BlockLayout?> blocks,
+    List<_BlockMetrics?> blocks,
     List<List<PageSlice>> slicesOfPages,
   ) {
     // A page's words start at its first text; pages without text share the
@@ -496,6 +454,129 @@ final class ChapterLayout {
   }
 }
 
+/// Splits a chapter into pages a few blocks at a time (ADR 0003, addendum 2
+/// п. 5): a block's text painter is freed as soon as its line metrics are
+/// taken, and the pages are those [ChapterLayout.build] gives. Main isolate
+/// only (text layout).
+final class ChapterPaginator {
+  ChapterPaginator({
+    required this._tokens,
+    required this.sectionIndex,
+    required this._style,
+    required Size pageSize,
+  }) : _width = pageSize.width,
+       _source = _tokens.content.sections[sectionIndex].blocks,
+       _splitter = _Splitter(pageSize.height);
+
+  final int sectionIndex;
+  final BookTokens _tokens;
+  final PageStyle _style;
+  final double _width;
+  final List<Block> _source;
+  final _Splitter _splitter;
+  final _metrics = <_BlockMetrics?>[];
+  List<int>? _firstWords;
+
+  bool get isDone => _firstWords != null;
+
+  /// First words (book word indices) of the chapter's pages, once [isDone];
+  /// empty if the chapter shows nothing.
+  List<int> get pageFirstWords =>
+      _firstWords ?? (throw StateError('The chapter is not split yet'));
+
+  /// Lays out blocks until [budget] is spent (at least one block), and
+  /// finishes the split after the last one. Returns [isDone].
+  bool step([Duration budget = const Duration(milliseconds: 6)]) {
+    final watch = Stopwatch()..start();
+    while (_metrics.length < _source.length) {
+      final b = _metrics.length;
+      final layout = _BlockLayout.of(_source[b], _style, _width);
+      layout?.painter.dispose();
+      final block = layout?.metrics;
+      _metrics.add(block);
+      if (block != null) _splitter.add(b, block, 0, block.lineCount);
+      if (watch.elapsed >= budget) break;
+    }
+    if (!isDone && _metrics.length == _source.length) {
+      final pages = ChapterLayout._withWords(
+        _tokens,
+        sectionIndex,
+        _metrics,
+        _splitter.finish(),
+      );
+      _firstWords = [for (final page in pages) page.firstWord];
+    }
+    return isDone;
+  }
+}
+
+/// Fills pages from the top with block lines given in reading order.
+final class _Splitter {
+  _Splitter(this.pageHeight);
+
+  final double pageHeight;
+  final _pages = <List<PageSlice>>[];
+  var _slices = <PageSlice>[];
+  var _y = 0.0;
+  var _spaceAfterPrevious = 0.0;
+
+  void _newPage() {
+    if (_slices.isEmpty) return;
+    _pages.add(_slices);
+    _slices = [];
+    _y = 0;
+  }
+
+  /// Adds lines `[firstLine, endLine)` of block [b].
+  void add(int b, _BlockMetrics block, int firstLine, int endLine) {
+    var gap = _slices.isEmpty
+        ? 0.0
+        : math.max(_spaceAfterPrevious, block.spaceBefore);
+    // A heading or separator moves to the next page whole; a heading also
+    // takes at least one following line with it.
+    if (block.keepTogether && _slices.isNotEmpty) {
+      final needed = block.height + block.keepWithNext;
+      if (needed <= pageHeight && _y + gap + needed > pageHeight) {
+        _newPage();
+        gap = 0;
+      }
+    }
+    _y += gap;
+    var line = firstLine;
+    while (line < endLine) {
+      final start = line;
+      final top = _y;
+      // At least one line per page, even if it is taller than the page.
+      while (line < endLine &&
+          (_y + block.lineHeight(line) <= pageHeight ||
+              (_slices.isEmpty && line == start))) {
+        _y += block.lineHeight(line);
+        line++;
+      }
+      if (line > start) {
+        _slices.add(
+          PageSlice(
+            blockIndex: b,
+            firstLine: start,
+            endLine: line,
+            top: top,
+            charStart: block.lineStarts[start],
+            charEnd: block.lineStarts[line],
+          ),
+        );
+      }
+      if (line < endLine) _newPage();
+    }
+    _spaceAfterPrevious = block.spaceAfter;
+  }
+
+  /// All pages, the last one closed.
+  List<List<PageSlice>> finish() {
+    _newPage();
+    return _pages;
+  }
+}
+
 const _separatorText = '* * *';
 
 /// A line of a chapter: (block index, line in the block).
@@ -508,34 +589,29 @@ const _Line _chapterStart = (0, 0);
 /// ones (and letter spacing on them breaks justified lines).
 const _indent = '  ';
 
-/// A block laid out at the page width, with its line boundaries.
+/// A block laid out at the page width by its painter.
 final class _BlockLayout {
   _BlockLayout(
     this.painter, {
-    required this.prefix,
-    required this.textLength,
-    required this.dx,
-    required this.isText,
-    this.spaceBefore = 0,
-    this.spaceAfter = 0,
-    this.keepTogether = false,
-    this.keepWithNext = 0,
-  }) {
-    final metrics = painter.computeLineMetrics();
-    final n = metrics.length;
-    tops = List.filled(n + 1, 0)..[n] = painter.height;
-    lineStarts = List.filled(n + 1, 0)..[n] = textLength;
-    for (var i = 1; i < n; i++) {
-      // Halfway between the line above and this one, whatever the leading.
-      final above = metrics[i - 1].baseline + metrics[i - 1].descent;
-      final top = metrics[i].baseline - metrics[i].ascent;
-      tops[i] = (above + top) / 2;
-      final middle = (tops[i] + metrics[i].baseline) / 2;
-      // Left of the text, so it hits the line start in any alignment.
-      final offset = painter.getPositionForOffset(Offset(-1, middle)).offset;
-      lineStarts[i] = (offset - prefix).clamp(lineStarts[i - 1], textLength);
-    }
-  }
+    required int prefix,
+    required int textLength,
+    required double dx,
+    required bool isText,
+    double spaceBefore = 0,
+    double spaceAfter = 0,
+    bool keepTogether = false,
+    double keepWithNext = 0,
+  }) : metrics = _BlockMetrics(
+         painter,
+         prefix: prefix,
+         textLength: textLength,
+         dx: dx,
+         isText: isText,
+         spaceBefore: spaceBefore,
+         spaceAfter: spaceAfter,
+         keepTogether: keepTogether,
+         keepWithNext: keepWithNext,
+       );
 
   /// Null for blocks not shown yet (pictures come in a later stage).
   static _BlockLayout? of(Block block, PageStyle style, double width) {
@@ -687,6 +763,38 @@ final class _BlockLayout {
   }
 
   final TextPainter painter;
+  final _BlockMetrics metrics;
+}
+
+/// Where a laid-out block's lines are: all the page split needs, without
+/// the painter (ADR 0003, addendum 2 п. 5).
+final class _BlockMetrics {
+  _BlockMetrics(
+    TextPainter painter, {
+    required this.prefix,
+    required this.textLength,
+    required this.dx,
+    required this.isText,
+    required this.spaceBefore,
+    required this.spaceAfter,
+    required this.keepTogether,
+    required this.keepWithNext,
+  }) {
+    final metrics = painter.computeLineMetrics();
+    final n = metrics.length;
+    tops = List.filled(n + 1, 0)..[n] = painter.height;
+    lineStarts = List.filled(n + 1, 0)..[n] = textLength;
+    for (var i = 1; i < n; i++) {
+      // Halfway between the line above and this one, whatever the leading.
+      final above = metrics[i - 1].baseline + metrics[i - 1].descent;
+      final top = metrics[i].baseline - metrics[i].ascent;
+      tops[i] = (above + top) / 2;
+      final middle = (tops[i] + metrics[i].baseline) / 2;
+      // Left of the text, so it hits the line start in any alignment.
+      final offset = painter.getPositionForOffset(Offset(-1, middle)).offset;
+      lineStarts[i] = (offset - prefix).clamp(lineStarts[i - 1], textLength);
+    }
+  }
 
   /// Characters added before the block text (the first-line indent).
   final int prefix;

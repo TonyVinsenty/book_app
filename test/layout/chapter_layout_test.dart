@@ -116,6 +116,26 @@ void main() {
     }
   }
 
+  /// The book-wide pass (ADR 0003, addendum 2 п. 5), one block per step,
+  /// gives the same pages as the layout shown on screen.
+  void expectSameAsPaginator(BookTokens tokens, ChapterLayout layout) {
+    final paginator = ChapterPaginator(
+      tokens: tokens,
+      sectionIndex: layout.sectionIndex,
+      style: layout.style,
+      pageSize: layout.pageSize,
+    );
+    final blocks = tokens.content.sections[layout.sectionIndex].blocks.length;
+    var steps = 0;
+    while (!paginator.step(Duration.zero)) {
+      steps++;
+    }
+    expect(steps, blocks == 0 ? 0 : blocks - 1, reason: 'a block per step');
+    expect(paginator.pageFirstWords, [
+      for (final page in layout.pages) page.firstWord,
+    ], reason: 'chapter ${layout.sectionIndex} at ${layout.pageSize}');
+  }
+
   void expectBookSplits(
     BookContent content, {
     List<Size> sizes = _sizes,
@@ -127,6 +147,7 @@ void main() {
         final layout = build(tokens, s, size, pageStyle ?? style());
         expectExactSplit(tokens, layout);
         expectWordsTouchable(layout);
+        expectSameAsPaginator(tokens, layout);
         // Shifted after speed reading, with the word mid-page.
         final start = tokens.firstWordOfSection(s);
         final end = tokens.firstWordOfSection(s + 1);
