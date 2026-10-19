@@ -17,12 +17,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Normal reading: one page at a time (ADR 0003).
 class ReaderScreen extends ConsumerWidget {
-  const ReaderScreen({super.key, required this.bookId});
+  const ReaderScreen({super.key, required this.bookId, this.reopened = false});
 
   final int bookId;
 
+  /// Opened on start, not by the user: if the book fails, go back to the
+  /// library with a short message instead of an error page.
+  final bool reopened;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    if (reopened) {
+      ref.listen(openedBookProvider(bookId), (_, next) {
+        if (next is! AsyncError) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.readerReopenFailed)));
+        Navigator.of(context).pop();
+      });
+    }
     final opened = ref.watch(openedBookProvider(bookId));
     return Scaffold(
       backgroundColor: context.readingColors.background,
@@ -31,9 +44,16 @@ class ReaderScreen extends ConsumerWidget {
         AsyncError() => Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
-            child: Text(
-              AppLocalizations.of(context).readerOpenFailed,
-              textAlign: TextAlign.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.readerOpenFailed, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.readerBackToLibrary),
+                ),
+              ],
             ),
           ),
         ),

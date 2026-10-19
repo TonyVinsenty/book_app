@@ -84,6 +84,14 @@
   "@readerOpenFailed": {
     "description": "The reader could not load the book file"
   },
+  "readerBackToLibrary": "К библиотеке",
+  "@readerBackToLibrary": {
+    "description": "Button under the open error: leave the reader"
+  },
+  "readerReopenFailed": "Не удалось открыть последнюю книгу",
+  "@readerReopenFailed": {
+    "description": "Message in the library when the book reopened on start could not be loaded"
+  },
   "readerPageOfChapter": "{page} / {count}",
   "@readerPageOfChapter": {
     "description": "Page number inside the current chapter, at the bottom of the reader",

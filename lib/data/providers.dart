@@ -40,9 +40,11 @@ final booksProvider = StreamProvider<List<BookRow>>(
   (ref) => ref.watch(bookRepositoryProvider).watchBooks(),
 );
 
-/// A book prepared for the reader screen, by book id.
+/// A book prepared for the reader screen, by book id. A failure is final
+/// (missing or broken files), so Riverpod's automatic retry is off.
 final openedBookProvider = FutureProvider.autoDispose.family<OpenedBook, int>(
   (ref, id) => BookOpener(ref.watch(bookRepositoryProvider)).open(id),
+  retry: (_, _) => null,
 );
 
 /// Opens the database and the book files in the app support directory

@@ -8,6 +8,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
@@ -37,8 +38,14 @@ void main() {
     await tester.pump();
   }
 
-  /// The app with one generated three-chapter book in the library.
-  Future<void> pumpApp(WidgetTester tester) async {
+  /// The app with one generated three-chapter book in the library;
+  /// [reopen] starts it as after a restart with that book read last,
+  /// [lostFiles] removes the book files first.
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    bool reopen = false,
+    bool lostFiles = false,
+  }) async {
     // Closing a drift database under fake time hangs, so it is left open;
     // synchronous stream closing leaves no pending timer.
     db = AppDatabase(
@@ -59,14 +66,16 @@ void main() {
         parserVersion: txtParserVersion,
         wordCount: tokenize(content).length,
       )).id;
+      if (reopen) await repo.markOpened(bookId);
     });
+    if (lostFiles) Directory('${temp.path}/books').deleteSync(recursive: true);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           bookRepositoryProvider.overrideWithValue(repo),
         ],
-        child: const BookApp(),
+        child: BookApp(reopenBookId: reopen ? bookId : null),
       ),
     );
     await settle(tester);
@@ -140,6 +149,59 @@ void main() {
     await openBook(tester);
     final page = reader(tester).page;
     expect(page.firstWord, saved, reason: 'opens where reading stopped');
+    await closeApp(tester);
+  });
+
+  testWidgets('the last book reopens on start; back leads to the library', (
+    tester,
+  ) async {
+    await pumpApp(tester, reopen: true);
+    for (
+      var i = 0;
+      i < 100 && find.byType(ReaderView).evaluate().isEmpty;
+      i++
+    ) {
+      await settle(tester);
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(ReaderView), findsOneWidget);
+    expect(find.byType(LibraryScreen), findsNothing, reason: 'covered');
+
+    await tester.binding.handlePopRoute(); // system "back"
+    await tester.pumpAndSettle();
+    expect(find.byType(ListTile), findsOneWidget);
+    await closeApp(tester);
+  });
+
+  testWidgets('a lost last book leaves the library with a message', (
+    tester,
+  ) async {
+    await pumpApp(tester, reopen: true, lostFiles: true);
+    for (var i = 0; i < 100 && find.byType(SnackBar).evaluate().isEmpty; i++) {
+      await settle(tester);
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('Не удалось открыть последнюю книгу'), findsOneWidget);
+    expect(find.byType(ReaderScreen), findsNothing);
+    expect(find.byType(ListTile), findsOneWidget);
+    await closeApp(tester);
+  });
+
+  testWidgets('a lost book opened by hand shows the way back', (tester) async {
+    await pumpApp(tester, lostFiles: true);
+    await tester.tap(find.byType(ListTile));
+    for (
+      var i = 0;
+      i < 100 && find.text('К библиотеке').evaluate().isEmpty;
+      i++
+    ) {
+      await settle(tester);
+    }
+    expect(find.text('Не удалось открыть книгу'), findsOneWidget);
+
+    await tester.tap(find.text('К библиотеке'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReaderScreen), findsNothing);
     await closeApp(tester);
   });
 

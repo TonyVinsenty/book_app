@@ -31,6 +31,14 @@ final class BookRepository {
     return query.watch();
   }
 
+  /// The book opened most recently, to reopen on start; null if none was.
+  Future<BookRow?> lastOpened() =>
+      (_db.select(_db.books)
+            ..where((b) => b.openedAt.isNotNull())
+            ..orderBy([(b) => OrderingTerm.desc(b.openedAt)])
+            ..limit(1))
+          .getSingleOrNull();
+
   Future<BookRow?> findById(int id) =>
       (_db.select(_db.books)..where((b) => b.id.equals(id))).getSingleOrNull();
 

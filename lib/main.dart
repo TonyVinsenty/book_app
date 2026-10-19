@@ -7,6 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
-  final overrides = await openStorageOverrides();
-  runApp(ProviderScope(overrides: overrides, child: const BookApp()));
+  final container = ProviderContainer(overrides: await openStorageOverrides());
+  // One small query, so the reader is the first screen (no library flash).
+  final last = await container.read(bookRepositoryProvider).lastOpened();
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: BookApp(reopenBookId: last?.id),
+    ),
+  );
 }

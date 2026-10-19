@@ -153,6 +153,19 @@ void main() {
     expect((await repo.findById(b.id))!.openedAt, clock);
   });
 
+  test('the last opened book; none before any was opened', () async {
+    final a = await add('А');
+    final b = await add('Б');
+    expect(await repo.lastOpened(), isNull, reason: 'added is not opened');
+
+    clock = clock.add(const Duration(minutes: 1));
+    await repo.markOpened(b.id);
+    clock = clock.add(const Duration(minutes: 1));
+    await repo.markOpened(a.id);
+
+    expect((await repo.lastOpened())!.id, a.id);
+  });
+
   test('the list stream updates on changes', () async {
     final updates = repo.watchBooks().map((rows) => rows.length);
     final expectation = expectLater(updates, emitsInOrder([0, 1, 0]));
