@@ -55,7 +55,7 @@ void main() {
 
   test('adds an FB2 book with its metadata, hash and files', () async {
     final file = copyFixture('test/fixtures/fb2/utf8_nested.fb2');
-    final result = await importer.importFile(file);
+    final result = (await importer.importFile(file)).single;
 
     final book = (result as ImportAdded).book;
     expect(result.fileName, 'utf8_nested.fb2');
@@ -70,7 +70,7 @@ void main() {
 
   test('adds a TXT book titled by its file name', () async {
     final file = copyFixture('test/fixtures/txt/cp1251_librus.txt');
-    final book = ((await importer.importFile(file)) as ImportAdded).book;
+    final book = ((await importer.importFile(file)).single as ImportAdded).book;
 
     expect(book.title, 'cp1251_librus');
     expect(book.sourceFormat, SourceFormat.txt);
@@ -79,7 +79,7 @@ void main() {
 
   test('adds an EPUB book; the source is stored as is', () async {
     final file = copyFixture('test/fixtures/epub/epub3_ru.epub');
-    final book = ((await importer.importFile(file)) as ImportAdded).book;
+    final book = ((await importer.importFile(file)).single as ImportAdded).book;
 
     expect(book.title, 'Утро над рекой');
     expect(book.sourceFormat, SourceFormat.epub);
@@ -90,10 +90,10 @@ void main() {
 
   test('the same file twice is a duplicate, also under another name', () async {
     final first = copyFixture('test/fixtures/txt/utf8_lines.txt');
-    final added = (await importer.importFile(first)) as ImportAdded;
+    final added = (await importer.importFile(first)).single as ImportAdded;
     final again = first.copySync('${temp.path}/renamed.txt');
 
-    final result = await importer.importFile(again);
+    final result = (await importer.importFile(again)).single;
 
     expect((result as ImportDuplicate).book.id, added.book.id);
     expect(result.fileName, 'renamed.txt');
@@ -136,7 +136,7 @@ void main() {
       'missing file': (File('${temp.path}/nope.txt'), ImportError.unreadable),
     };
     for (final MapEntry(key: name, value: (file, error)) in cases.entries) {
-      final result = await importer.importFile(file);
+      final result = (await importer.importFile(file)).single;
       expect((result as ImportFailed).error, error, reason: name);
     }
     expect(await db.select(db.books).get(), isEmpty);
@@ -147,7 +147,7 @@ void main() {
     final fb2Bytes = File(fb2).readAsBytesSync();
     for (final zip in ['plain.fb2.zip', 'folder_first.zip']) {
       final file = copyFixture('test/fixtures/zip/$zip');
-      final result = await importer.importFile(file);
+      final result = (await importer.importFile(file)).single;
 
       final book = (result as ImportAdded).book;
       expect(result.fileName, 'utf8_nested.fb2', reason: zip);
@@ -164,15 +164,41 @@ void main() {
     'the book in a box need not be first; macOS forks are skipped',
     () async {
       final file = copyFixture('test/fixtures/zip/fb2_not_first.zip');
-      final result = await importer.importFile(file);
+      final result = (await importer.importFile(file)).single;
 
       expect((result as ImportAdded).fileName, 'utf8_nested.fb2');
     },
   );
 
+  test('every book of a box is imported, in archive order', () async {
+    final archive = Archive()
+      ..addFile(ArchiveFile.bytes('b/Вторая.txt', utf8.encode('Вторая книга.')))
+      ..addFile(ArchiveFile.bytes('picture.png', [1, 2, 3]))
+      ..addFile(ArchiveFile.bytes('Первая.txt', utf8.encode('Первая книга.')))
+      ..addFile(ArchiveFile.bytes('Битая.fb2', utf8.encode('<FictionBook>')));
+    final zip = write('box.zip', ZipEncoder().encodeBytes(archive));
+    final told = <(String, int)>[];
+
+    final results = await importer.importFile(
+      zip,
+      onBook: (name, count) => told.add((name, count)),
+    );
+
+    expect(told, [('Вторая.txt', 3), ('Первая.txt', 3), ('Битая.fb2', 3)]);
+    expect([for (final r in results) r.fileName], [
+      'Вторая.txt',
+      'Первая.txt',
+      'Битая.fb2',
+    ]);
+    expect(results[0], isA<ImportAdded>());
+    expect(results[1], isA<ImportAdded>());
+    expect((results[2] as ImportFailed).error, ImportError.damaged);
+    expect(temp.listSync().where((e) => e.path.contains('unzip_')), isEmpty);
+  });
+
   test('the cover is stored with the book', () async {
     final file = write('c.fb2', utf8.encode(fb2WithCover(5)));
-    final book = ((await importer.importFile(file)) as ImportAdded).book;
+    final book = ((await importer.importFile(file)).single as ImportAdded).book;
 
     expect(book.coverFile, 'cover.png');
     expect(repo.coverFile(book)!.readAsBytesSync().last, 5);
@@ -187,15 +213,14 @@ void main() {
     );
     final importer = BookImporter(repo);
     final first = write('a.txt', utf8.encode('Первая книга.'));
-    final a = ((await importer.importFile(first)) as ImportAdded).book;
+    final a = ((await importer.importFile(first)).single as ImportAdded).book;
     clock = clock.add(const Duration(minutes: 1));
-    final b = ((await importer.importFile(
-      write('b.txt', utf8.encode('Вторая книга.')),
-    )) as ImportAdded).book;
+    final second = write('b.txt', utf8.encode('Вторая книга.'));
+    final b = ((await importer.importFile(second)).single as ImportAdded).book;
     expect([for (final r in await repo.watchBooks().first) r.id], [b.id, a.id]);
 
     clock = clock.add(const Duration(minutes: 1));
-    final again = await importer.importFile(first);
+    final again = (await importer.importFile(first)).single;
 
     expect((again as ImportDuplicate).book.touchedAt, clock);
     expect([for (final r in await repo.watchBooks().first) r.id], [a.id, b.id]);
@@ -203,10 +228,10 @@ void main() {
 
   test('FB2 and FB2.ZIP of one book are a duplicate', () async {
     final fb2 = copyFixture('test/fixtures/fb2/utf8_nested.fb2');
-    final added = (await importer.importFile(fb2)) as ImportAdded;
+    final added = (await importer.importFile(fb2)).single as ImportAdded;
 
     final zip = copyFixture('test/fixtures/zip/plain.fb2.zip');
-    final result = await importer.importFile(zip);
+    final result = (await importer.importFile(zip)).single;
 
     expect((result as ImportDuplicate).book.id, added.book.id);
     expect(await db.select(db.books).get(), hasLength(1));

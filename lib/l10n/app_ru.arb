@@ -36,12 +36,13 @@
   "@addBook": {
     "description": "Button that opens the file picker"
   },
-  "importProgress": "Добавляется {current} из {total}",
+  "importProgress": "Добавляется {current} из {total}: {fileName}",
   "@importProgress": {
-    "description": "Button label while picked files are imported",
+    "description": "Line over the progress bar while the import queue works",
     "placeholders": {
       "current": {"type": "int"},
-      "total": {"type": "int"}
+      "total": {"type": "int"},
+      "fileName": {"type": "String"}
     }
   },
   "importAdded": "Книга добавлена: {title}",
@@ -84,6 +85,42 @@
   "importPickFailed": "Не удалось открыть выбор файлов",
   "@importPickFailed": {
     "description": "The system file picker could not be shown"
+  },
+  "importDetails": "Подробнее",
+  "@importDetails": {
+    "description": "Snackbar action: the list of imported files and results"
+  },
+  "importDetailsTitle": "Добавление книг",
+  "@importDetailsTitle": {
+    "description": "Title of the list of imported files"
+  },
+  "importStatusAdded": "Добавлена",
+  "@importStatusAdded": {
+    "description": "Import result of one file in the list"
+  },
+  "importStatusDuplicate": "Уже была в библиотеке",
+  "@importStatusDuplicate": {
+    "description": "Import result of one file in the list"
+  },
+  "importStatusUnsupported": "Формат пока не поддерживается",
+  "@importStatusUnsupported": {
+    "description": "Import result of one file in the list"
+  },
+  "importStatusDamaged": "Файл повреждён",
+  "@importStatusDamaged": {
+    "description": "Import result of one file in the list"
+  },
+  "importStatusDrm": "Защищена от копирования (DRM)",
+  "@importStatusDrm": {
+    "description": "Import result of one file in the list"
+  },
+  "importStatusUnreadable": "Не удалось открыть файл",
+  "@importStatusUnreadable": {
+    "description": "Import result of one file in the list"
+  },
+  "close": "Закрыть",
+  "@close": {
+    "description": "Button that closes a dialog"
   },
   "readerOpenFailed": "Не удалось открыть книгу",
   "@readerOpenFailed": {

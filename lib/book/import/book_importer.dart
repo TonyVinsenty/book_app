@@ -125,35 +125,53 @@ String titleFromFileName(String fileName) {
   return fileName.trim();
 }
 
-/// Adds book files to the library.
-final class BookImporter {
+/// Called before each book of a file is imported: its name, and how many
+/// books the file holds (more than one only in a ZIP box).
+typedef OnBook = void Function(String name, int count);
+
+/// Adds book files to the library. Not final: queue tests fake it.
+class BookImporter {
   BookImporter(this._books);
 
   final BookRepository _books;
 
-  /// Never throws: failures come back as [ImportFailed]. A ZIP box is
-  /// unpacked next to [file] and its first book is imported (the queue
-  /// takes the rest, ADR 0005); the result names the book inside.
-  Future<ImportResult> importFile(File file) async {
-    var name = _baseName(file.path);
+  /// Imports the book in [file], or every book of a ZIP box, which is
+  /// unpacked next to [file] and removed afterwards (ADR 0005). Never
+  /// throws: failures come back as [ImportFailed]; a box that can't be
+  /// unpacked is one failure under its own name.
+  Future<List<ImportResult>> importFile(File file, {OnBook? onBook}) async {
     Directory? unpackDir;
     try {
-      var book = file;
-      if (await _startsLikeZip(file)) {
-        final dir = unpackDir = await file.parent.createTemp('unzip_');
-        final unpacked = await _unpackInIsolate(file.path, dir.path);
-        if (unpacked != null) {
-          book = File(unpacked.first);
-          name = _baseName(book.path);
+      var books = [file];
+      try {
+        if (await _startsLikeZip(file)) {
+          final dir = unpackDir = await file.parent.createTemp('unzip_');
+          final unpacked = await _unpackInIsolate(file.path, dir.path);
+          if (unpacked != null) books = [for (final p in unpacked) File(p)];
         }
+      } on Object catch (e) {
+        return [_failure(fileNameOf(file.path), e)];
       }
-      final path = book.path;
-      final hash = await _hashInIsolate(path);
+      final results = <ImportResult>[];
+      for (final book in books) {
+        final name = fileNameOf(book.path);
+        onBook?.call(name, books.length);
+        results.add(await _importBook(book, name));
+      }
+      return results;
+    } finally {
+      if (unpackDir != null) await _deleteQuietly(unpackDir);
+    }
+  }
+
+  Future<ImportResult> _importBook(File book, String name) async {
+    try {
+      final hash = await _hashInIsolate(book.path);
       final existing = await _books.findByHash(hash);
       // Deleted in the meantime → added again.
       final touched = existing == null ? null : await _books.touch(existing.id);
       if (touched != null) return ImportDuplicate(name, touched);
-      final parsed = await _parseInIsolate(path, name);
+      final parsed = await _parseInIsolate(book.path, name);
       final row = await _books.addBook(
         content: parsed.content,
         source: book,
@@ -164,20 +182,24 @@ final class BookImporter {
         cover: parsed.cover,
       );
       return ImportAdded(name, row);
-    } on ImportException catch (e) {
-      return ImportFailed(name, e.error);
-    } on FileSystemException {
-      return ImportFailed(name, ImportError.unreadable);
-    } on Object {
-      // A parser bug on a strange file must not crash the app.
-      return ImportFailed(name, ImportError.damaged);
-    } finally {
-      if (unpackDir != null) await _deleteQuietly(unpackDir);
+    } on Object catch (e) {
+      return _failure(name, e);
     }
   }
 }
 
-String _baseName(String path) => path.split(RegExp(r'[/\\]')).last;
+ImportFailed _failure(String name, Object error) =>
+    ImportFailed(name, switch (error) {
+      ImportException(:final error) => error,
+      FileSystemException() => ImportError.unreadable,
+      // A parser bug on a strange file must not crash the app.
+      _ => ImportError.damaged,
+    });
+
+/// The last part of a path, with either kind of slash.
+String fileNameOf(String path) => path.split(_slashes).last;
+
+final _slashes = RegExp(r'[/\\]');
 
 Future<bool> _startsLikeZip(File file) async {
   final head = await file.openRead(0, 4).fold(<int>[], (a, b) => a..addAll(b));
