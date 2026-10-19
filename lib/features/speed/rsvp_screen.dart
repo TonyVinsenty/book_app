@@ -50,7 +50,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     _engine = RsvpEngine(
       wordCount: widget.opened.tokens.length,
       startWord: widget.startWord,
-      timing: ConstantPace(_wpm),
+      timing: SmartPace(widget.opened.tokens, _wpm),
     );
     _ticker = createTicker(_onTick);
     _lifecycle = AppLifecycleListener(onInactive: _pause);
@@ -102,7 +102,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   void _changeSpeed(int delta) {
     setState(() {
       _wpm = SpeedLimits.clamp(_wpm + delta);
-      _engine.timing = ConstantPace(_wpm);
+      _engine.timing = (_engine.timing as SmartPace).withSpeed(_wpm);
     });
     unawaited(
       ref.read(settingsRepositoryProvider).set(SettingKeys.speedWpm, '$_wpm'),

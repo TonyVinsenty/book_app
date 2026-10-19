@@ -11,6 +11,7 @@ import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/speed/timing.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -257,12 +258,13 @@ void main() {
     await longPressWord(tester, start);
     final engine = rsvp(tester).engine;
     expect(engine.isPlaying, isTrue);
-    // Started at the pressed word; 300 wpm by default = 200 ms per word.
+    // Started at the pressed word; 300 wpm by default = 200 ms per word
+    // on average, slower at the start and on stops (smart pace).
     expect(engine.wordIndex, inInclusiveRange(start, start + 3));
     final before = engine.wordIndex;
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
-    expect(engine.wordIndex, inInclusiveRange(before + 9, before + 11));
+    expect(engine.wordIndex, inInclusiveRange(before + 4, before + 12));
 
     // A tap pauses and shows the controls.
     await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
@@ -308,7 +310,7 @@ void main() {
     // the speed set before is kept.
     await longPressWord(tester, page.firstWord);
     expect(find.text('325 сл/мин'), findsNothing, reason: 'playing');
-    expect(rsvp(tester).engine.timing.durationOf(0).inMilliseconds, 184);
+    expect((rsvp(tester).engine.timing as SmartPace).wordsPerMinute, 325);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);

@@ -9,11 +9,17 @@ final class RsvpEngine {
     required this.wordCount,
     required int startWord,
     required this.timing,
+    this.rampWords = 10,
   }) : assert(wordCount > 0),
        _word = startWord.clamp(0, wordCount - 1);
 
   final int wordCount;
   WordTiming timing;
+
+  /// Gentle start: after [play] the speed grows from [rampFrom] of the set
+  /// one to full over this many words (ADR 0004 п. 4); 0 turns it off.
+  final int rampWords;
+  static const rampFrom = 0.6;
 
   int _word;
   bool _playing = false;
@@ -21,6 +27,9 @@ final class RsvpEngine {
 
   /// Time the current word has been shown while playing.
   Duration _shown = Duration.zero;
+
+  /// Words shown since the last [play], for the gentle start.
+  int _sincePlay = 0;
 
   /// The word on screen (`wordIndex`).
   int get wordIndex => _word;
@@ -34,6 +43,7 @@ final class RsvpEngine {
     if (_finished) return;
     _playing = true;
     _shown = Duration.zero;
+    _sincePlay = 0;
   }
 
   void pause() => _playing = false;
@@ -46,16 +56,24 @@ final class RsvpEngine {
     final before = _word;
     _shown += elapsed;
     while (_playing) {
-      final duration = timing.durationOf(_word);
+      final duration = _durationOf(_word);
       if (_shown < duration) break;
       _shown -= duration;
       if (_word + 1 < wordCount) {
         _word++;
+        _sincePlay++;
       } else {
         _playing = false;
         _finished = true;
       }
     }
     return _word != before;
+  }
+
+  Duration _durationOf(int word) {
+    final duration = timing.durationOf(word);
+    if (_sincePlay >= rampWords) return duration;
+    final speed = rampFrom + (1 - rampFrom) * _sincePlay / rampWords;
+    return duration * (1 / speed);
   }
 }

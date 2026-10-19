@@ -23,8 +23,17 @@ final class FakeClock {
 }
 
 void main() {
-  RsvpEngine engine({int words = 1000, int start = 0, int wpm = 600}) =>
-      RsvpEngine(wordCount: words, startWord: start, timing: ConstantPace(wpm));
+  RsvpEngine engine({
+    int words = 1000,
+    int start = 0,
+    int wpm = 600,
+    int ramp = 0,
+  }) => RsvpEngine(
+    wordCount: words,
+    startWord: start,
+    timing: ConstantPace(wpm),
+    rampWords: ramp,
+  );
 
   test('constant pace: 60000 / wpm ms per word', () {
     expect(
@@ -113,5 +122,33 @@ void main() {
     expect(e.isFinished, isTrue);
     e.play();
     expect(e.isPlaying, isFalse, reason: 'nothing left to show');
+  });
+
+  test('gentle start: 60% of the speed, full after 10 words', () {
+    // 600 wpm: 100 ms per word; the first word lasts 100 / 0.6 ms.
+    final e = engine(ramp: 10)..play();
+    final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+    expect(clock.run(const Duration(milliseconds: 166)), [0]);
+    expect(clock.run(const Duration(milliseconds: 2)), [0, 1]);
+
+    // Words 0..9 take 100 ms / (0.6 + 0.04 k); then 100 ms each.
+    final e2 = engine(ramp: 10)..play();
+    final clock2 = FakeClock(e2, frame: const Duration(milliseconds: 1));
+    var ramp = 0.0;
+    for (var k = 0; k < 10; k++) {
+      ramp += 100 / (0.6 + 0.04 * k);
+    }
+    clock2.run(Duration(milliseconds: ramp.ceil() + 1000));
+    expect(e2.wordIndex, 20);
+
+    // A pause starts the ramp again.
+    e2
+      ..pause()
+      ..play();
+    expect(
+      clock2.run(const Duration(milliseconds: 150)).length,
+      1,
+      reason: 'slow again',
+    );
   });
 }

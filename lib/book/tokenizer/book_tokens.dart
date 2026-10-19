@@ -70,6 +70,8 @@ final class BookTokens {
 
   int flagsOf(int i) => _flags[i];
 
+  int sectionOf(int i) => _sections[i];
+
   /// First word of [sectionIndex]; equals the first word of the next
   /// non-empty section (or [length]) when the section has no words.
   int firstWordOfSection(int sectionIndex) =>
