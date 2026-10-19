@@ -239,11 +239,13 @@ void main() {
     );
     await tester.longPressAt(tester.getTopLeft(page) + box.center);
     await settle(tester);
-    // The route animation; speed reading keeps frames coming, so no
-    // pumpAndSettle while it plays.
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.pumpAndSettle();
+  }
+
+  /// A tap in the middle of speed reading: start or pause.
+  Future<void> tapRsvp(WidgetTester tester) async {
+    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
+    await tester.pump();
   }
 
   RsvpScreenState rsvp(WidgetTester tester) =>
@@ -259,18 +261,23 @@ void main() {
 
     await longPressWord(tester, start);
     final engine = rsvp(tester).engine;
+    // Opens paused on the pressed word, with the controls.
+    expect(engine.isPlaying, isFalse);
+    expect(engine.wordIndex, start);
+    expect(find.text('Коснитесь экрана, чтобы продолжить'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(engine.wordIndex, start);
+
+    // A tap starts: 300 wpm by default = 200 ms per word on average,
+    // slower at the start and on stops (smart pace).
+    await tapRsvp(tester);
     expect(engine.isPlaying, isTrue);
-    // Started at the pressed word; 300 wpm by default = 200 ms per word
-    // on average, slower at the start and on stops (smart pace).
-    expect(engine.wordIndex, inInclusiveRange(start, start + 3));
-    final before = engine.wordIndex;
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
-    expect(engine.wordIndex, inInclusiveRange(before + 4, before + 12));
+    expect(engine.wordIndex, inInclusiveRange(start + 4, start + 12));
 
     // A tap pauses and shows the controls.
-    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
-    await tester.pump();
+    await tapRsvp(tester);
     expect(engine.isPlaying, isFalse);
     final last = engine.wordIndex;
     await tester.pump(const Duration(seconds: 1));
@@ -289,12 +296,10 @@ void main() {
     expect(await tester.runAsync(savedWord), last, reason: 'saved on pause');
 
     // Another tap continues.
-    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
-    await tester.pump();
+    await tapRsvp(tester);
     expect(engine.isPlaying, isTrue);
     await tester.pump(const Duration(seconds: 1));
-    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
-    await tester.pump();
+    await tapRsvp(tester);
     final stopped = engine.wordIndex;
     expect(stopped, greaterThan(last));
 
@@ -308,11 +313,13 @@ void main() {
     expect(reader(tester).litWord, stopped);
     expect(await tester.runAsync(savedWord), stopped);
 
-    // System back while playing also returns to the page of the word, and
-    // the speed set before is kept.
+    // The speed set before is kept; system back while playing also returns
+    // to the page of the word.
     await longPressWord(tester, page.firstWord);
-    expect(find.text('325 сл/мин'), findsNothing, reason: 'playing');
+    expect(find.text('325 сл/мин'), findsOneWidget);
     expect((rsvp(tester).engine.timing as SmartPace).wordsPerMinute, 325);
+    await tapRsvp(tester);
+    expect(find.text('325 сл/мин'), findsNothing, reason: 'playing');
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);
@@ -333,12 +340,12 @@ void main() {
     await tapAt(tester, 0.5);
     await tester.tap(find.text('Скорочтение'));
     await settle(tester);
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.pumpAndSettle();
     final engine = rsvp(tester).engine;
+    expect(engine.isPlaying, isFalse, reason: 'opens paused');
+    expect(engine.wordIndex, first);
+    await tapRsvp(tester);
     expect(engine.isPlaying, isTrue);
-    expect(engine.wordIndex, inInclusiveRange(first, first + 3));
 
     // A few seconds in, a swipe right goes back by a sentence and plays on.
     await tester.pump(const Duration(seconds: 1));
@@ -360,8 +367,7 @@ void main() {
     expect(find.text('300 сл/мин'), findsOneWidget);
 
     // Paused: the button goes back too and the place is saved.
-    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
-    await tester.pump();
+    await tapRsvp(tester);
     final paused = engine.wordIndex;
     await tester.tap(find.text('Назад на предложение'));
     await tester.pump();
@@ -375,7 +381,7 @@ void main() {
     await closeApp(tester);
   });
 
-  /// Speed reading pushed over the reader from [word], fast.
+  /// Speed reading pushed over the reader from [word], fast, and started.
   Future<void> speedReadFrom(WidgetTester tester, int word) async {
     final opened = reader(tester).widget.opened;
     unawaited(
@@ -389,9 +395,8 @@ void main() {
         ),
       ),
     );
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.pumpAndSettle();
+    await tapRsvp(tester);
   }
 
   testWidgets('a new chapter pauses with its title; the book end leads out', (

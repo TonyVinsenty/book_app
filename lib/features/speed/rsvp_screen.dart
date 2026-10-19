@@ -15,9 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Speed reading one word at a time (RSVP, ADR 0004). A tap anywhere pauses
-/// and shows the controls, another tap continues. Pops with the word it
-/// stopped on.
+/// Speed reading one word at a time (RSVP, ADR 0004). Opens paused on the
+/// start word with the controls shown; a tap anywhere starts (gently), the
+/// next one pauses. Pops with the word it stopped on.
 class RsvpScreen extends ConsumerStatefulWidget {
   const RsvpScreen({
     super.key,
@@ -62,7 +62,6 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     );
     _ticker = createTicker(_onTick);
     _lifecycle = AppLifecycleListener(onInactive: _pause);
-    _play();
   }
 
   @override
