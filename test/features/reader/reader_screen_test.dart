@@ -16,6 +16,7 @@ import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/platform/screen_channel.dart';
+import 'package:book_app/platform/system_bars.dart';
 import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/timing.dart';
@@ -37,6 +38,9 @@ void main() {
 
   /// Calls to keep the screen on (true) or let it dim (false).
   late List<bool> keepScreenOn;
+
+  /// Calls to show (true) or hide (false) the status bar.
+  late List<bool> statusBar;
 
   setUp(() => temp = Directory.systemTemp.createTempSync('reader_'));
   tearDown(() => temp.deleteSync(recursive: true));
@@ -60,6 +64,7 @@ void main() {
     // Closing a drift database under fake time hangs, so it is left open;
     // synchronous stream closing leaves no pending timer.
     keepScreenOn = [];
+    statusBar = [];
     db = AppDatabase(
       DatabaseConnection(
         NativeDatabase.memory(),
@@ -88,6 +93,9 @@ void main() {
           bookRepositoryProvider.overrideWithValue(repo),
           keepScreenOnProvider.overrideWithValue((on) async {
             keepScreenOn.add(on);
+          }),
+          showStatusBarProvider.overrideWithValue((shown) async {
+            statusBar.add(shown);
           }),
         ],
         child: BookApp(reopenBookId: reopen ? bookId : null),
@@ -145,16 +153,18 @@ void main() {
       await tapAt(tester, 0.95);
     }
     expect(reader(tester).layout.sectionIndex, 1, reason: 'next chapter');
-    expect(find.text('1 / ${reader(tester).layout.pages.length}'), findsOne);
+    expect(
+      find.text('стр. 1 / ${reader(tester).layout.pages.length}'),
+      findsOne,
+    );
 
     await tapAt(tester, 0.05);
     expect(reader(tester).layout.sectionIndex, 0);
-    expect(find.text('$pages / $pages'), findsOneWidget);
+    expect(find.text('стр. $pages / $pages'), findsOneWidget);
 
-    // The middle shows the bar; its back button returns to the library.
+    // The middle shows the panels; «Библиотека» returns to the library.
     await tapAt(tester, 0.5);
-    expect(find.byType(BackButton), findsOneWidget);
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(find.text('Библиотека'));
     await tester.pumpAndSettle();
     expect(find.byType(ReaderView), findsNothing);
     expect(keepScreenOn, [true, false]);
@@ -281,6 +291,89 @@ void main() {
     await change((s) => s.copyWith(night: NightMode.night));
     await change((_) => const ReadingSettings());
     expect(reader(tester).page.firstWord, start.firstWord);
+    await closeApp(tester);
+  });
+
+  testWidgets('the middle shows the panels and the status bar; A+ keeps '
+      'the place', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    expect(statusBar, [false], reason: 'hidden while reading');
+    for (var i = 0; i < 4; i++) {
+      await tapAt(tester, 0.95);
+    }
+    final start = reader(tester).page;
+    final pages = reader(tester).layout.pages.length;
+    final pageArea = find.byWidgetPredicate(
+      (w) => w is CustomPaint && w.size == reader(tester).layout.pageSize,
+    );
+    final top = tester.getTopLeft(pageArea);
+
+    await tapAt(tester, 0.5);
+    expect(reader(tester).panelsShown, isTrue);
+    expect(statusBar, [false, true]);
+    expect(find.text('Глава 1'), findsOneWidget);
+    expect(
+      find.text('стр. 5 / $pages · до конца главы ${pages - 5} стр.'),
+      findsOneWidget,
+    );
+    expect(tester.getTopLeft(pageArea), top, reason: 'the page stays put');
+
+    // A+ three times: a larger font, the same place.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('A+'));
+      await tester.pumpAndSettle();
+    }
+    expect(reader(tester).layout.style.fontSize, 22);
+    final page = reader(tester).page;
+    expect(page.firstWord, lessThanOrEqualTo(start.firstWord));
+    expect(page.endWord, greaterThan(start.firstWord));
+    expect(reader(tester).panelsShown, isTrue, reason: 'still open');
+
+    // A tap anywhere hides them and does not turn the page.
+    await tapAt(tester, 0.95);
+    expect(reader(tester).panelsShown, isFalse);
+    expect(reader(tester).page.firstWord, page.firstWord);
+    expect(statusBar, [false, true, false]);
+
+    // Back closes the panels first, then the book.
+    await tapAt(tester, 0.5);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(reader(tester).panelsShown, isFalse);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(ReaderView), findsNothing);
+    expect(statusBar.last, isTrue, reason: 'the library shows it');
+    await closeApp(tester);
+  });
+
+  testWidgets('A− and A+ stop at the smallest and largest size', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.5);
+    OutlinedButton button(String label) => tester.widget<OutlinedButton>(
+      find.ancestor(
+        of: find.text(label),
+        matching: find.byType(OutlinedButton),
+      ),
+    );
+    for (var i = 0; i < ReadingSettings.fontSizes.length; i++) {
+      if (button('A+').onPressed == null) break;
+      await tester.tap(find.text('A+'));
+      await tester.pumpAndSettle();
+    }
+    expect(reader(tester).layout.style.fontSize, 32);
+    expect(button('A+').onPressed, isNull);
+    for (var i = 0; i < ReadingSettings.fontSizes.length; i++) {
+      if (button('A−').onPressed == null) break;
+      await tester.tap(find.text('A−'));
+      await tester.pumpAndSettle();
+    }
+    expect(reader(tester).layout.style.fontSize, 14);
+    expect(button('A−').onPressed, isNull);
     await closeApp(tester);
   });
 

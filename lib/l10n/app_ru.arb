@@ -134,15 +134,37 @@
   "@readerReopenFailed": {
     "description": "Message in the library when the book reopened on start could not be loaded"
   },
-  "readerPageOfChapter": "{page} / {count}",
+  "readerPageOfChapter": "стр. {page} / {count}",
   "@readerPageOfChapter": {
     "description": "Page number inside the current chapter, at the bottom of the reader",
     "placeholders": {"page": {"type": "int"}, "count": {"type": "int"}}
   },
-  "readerPageOfChapterApprox": "≈ {page} / {count}",
+  "readerPageOfChapterApprox": "стр. ≈ {page} / {count}",
   "@readerPageOfChapterApprox": {
     "description": "Approximate page number inside the chapter, while pages go from a shifted page after speed reading",
     "placeholders": {"page": {"type": "int"}, "count": {"type": "int"}}
+  },
+  "readerPagesLeftInChapter": "{count, plural, =0{последняя страница главы} other{до конца главы {count} стр.}}",
+  "@readerPagesLeftInChapter": {
+    "description": "Reader bottom panel: pages left after this one in the chapter",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "readerChapterNumber": "Глава {number}",
+  "@readerChapterNumber": {
+    "description": "Reader bottom panel: a chapter without a title",
+    "placeholders": {"number": {"type": "int"}}
+  },
+  "readerLibrary": "Библиотека",
+  "@readerLibrary": {
+    "description": "Reader top panel button: back to the list of books"
+  },
+  "readerFontSmaller": "Шрифт меньше",
+  "@readerFontSmaller": {
+    "description": "Reader bottom panel button A−: smaller book text"
+  },
+  "readerFontLarger": "Шрифт больше",
+  "@readerFontLarger": {
+    "description": "Reader bottom panel button A+: larger book text"
   },
   "speedExit": "Выйти из скорочтения",
   "@speedExit": {

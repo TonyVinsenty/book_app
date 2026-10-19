@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/book_opener.dart';
@@ -10,6 +11,7 @@ import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/chapter_layout.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:book_app/platform/screen_channel.dart';
+import 'package:book_app/platform/system_bars.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -65,8 +67,9 @@ class ReaderScreen extends ConsumerWidget {
 }
 
 /// Pages of an opened book. Taps on the left and right thirds turn pages,
-/// the middle shows or hides the top bar; swipes turn pages too. A long
-/// press on a word starts speed reading from it.
+/// the middle shows the panels over the page (and the status bar), any tap
+/// hides them; swipes turn pages too. A long press on a word starts speed
+/// reading from it.
 class ReaderView extends ConsumerStatefulWidget {
   const ReaderView({super.key, required this.opened});
 
@@ -96,7 +99,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// The word the current page is kept on when the layout changes.
   late int _word;
-  bool _barShown = false;
+  bool _panelsShown = false;
+
+  /// The largest top inset seen at this screen size: the status bar comes
+  /// and goes with the panels, and the page must not move (ADR 0003,
+  /// addendum 2 п. 3).
+  double _topInset = 0;
+  Size? _screenSize;
 
   /// The word speed reading stopped on: lit for about a second, then fades
   /// (ADR 0004 п. 10).
@@ -108,6 +117,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// Kept from [initState]: `ref` is not usable in [dispose].
   late final KeepScreenOn _keepScreenOn;
+  late final ShowStatusBar _showStatusBar;
 
   @visibleForTesting
   ChapterLayout get layout => _layoutOf(_section);
@@ -117,6 +127,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   @visibleForTesting
   int? get litWord => _litWord;
+
+  @visibleForTesting
+  bool get panelsShown => _panelsShown;
 
   @override
   void initState() {
@@ -130,11 +143,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     // The screen stays on while the book is open, speed reading included.
     _keepScreenOn = ref.read(keepScreenOnProvider);
     unawaited(_keepScreenOn(true));
+    _showStatusBar = ref.read(showStatusBarProvider);
+    unawaited(_showStatusBar(false));
   }
 
   @override
   void dispose() {
     unawaited(_keepScreenOn(false));
+    unawaited(_showStatusBar(true));
     _lit.dispose();
     _clearLayouts();
     super.dispose();
@@ -217,6 +233,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// Speed reading from [word]; back on the page of the last word shown.
   Future<void> _speedRead(int word) async {
+    _setPanels(false);
     final saved = await ref
         .read(settingsRepositoryProvider)
         .get(SettingKeys.speedWpm);
@@ -252,8 +269,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _shiftTo = word;
       _word = word;
       _litWord = word;
-      _barShown = false;
     });
+    _setPanels(false);
     unawaited(_lit.forward(from: 0));
     unawaited(
       ref
@@ -277,15 +294,33 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _page = shifted.pageOfWord(word);
   }
 
+  /// The panels and the status bar come and go together.
+  void _setPanels(bool shown) {
+    if (shown == _panelsShown) return;
+    setState(() => _panelsShown = shown);
+    unawaited(_showStatusBar(shown));
+  }
+
   void _onTapUp(TapUpDetails details, double width) {
     final x = details.localPosition.dx;
-    if (x < width / 3) {
+    if (_panelsShown) {
+      _setPanels(false);
+    } else if (x < width / 3) {
       _previous();
     } else if (x > width * 2 / 3) {
       _next();
     } else {
-      setState(() => _barShown = !_barShown);
+      _setPanels(true);
     }
+  }
+
+  /// A− / A+: the page stays on [_word] (ADR 0003, addendum 2 п. 4).
+  void _changeFontSize({required bool larger}) {
+    final scale = MediaQuery.textScalerOf(context);
+    final settings = ref.read(readingSettingsProvider);
+    ref
+        .read(readingSettingsProvider.notifier)
+        .set(larger ? settings.larger(scale) : settings.smaller(scale));
   }
 
   void _onSwipe(DragEndDetails details) {
@@ -301,9 +336,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final settings = ref.watch(readingSettingsProvider);
     // The system text scale only picks the default size (ADR 0003,
     // addendum 2 п. 2); the text itself is not scaled again.
+    final fontSize = settings.fontSizeFor(MediaQuery.textScalerOf(context));
     final style = PageStyle(
       fontFamily: settings.font.family,
-      fontSize: settings.fontSizeFor(MediaQuery.textScalerOf(context)),
+      fontSize: fontSize,
       lineHeight: settings.lineHeight,
       color: colors.text,
       align: switch (settings.align) {
@@ -313,110 +349,228 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
     final side = settings.margins.side;
     _margin = EdgeInsets.fromLTRB(side, 20, side, 0);
+    final screenSize = MediaQuery.sizeOf(context);
+    if (screenSize != _screenSize) {
+      _screenSize = screenSize;
+      _topInset = 0;
+    }
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    _topInset = max(_topInset, viewPadding.top);
+    final insets = viewPadding.copyWith(top: _topInset);
     final secondary = Theme.of(context).textTheme.bodySmall
         ?.copyWith(color: colors.textSecondary);
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final pageSize = Size(
-            constraints.maxWidth - _margin.horizontal,
-            constraints.maxHeight - _margin.vertical - _footerHeight,
-          );
-          _relayoutIfNeeded(pageSize, style);
-          _applyShift(constraints.maxHeight);
-          final chapter = layout;
-          final title = widget.opened.tokens.content.sections[_section].title;
-          return Stack(
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapUp: (d) => _onTapUp(d, constraints.maxWidth),
-                onHorizontalDragEnd: _onSwipe,
-                onLongPressStart: _onLongPress,
-                child: Padding(
-                  padding: _margin,
-                  child: Column(
-                    children: [
-                      Semantics(
-                        container: true,
-                        label: chapter.pageText(_page),
-                        child: CustomPaint(
-                          size: pageSize,
-                          painter: _PagePainter(
-                            chapter,
-                            _page,
-                            lit: _litWord == null
-                                ? const []
-                                : chapter.wordBoxes(_page, _litWord!),
-                            litColor: colors.highlight,
-                            litAnimation: _lit,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: _footerHeight,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                title ?? '',
-                                style: secondary,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return PopScope(
+      // Back closes the panels first.
+      canPop: !_panelsShown,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _setPanels(false);
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final area = insets.deflateSize(constraints.biggest);
+            final pageSize = Size(
+              area.width - _margin.horizontal,
+              area.height - _margin.vertical - _footerHeight,
+            );
+            _relayoutIfNeeded(pageSize, style);
+            _applyShift(area.height);
+            final chapter = layout;
+            final pageLabel = (chapter.isShifted
+                ? l10n.readerPageOfChapterApprox
+                : l10n.readerPageOfChapter)(_page + 1, chapter.pages.length);
+            return Stack(
+              children: [
+                Padding(
+                  padding: insets,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (d) => _onTapUp(d, area.width),
+                    onHorizontalDragEnd: _onSwipe,
+                    onLongPressStart: _onLongPress,
+                    child: Padding(
+                      padding: _margin,
+                      child: Column(
+                        children: [
+                          Semantics(
+                            container: true,
+                            label: chapter.pageText(_page),
+                            child: CustomPaint(
+                              size: pageSize,
+                              painter: _PagePainter(
+                                chapter,
+                                _page,
+                                lit: _litWord == null
+                                    ? const []
+                                    : chapter.wordBoxes(_page, _litWord!),
+                                litColor: colors.highlight,
+                                litAnimation: _lit,
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Text(
-                              (chapter.isShifted
-                                  ? l10n.readerPageOfChapterApprox
-                                  : l10n.readerPageOfChapter)(
-                                _page + 1,
-                                chapter.pages.length,
-                              ),
-                              style: secondary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_barShown)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Material(
-                    color: colors.surface,
-                    elevation: 2,
-                    child: Row(
-                      children: [
-                        const BackButton(),
-                        Expanded(
-                          child: Text(
-                            widget.opened.book.title,
-                            style: Theme.of(context).textTheme.titleMedium,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        TextButton.icon(
-                          icon: const Icon(Icons.speed),
-                          label: Text(l10n.readerSpeedRead),
-                          onPressed: () => _speedRead(page.firstWord),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                          SizedBox(
+                            height: _footerHeight,
+                            child: Center(
+                              child: Text(pageLabel, style: secondary),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-            ],
-          );
-        },
+                if (_panelsShown) ...[
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _topPanel(context, insets),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _bottomPanel(
+                      context,
+                      insets,
+                      pageLabel: pageLabel,
+                      pagesLeft: chapter.pages.length - _page - 1,
+                      fontSize: fontSize,
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
+
+  /// «Библиотека» on the left, speed reading on the right.
+  Widget _topPanel(BuildContext context, EdgeInsets insets) {
+    final l10n = AppLocalizations.of(context);
+    return Material(
+      color: context.readingColors.surface,
+      elevation: 2,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          insets.left + 4,
+          insets.top,
+          insets.right + 8,
+          0,
+        ),
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            children: [
+              TextButton.icon(
+                icon: const Icon(Icons.arrow_back),
+                label: Text(l10n.readerLibrary),
+                // Not `maybePop`: the open panels hold back the pop.
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                icon: const Icon(Icons.speed),
+                label: Text(l10n.readerSpeedRead),
+                onPressed: () => _speedRead(page.firstWord),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Chapter title, page, pages left in the chapter, A− / A+.
+  Widget _bottomPanel(
+    BuildContext context,
+    EdgeInsets insets, {
+    required String pageLabel,
+    required int pagesLeft,
+    required double fontSize,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    final colors = context.readingColors;
+    final text = Theme.of(context).textTheme;
+    final title =
+        widget.opened.tokens.content.sections[_section].title ??
+        l10n.readerChapterNumber(_section + 1);
+    const sizes = ReadingSettings.fontSizes;
+    return Material(
+      color: colors.surface,
+      elevation: 2,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          insets.left + 16,
+          12,
+          insets.right + 16,
+          insets.bottom + 8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: text.titleSmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$pageLabel · ${l10n.readerPagesLeftInChapter(pagesLeft)}',
+              style: text.bodySmall?.copyWith(color: colors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _FontSizeButton(
+                  label: 'A−',
+                  tooltip: l10n.readerFontSmaller,
+                  onPressed: fontSize > sizes.first
+                      ? () => _changeFontSize(larger: false)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                _FontSizeButton(
+                  label: 'A+',
+                  tooltip: l10n.readerFontLarger,
+                  onPressed: fontSize < sizes.last
+                      ? () => _changeFontSize(larger: true)
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FontSizeButton extends StatelessWidget {
+  const _FontSizeButton({
+    required this.label,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final String label;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: OutlinedButton(
+      onPressed: onPressed,
+      child: ExcludeSemantics(child: Text(label)),
+    ),
+  );
 }
 
 class _PagePainter extends CustomPainter {
