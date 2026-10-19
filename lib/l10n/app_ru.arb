@@ -158,6 +158,10 @@
   "@readerLibrary": {
     "description": "Reader top panel button: back to the list of books"
   },
+  "readerContents": "Оглавление",
+  "@readerContents": {
+    "description": "Reader top panel button and the title of the table of contents"
+  },
   "readerFontSmaller": "Шрифт меньше",
   "@readerFontSmaller": {
     "description": "Reader bottom panel button A−: smaller book text"

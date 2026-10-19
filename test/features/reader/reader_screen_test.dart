@@ -13,6 +13,7 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/library_screen.dart';
+import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/platform/screen_channel.dart';
@@ -345,6 +346,49 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ReaderView), findsNothing);
     expect(statusBar.last, isTrue, reason: 'the library shows it');
+    await closeApp(tester);
+  });
+
+  testWidgets('the table of contents opens a chapter at its start', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord;
+
+    // Back from the table of contents changes nothing.
+    await tapAt(tester, 0.5);
+    await tester.tap(find.byTooltip('Оглавление'));
+    await tester.pumpAndSettle();
+    final lines = tester.widget<ContentsScreen>(find.byType(ContentsScreen));
+    expect(lines.current, 0, reason: 'chapter 1 is lit');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(reader(tester).page.firstWord, start);
+    expect(reader(tester).panelsShown, isTrue);
+
+    await tester.tap(find.byTooltip('Оглавление'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Глава 3'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(ContentsScreen), findsNothing);
+    expect(reader(tester).layout.sectionIndex, 2);
+    final first = reader(tester).page.firstWord;
+    expect(reader(tester).layout.pageOfWord(first), 0, reason: 'its start');
+    expect(reader(tester).panelsShown, isFalse);
+    expect(await tester.runAsync(savedWord), first);
+
+    // The bottom panel names the chapter; the list lights it.
+    await tapAt(tester, 0.5);
+    expect(find.text('Глава 3'), findsOneWidget);
+    await tester.tap(find.byTooltip('Оглавление'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<ContentsScreen>(find.byType(ContentsScreen)).current,
+      2,
+    );
     await closeApp(tester);
   });
 

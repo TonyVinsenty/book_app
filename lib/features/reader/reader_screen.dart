@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/book/model/table_of_contents.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/chapter_layout.dart';
@@ -96,6 +98,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   late int _section;
   int _page = 0;
+
+  /// The table of contents (or the chapters of a book without one).
+  late final List<ContentsLine> _contents = contentsOf(
+    widget.opened.tokens.content,
+  );
 
   /// The word the current page is kept on when the layout changes.
   late int _word;
@@ -222,6 +229,30 @@ class ReaderViewState extends ConsumerState<ReaderView>
             widget.opened.tokens.positionOf(shown.firstWord),
           ),
     );
+  }
+
+  /// The first page with words from [section] on (ADR 0003, addendum 2
+  /// п. 4: the table of contents moves the place).
+  void _goToSection(int section) {
+    final sections = widget.opened.tokens.content.sections.length;
+    for (var s = section; s < sections; s++) {
+      if (_layoutOf(s).pages.isNotEmpty) {
+        _setPanels(false);
+        return _show(s, 0);
+      }
+    }
+  }
+
+  Future<void> _openContents() async {
+    final section = await Navigator.of(context).push<int>(
+      MaterialPageRoute(
+        builder: (_) => ContentsScreen(
+          lines: _contents,
+          current: currentLineOf(_contents, _section),
+        ),
+      ),
+    );
+    if (mounted && section != null) _goToSection(section);
   }
 
   Future<void> _onLongPress(LongPressStartDetails details) async {
@@ -449,7 +480,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// «Библиотека» on the left, speed reading on the right.
+  /// «Библиотека» on the left; the table of contents and speed reading on
+  /// the right.
   Widget _topPanel(BuildContext context, EdgeInsets insets) {
     final l10n = AppLocalizations.of(context);
     return Material(
@@ -473,6 +505,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
                 onPressed: () => Navigator.of(context).pop(),
               ),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.toc),
+                tooltip: l10n.readerContents,
+                onPressed: _openContents,
+              ),
               TextButton.icon(
                 icon: const Icon(Icons.speed),
                 label: Text(l10n.readerSpeedRead),
@@ -496,7 +533,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
     final text = Theme.of(context).textTheme;
+    final line = switch (currentLineOf(_contents, _section)) {
+      final i? => _contents[i],
+      null => null,
+    };
     final title =
+        line?.title ??
         widget.opened.tokens.content.sections[_section].title ??
         l10n.readerChapterNumber(_section + 1);
     const sizes = ReadingSettings.fontSizes;
