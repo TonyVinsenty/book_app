@@ -12,6 +12,7 @@ import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
@@ -267,11 +268,19 @@ void main() {
     expect(find.text('Коснитесь экрана, чтобы продолжить'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
     expect(engine.wordIndex, start);
+    // Above it, the text before it, ending with the word itself.
+    final tokens = rsvp(tester).widget.opened.tokens;
+    final pauseText = find.text(
+      textBefore(tokens, start) + tokens.textOf(start),
+      findRichText: true,
+    );
+    expect(pauseText, findsOneWidget);
 
     // A tap starts: 300 wpm by default = 200 ms per word on average,
     // slower at the start and on stops (smart pace).
     await tapRsvp(tester);
     expect(engine.isPlaying, isTrue);
+    expect(pauseText, findsNothing);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(engine.wordIndex, inInclusiveRange(start + 4, start + 12));

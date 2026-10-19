@@ -8,6 +8,7 @@ import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
+import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/rsvp_engine.dart';
 import 'package:book_app/speed/timing.dart';
@@ -196,12 +197,67 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     );
   }
 
+  /// The text before the word on pause, pressed down to the word line from
+  /// above (ADR 0004 п. 7, «Изменения»); its last word is the current one.
+  Widget _pauseText(BuildContext context, BoxConstraints box) {
+    final colors = context.readingColors;
+    final tokens = widget.opened.tokens;
+    final word = _engine.wordIndex;
+    // Clear of the word and its marks: they reach about 1.5 of the word
+    // font above the middle line.
+    final clearance =
+        MediaQuery.textScalerOf(context).scale(_wordSize) * 1.5 + 16;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 56, 24, box.maxHeight / 2 + clearance),
+      child: ShaderMask(
+        // Long text fades out at the top instead of being cut.
+        shaderCallback: (rect) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x00000000), Color(0xFF000000)],
+          stops: [0, 0.25],
+        ).createShader(rect),
+        blendMode: BlendMode.dstIn,
+        child: ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.bottomLeft,
+            minHeight: 0,
+            maxHeight: double.infinity,
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(
+                  fontFamily: BookFont.literata.family,
+                  fontSize: 18,
+                  height: 1.5,
+                  color: colors.textSecondary,
+                ),
+                children: [
+                  TextSpan(text: textBefore(tokens, word)),
+                  TextSpan(
+                    text: tokens[word].text,
+                    style: TextStyle(
+                      color: colors.text,
+                      backgroundColor: colors.highlight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _wordSize = 36.0;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.readingColors;
     final l10n = AppLocalizations.of(context);
     final token = widget.opened.tokens[_engine.wordIndex];
     final paused = !_engine.isPlaying;
+    final showText = paused && !_engine.isStopped;
     final secondary = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(color: colors.textSecondary);
     return PopScope(
@@ -231,7 +287,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                           orp: token.orp,
                           style: TextStyle(
                             fontFamily: BookFont.literata.family,
-                            fontSize: 36,
+                            fontSize: _wordSize,
                             color: colors.text,
                           ),
                           textScaler: MediaQuery.textScalerOf(context),
@@ -241,6 +297,19 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                       ),
                     ),
                   ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedOpacity(
+                      opacity: showText ? 1 : 0,
+                      duration: showText
+                          ? const Duration(milliseconds: 300)
+                          : Duration.zero,
+                      child: showText
+                          ? LayoutBuilder(builder: _pauseText)
+                          : const SizedBox(),
+                    ),
+                  ),
+                ),
                 if (!paused && _speedHint)
                   Positioned(
                     left: 16,
