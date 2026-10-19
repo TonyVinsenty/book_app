@@ -1,11 +1,109 @@
+import 'dart:io';
+
 import 'package:book_app/app/app.dart';
+import 'package:book_app/data/content_store.dart';
+import 'package:book_app/data/db/app_database.dart';
+import 'package:book_app/data/providers.dart';
+import 'package:book_app/platform/files_channel.dart';
+import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('app starts and shows Russian placeholder', (tester) async {
-    await tester.pumpWidget(const BookApp());
+  // Each test opens its own in-memory database.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  late Directory temp;
+
+  setUp(() => temp = Directory.systemTemp.createTempSync('app_'));
+  tearDown(() => temp.deleteSync(recursive: true));
+
+  /// Copies of [fixtures] in a "cache" folder, as the native picker returns.
+  List<String> picked(List<String> fixtures) => [
+    for (final (i, f) in fixtures.indexed)
+      File(f).copySync('${temp.path}/pick$i-${f.split('/').last}').path,
+  ];
+
+  Future<void> pumpApp(WidgetTester tester, PickBooks pick) async {
+    // Closing a drift database under fake time hangs, so it is left open;
+    // synchronous stream closing leaves no pending timer.
+    final db = AppDatabase(
+      DatabaseConnection(
+        NativeDatabase.memory(),
+        closeStreamsSynchronously: true,
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          contentStoreProvider.overrideWithValue(
+            ContentStore(Directory('${temp.path}/books')),
+          ),
+          pickBooksProvider.overrideWithValue(pick),
+        ],
+        child: const BookApp(),
+      ),
+    );
     await tester.pumpAndSettle();
+  }
+
+  /// Taps "Add book" and lets the import (isolates, files) finish: the
+  /// result message shows up.
+  Future<void> addBooks(WidgetTester tester) async {
+    await tester.tap(find.text('Добавить книгу'));
+    await tester.runAsync(() async {
+      for (var i = 0; i < 250 && find.byType(SnackBar).evaluate().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> closeApp(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox());
+  }
+
+  testWidgets('empty library shows the Russian hint', (tester) async {
+    await pumpApp(tester, () async => const []);
 
     expect(find.text('Здесь появятся ваши книги'), findsOneWidget);
+    expect(find.text('Добавить книгу'), findsOneWidget);
+    await closeApp(tester);
+  });
+
+  testWidgets('a picked book appears in the list', (tester) async {
+    final paths = picked(['test/fixtures/fb2/utf8_nested.fb2']);
+    await pumpApp(tester, () async => paths);
+
+    await addBooks(tester);
+
+    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.textContaining('Книга добавлена'), findsOneWidget);
+    expect(File(paths.single).existsSync(), isFalse, reason: 'copy deleted');
+    await closeApp(tester);
+  });
+
+  testWidgets('several files: a summary with duplicates and failures', (
+    tester,
+  ) async {
+    final txt = 'test/fixtures/txt/utf8_lines.txt';
+    final paths = picked([txt, txt]);
+    final bad = File('${temp.path}/x.bin')
+      ..writeAsBytesSync(List.filled(500, 0));
+    await pumpApp(tester, () async => [...paths, bad.path]);
+
+    await addBooks(tester);
+
+    expect(find.byType(ListTile), findsOneWidget);
+    expect(
+      find.text(
+        'Добавлено книг: 1, уже были в библиотеке: 1, не удалось добавить: 1',
+      ),
+      findsOneWidget,
+    );
+    await closeApp(tester);
   });
 }

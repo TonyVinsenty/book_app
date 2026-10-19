@@ -27,5 +27,57 @@
   "nightMode": "Ночь",
   "@nightMode": {
     "description": "Night variant of the reading palette"
+  },
+  "libraryEmptyHint": "Нажмите «Добавить книгу» и выберите файл FB2 или TXT",
+  "@libraryEmptyHint": {
+    "description": "Second line on the empty library screen"
+  },
+  "addBook": "Добавить книгу",
+  "@addBook": {
+    "description": "Button that opens the file picker"
+  },
+  "importProgress": "Добавляется {current} из {total}",
+  "@importProgress": {
+    "description": "Button label while picked files are imported",
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "importAdded": "Книга добавлена: {title}",
+  "@importAdded": {
+    "placeholders": {"title": {"type": "String"}}
+  },
+  "importDuplicate": "Эта книга уже в библиотеке: {title}",
+  "@importDuplicate": {
+    "placeholders": {"title": {"type": "String"}}
+  },
+  "importUnsupported": "Этот формат пока не поддерживается: {fileName}",
+  "@importUnsupported": {
+    "placeholders": {"fileName": {"type": "String"}}
+  },
+  "importDamaged": "Файл повреждён, книгу не удалось прочитать: {fileName}",
+  "@importDamaged": {
+    "placeholders": {"fileName": {"type": "String"}}
+  },
+  "importUnreadable": "Не удалось открыть файл: {fileName}",
+  "@importUnreadable": {
+    "placeholders": {"fileName": {"type": "String"}}
+  },
+  "importSummaryAdded": "Добавлено книг: {count}",
+  "@importSummaryAdded": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "importSummaryDuplicates": "уже были в библиотеке: {count}",
+  "@importSummaryDuplicates": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "importSummaryFailed": "не удалось добавить: {count}",
+  "@importSummaryFailed": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "importPickFailed": "Не удалось открыть выбор файлов",
+  "@importPickFailed": {
+    "description": "The system file picker could not be shown"
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -23,6 +24,10 @@ final bookRepositoryProvider = Provider<BookRepository>(
     ref.watch(appDatabaseProvider),
     ref.watch(contentStoreProvider),
   ),
+);
+
+final bookImporterProvider = Provider<BookImporter>(
+  (ref) => BookImporter(ref.watch(bookRepositoryProvider)),
 );
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
