@@ -126,7 +126,24 @@
   "@speedTapToContinue": {
     "description": "Hint under the word while speed reading is paused"
   },
-  "speedBookEnd": "Конец книги",
+  "speedNewChapter": "Новая глава",
+  "@speedNewChapter": {
+    "description": "Speed reading paused itself at a chapter start; the title follows"
+  },
+  "speedChapterNumber": "Глава {number}",
+  "@speedChapterNumber": {
+    "description": "Chapter title when the book gives none",
+    "placeholders": {"number": {"type": "int"}}
+  },
+  "speedStart": "Старт",
+  "@speedStart": {
+    "description": "Button: go on reading the new chapter"
+  },
+  "speedBackToText": "К тексту",
+  "@speedBackToText": {
+    "description": "Button after the last word of the book: leave speed reading"
+  },
+  "speedBookEnd": "Книга закончилась",
   "@speedBookEnd": {
     "description": "Shown in speed reading after the last word of the book"
   }

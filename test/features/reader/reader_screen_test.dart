@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:book_app/app/app.dart';
@@ -371,6 +372,60 @@ void main() {
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  /// Speed reading pushed over the reader from [word], fast.
+  Future<void> speedReadFrom(WidgetTester tester, int word) async {
+    final opened = reader(tester).widget.opened;
+    unawaited(
+      Navigator.of(tester.element(find.byType(ReaderView))).push<int>(
+        MaterialPageRoute(
+          builder: (_) => RsvpScreen(
+            opened: opened,
+            startWord: word,
+            wordsPerMinute: SpeedLimits.max,
+          ),
+        ),
+      ),
+    );
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  testWidgets('a new chapter pauses with its title; the book end leads out', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final second = tokens.firstWordOfSection(1);
+
+    await speedReadFrom(tester, second - 3);
+    await tester.pump(const Duration(seconds: 2));
+    final engine = rsvp(tester).engine;
+    expect(engine.isStopped, isTrue);
+    expect(engine.wordIndex, second);
+    expect(find.text('Новая глава'), findsOneWidget);
+    expect(find.text('Глава 2'), findsOneWidget);
+
+    await tester.tap(find.text('Старт'));
+    await tester.pump();
+    expect(engine.isPlaying, isTrue);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(engine.wordIndex, greaterThan(second));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    await speedReadFrom(tester, tokens.length - 3);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Книга закончилась'), findsOneWidget);
+    await tester.tap(find.text('К тексту'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RsvpScreen), findsNothing);
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), tokens.length - 1);
     await closeApp(tester);
   });
 

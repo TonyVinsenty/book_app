@@ -167,4 +167,23 @@ void main() {
     e.seek(99);
     expect(e.wordIndex, 2);
   });
+
+  test('pauses by itself before a chapter start, then goes on', () {
+    final e = RsvpEngine(
+      wordCount: 10,
+      startWord: 0,
+      timing: const ConstantPace(600),
+      rampWords: 0,
+      stopBefore: (word) => word == 4,
+    )..play();
+    final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+    expect(clock.run(const Duration(seconds: 2)), [0, 1, 2, 3, 4]);
+    expect(e.isPlaying, isFalse);
+    expect(e.isStopped, isTrue);
+    expect(e.wordIndex, 4, reason: 'the chapter start is next to show');
+
+    e.play();
+    expect(e.isStopped, isFalse);
+    expect(clock.run(const Duration(milliseconds: 101)), [4, 5]);
+  });
 }

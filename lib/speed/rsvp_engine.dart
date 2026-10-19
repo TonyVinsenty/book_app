@@ -10,6 +10,7 @@ final class RsvpEngine {
     required int startWord,
     required this.timing,
     this.rampWords = 10,
+    this.stopBefore,
   }) : assert(wordCount > 0),
        _word = startWord.clamp(0, wordCount - 1);
 
@@ -21,9 +22,14 @@ final class RsvpEngine {
   final int rampWords;
   static const rampFrom = 0.6;
 
+  /// Words the engine pauses on by itself, before showing them: chapter
+  /// starts (ADR 0004 п. 8).
+  final bool Function(int word)? stopBefore;
+
   int _word;
   bool _playing = false;
   bool _finished = false;
+  bool _stopped = false;
 
   /// Time the current word has been shown while playing.
   Duration _shown = Duration.zero;
@@ -38,10 +44,15 @@ final class RsvpEngine {
   /// The last word has been shown for its full time.
   bool get isFinished => _finished;
 
+  /// Paused by itself before [wordIndex] (see [stopBefore]); [play] goes on
+  /// from that word.
+  bool get isStopped => _stopped;
+
   /// Starts or continues; the current word is shown again for its full time.
   void play() {
     if (_finished) return;
     _playing = true;
+    _stopped = false;
     _shown = Duration.zero;
     _sincePlay = 0;
   }
@@ -53,6 +64,7 @@ final class RsvpEngine {
   void seek(int word) {
     _word = word.clamp(0, wordCount - 1);
     _finished = false;
+    _stopped = false;
     _shown = Duration.zero;
     _sincePlay = 0;
   }
@@ -71,6 +83,10 @@ final class RsvpEngine {
       if (_word + 1 < wordCount) {
         _word++;
         _sincePlay++;
+        if (stopBefore?.call(_word) ?? false) {
+          _playing = false;
+          _stopped = true;
+        }
       } else {
         _playing = false;
         _finished = true;

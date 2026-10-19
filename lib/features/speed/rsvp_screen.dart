@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
@@ -56,6 +57,8 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
       wordCount: widget.opened.tokens.length,
       startWord: widget.startWord,
       timing: SmartPace(widget.opened.tokens, _wpm),
+      stopBefore: (word) =>
+          widget.opened.tokens.flagsOf(word) & TokenFlags.sectionStart != 0,
     );
     _ticker = createTicker(_onTick);
     _lifecycle = AppLifecycleListener(onInactive: _pause);
@@ -157,6 +160,43 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 
   void _exit() => Navigator.of(context).pop(_engine.wordIndex);
 
+  /// The engine paused before a new chapter: its title and "Start".
+  Widget _chapterStart(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final section = widget.opened.tokens.sectionOf(_engine.wordIndex);
+    final title =
+        widget.opened.tokens.content.sections[section].title ??
+        l10n.speedChapterNumber(section + 1);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.speedNewChapter,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: context.readingColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: theme.textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => setState(_play),
+              child: Text(l10n.speedStart),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.readingColors;
@@ -180,25 +220,28 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
             onVerticalDragEnd: _onVerticalSwipe,
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: Semantics(
-                    label: token.text,
-                    child: CustomPaint(
-                      painter: RsvpWordPainter(
-                        text: token.text,
-                        orp: token.orp,
-                        style: TextStyle(
-                          fontFamily: BookFont.literata.family,
-                          fontSize: 36,
-                          color: colors.text,
+                if (_engine.isStopped)
+                  Positioned.fill(child: _chapterStart(context))
+                else
+                  Positioned.fill(
+                    child: Semantics(
+                      label: token.text,
+                      child: CustomPaint(
+                        painter: RsvpWordPainter(
+                          text: token.text,
+                          orp: token.orp,
+                          style: TextStyle(
+                            fontFamily: BookFont.literata.family,
+                            fontSize: 36,
+                            color: colors.text,
+                          ),
+                          textScaler: MediaQuery.textScalerOf(context),
+                          orpColor: colors.orp,
+                          markColor: colors.textSecondary,
                         ),
-                        textScaler: MediaQuery.textScalerOf(context),
-                        orpColor: colors.orp,
-                        markColor: colors.textSecondary,
                       ),
                     ),
                   ),
-                ),
                 if (!paused && _speedHint)
                   Positioned(
                     left: 16,
@@ -232,13 +275,23 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                           onPressed: _engine.wordIndex > 0 ? _back : null,
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          _engine.isFinished
-                              ? l10n.speedBookEnd
-                              : l10n.speedTapToContinue,
-                          style: secondary,
-                          textAlign: TextAlign.center,
-                        ),
+                        if (_engine.isFinished) ...[
+                          Text(
+                            l10n.speedBookEnd,
+                            style: Theme.of(context).textTheme.titleMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: _exit,
+                            child: Text(l10n.speedBackToText),
+                          ),
+                        ] else if (!_engine.isStopped)
+                          Text(
+                            l10n.speedTapToContinue,
+                            style: secondary,
+                            textAlign: TextAlign.center,
+                          ),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
