@@ -22,6 +22,15 @@
 - `designer` (Sonnet) — палитры, макеты (HTML → Artifact), разбор скриншотов.
 - Перед коммитом крупного пункта — `/code-review`.
 
+## Команды
+- Проверка: `flutter analyze` и `flutter test` (быстро, на Windows); формат `.dart` — автоматически хуком после каждой правки (`.claude/hooks/format-dart.sh`).
+- Эмулятор: скилл `/emulator-check` (сборка, установка, скриншот, журнал). Вручную: `flutter build apk --debug --target-platform android-x64`, пакет `com.tonyvinsenty.bookapp`.
+- Релизный APK: скилл `/release-apk` (ключ — переменная `BOOKAPP_KEYSTORE_PROPERTIES`, инструкция владельцу — `docs/how-to-android-release.md`; без ключа релиз не собирается).
+- iPhone: GitHub → Actions → «iOS build» → Run workflow (`.github/workflows/ios-build.yml`, без подписи) → `.ipa` в Sideloadly (`docs/how-to-iphone.md`). Запуск workflow и push — только по просьбе владельца.
+- Тексты: `lib/l10n/app_ru.arb` → `flutter pub get` генерирует `lib/l10n/generated/` (не коммитится).
+- Шрифты: `tool/fonts/build_fonts.py` (статичные, урезанные до нужных алфавитов; Lora и PT Serif — без изменений из-за лицензии). Палитры и тема — `lib/app/theme/`, цвета для экранов — `context.readingColors`.
+- Идентификатор приложения `com.tonyvinsenty.bookapp` (Android и iOS) не менять: иначе обновление станет другим приложением. Видимое имя пока «BookApp» (`AndroidManifest.xml`, `Info.plist`, ARB).
+
 ## Окружение
 - Flutter 3.47.5 / Dart 3.13.4 (`D:/Projects/Claude/flutter`), Android SDK `D:/Android/Sdk`, adb `D:/Android/Sdk/platform-tools/adb.exe`.
 - Python 3.14 есть (`python`, через uv). Папка пользователя — кириллицей («Константин»): лаунчер `py` с ней ломается, не использовать.
