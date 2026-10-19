@@ -7,5 +7,25 @@
   "libraryEmpty": "Здесь появятся ваши книги",
   "@libraryEmpty": {
     "description": "Placeholder on the empty library screen"
+  },
+  "palettePaper": "Бумага",
+  "@palettePaper": {
+    "description": "Reading color palette name"
+  },
+  "paletteSage": "Шалфей",
+  "@paletteSage": {
+    "description": "Reading color palette name"
+  },
+  "paletteLavender": "Лаванда",
+  "@paletteLavender": {
+    "description": "Reading color palette name"
+  },
+  "paletteMist": "Дымка",
+  "@paletteMist": {
+    "description": "Reading color palette name"
+  },
+  "nightMode": "Ночь",
+  "@nightMode": {
+    "description": "Night variant of the reading palette"
   }
 }
