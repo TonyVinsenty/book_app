@@ -183,6 +183,43 @@ void main() {
     }
   });
 
+  test('a paragraph starts indented, left-aligned or justified', () {
+    final tokens = tokenize(
+      BookContent(
+        meta: const BookMeta(title: 'Отступ', sourceFormat: SourceFormat.txt),
+        sections: [
+          Section(
+            blocks: [
+              for (var i = 0; i < 2; i++) ParagraphBlock(text: 'Слово ' * 40),
+            ],
+          ),
+        ],
+      ),
+    );
+    for (final align in [TextAlign.left, TextAlign.justify]) {
+      final layout = build(
+        tokens,
+        0,
+        _sizes.first,
+        PageStyle(
+          fontFamily: 'Literata',
+          fontSize: 18,
+          color: const Color(0xFF000000),
+          align: align,
+        ),
+      );
+      final second = layout.pages.first.firstWord + 40;
+      for (final word in [layout.pages.first.firstWord, second]) {
+        expect(
+          layout.wordBoxes(0, word).first.left,
+          // Two figure spaces: one em each in the test font.
+          moreOrLessEquals(36, epsilon: 0.01),
+          reason: '$align, word $word',
+        );
+      }
+    }
+  });
+
   test('touching outside words finds nothing; other pages have no boxes', () {
     final tokens = tokenize(sampleBook());
     final layout = build(tokens, 0, _sizes.first, style());

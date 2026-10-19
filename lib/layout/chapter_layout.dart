@@ -503,8 +503,10 @@ typedef _Line = (int, int);
 
 const _Line _chapterStart = (0, 0);
 
-/// First-line indent of a normal paragraph: one em.
-const _indent = ' ';
+/// First-line indent of a normal paragraph: about one em. Figure spaces:
+/// justified lines drop a leading em space, but keep these non-breaking
+/// ones (and letter spacing on them breaks justified lines).
+const _indent = '  ';
 
 /// A block laid out at the page width, with its line boundaries.
 final class _BlockLayout {
