@@ -8,6 +8,7 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
+import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/chapter_layout.dart';
@@ -108,6 +109,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   late int _word;
   bool _panelsShown = false;
 
+  /// The settings panel replaces the panels (the status bar stays).
+  bool _settingsShown = false;
+
   /// The largest top inset seen at this screen size: the status bar comes
   /// and goes with the panels, and the page must not move (ADR 0003,
   /// addendum 2 п. 3).
@@ -137,6 +141,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   @visibleForTesting
   bool get panelsShown => _panelsShown;
+
+  @visibleForTesting
+  bool get settingsShown => _settingsShown;
 
   @override
   void initState() {
@@ -328,7 +335,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The panels and the status bar come and go together.
   void _setPanels(bool shown) {
     if (shown == _panelsShown) return;
-    setState(() => _panelsShown = shown);
+    setState(() {
+      _panelsShown = shown;
+      _settingsShown = false;
+    });
     unawaited(_showStatusBar(shown));
   }
 
@@ -452,7 +462,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     ),
                   ),
                 ),
-                if (_panelsShown) ...[
+                if (_settingsShown)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: ReadingSettingsPanel(insets: insets),
+                  )
+                else if (_panelsShown) ...[
                   Positioned(
                     top: 0,
                     left: 0,
@@ -522,7 +539,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// Chapter title, page, pages left in the chapter, A− / A+.
+  /// Chapter title, page, pages left in the chapter, A− / A+, settings.
   Widget _bottomPanel(
     BuildContext context,
     EdgeInsets insets, {
@@ -584,6 +601,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   onPressed: fontSize < sizes.last
                       ? () => _changeFontSize(larger: true)
                       : null,
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  icon: const Icon(Icons.tune),
+                  label: Text(l10n.readerSettings),
+                  onPressed: () => setState(() => _settingsShown = true),
                 ),
               ],
             ),

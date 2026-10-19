@@ -78,6 +78,9 @@ final class ReadingSettings {
   static const defaultFontSize = 18.0;
   static const defaultLineHeight = 1.45;
 
+  /// Line heights offered in the settings panel: tight, normal, loose.
+  static const lineHeights = <double>[1.3, defaultLineHeight, 1.7];
+
   final BookFont font;
 
   /// Null until the reader picks a size: then it is [defaultFontSize] times

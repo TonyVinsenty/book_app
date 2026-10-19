@@ -349,6 +349,69 @@ void main() {
     await closeApp(tester);
   });
 
+  testWidgets('the settings panel changes the text at once, in the same '
+      'place', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    for (var i = 0; i < 4; i++) {
+      await tapAt(tester, 0.95);
+    }
+    final start = reader(tester).page.firstWord;
+    await tapAt(tester, 0.5);
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+    expect(reader(tester).settingsShown, isTrue);
+    expect(find.text('Библиотека'), findsNothing, reason: 'panels give way');
+
+    Future<void> pick(String label) async {
+      await tester.ensureVisible(find.text(label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      final page = reader(tester).page;
+      expect(page.firstWord, lessThanOrEqualTo(start), reason: label);
+      expect(page.endWord, greaterThan(start), reason: label);
+    }
+
+    await pick('Lora');
+    await pick('Свободный');
+    await pick('Широкие');
+    await pick('По ширине');
+    await pick('Шалфей');
+    await pick('Ночь');
+    final style = reader(tester).layout.style;
+    expect(style.fontFamily, 'Lora');
+    expect(style.lineHeight, 1.7);
+    expect(style.align, TextAlign.justify);
+    expect(
+      Theme.of(tester.element(find.byType(ReaderView))).brightness,
+      Brightness.dark,
+    );
+    final settings = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    ).read(readingSettingsProvider);
+    expect(settings.margins, PageMargins.wide);
+    expect(settings.palette, ReadingPalette.sage);
+    expect(settings.night, NightMode.night);
+
+    // A tap on the page above it closes it without turning; so does back.
+    final page = reader(tester).page.firstWord;
+    final size = tester.getSize(find.byType(ReaderView));
+    await tester.tapAt(Offset(size.width * 0.95, size.height * 0.2));
+    await settle(tester);
+    expect(reader(tester).settingsShown, isFalse);
+    expect(reader(tester).panelsShown, isFalse);
+    expect(reader(tester).page.firstWord, page);
+    await tapAt(tester, 0.5);
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(reader(tester).settingsShown, isFalse);
+    expect(find.byType(ReaderView), findsOneWidget);
+    await closeApp(tester);
+  });
+
   testWidgets('the table of contents opens a chapter at its start', (
     tester,
   ) async {
