@@ -9,6 +9,7 @@ import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/chapter_layout.dart';
 import 'package:book_app/layout/page_style.dart';
+import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -100,6 +101,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     duration: const Duration(milliseconds: 1400),
   );
 
+  /// Kept from [initState]: `ref` is not usable in [dispose].
+  late final KeepScreenOn _keepScreenOn;
+
   @visibleForTesting
   ChapterLayout get layout => _layoutOf(_section);
 
@@ -118,10 +122,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(
       ref.read(bookRepositoryProvider).markOpened(widget.opened.book.id),
     );
+    // The screen stays on while the book is open, speed reading included.
+    _keepScreenOn = ref.read(keepScreenOnProvider);
+    unawaited(_keepScreenOn(true));
   }
 
   @override
   void dispose() {
+    unawaited(_keepScreenOn(false));
     _lit.dispose();
     _clearLayouts();
     super.dispose();

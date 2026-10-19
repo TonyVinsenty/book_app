@@ -12,6 +12,7 @@ import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/timing.dart';
@@ -30,6 +31,9 @@ void main() {
   late BookRepository repo;
   late int bookId;
   late AppDatabase db;
+
+  /// Calls to keep the screen on (true) or let it dim (false).
+  late List<bool> keepScreenOn;
 
   setUp(() => temp = Directory.systemTemp.createTempSync('reader_'));
   tearDown(() => temp.deleteSync(recursive: true));
@@ -52,6 +56,7 @@ void main() {
   }) async {
     // Closing a drift database under fake time hangs, so it is left open;
     // synchronous stream closing leaves no pending timer.
+    keepScreenOn = [];
     db = AppDatabase(
       DatabaseConnection(
         NativeDatabase.memory(),
@@ -78,6 +83,9 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           bookRepositoryProvider.overrideWithValue(repo),
+          keepScreenOnProvider.overrideWithValue((on) async {
+            keepScreenOn.add(on);
+          }),
         ],
         child: BookApp(reopenBookId: reopen ? bookId : null),
       ),
@@ -116,7 +124,9 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester);
+    expect(keepScreenOn, isEmpty, reason: 'the library lets it dim');
     await openBook(tester);
+    expect(keepScreenOn, [true], reason: 'an open book keeps it on');
 
     expect(reader(tester).page.firstWord, 0);
     expect(reader(tester).layout.sectionIndex, 0);
@@ -144,6 +154,7 @@ void main() {
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(ReaderView), findsNothing);
+    expect(keepScreenOn, [true, false]);
     final saved = await tester.runAsync(savedWord);
     expect(
       (await tester.runAsync(() => repo.findById(bookId)))!.openedAt,

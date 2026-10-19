@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let filesChannel = "com.tonyvinsenty.bookapp/files"
+  private let screenChannel = "com.tonyvinsenty.bookapp/screen"
   private var bookPicker: BookPicker?
 
   override func application(
@@ -26,6 +27,15 @@ import UniformTypeIdentifiers
       .setMethodCallHandler { call, result in
         switch call.method {
         case "pickBooks": picker.pick(result)
+        default: result(FlutterMethodNotImplemented)
+        }
+      }
+    FlutterMethodChannel(name: screenChannel, binaryMessenger: registrar.messenger())
+      .setMethodCallHandler { call, result in
+        switch call.method {
+        case "setKeepOn":
+          UIApplication.shared.isIdleTimerDisabled = (call.arguments as? Bool) ?? false
+          result(nil)
         default: result(FlutterMethodNotImplemented)
         }
       }

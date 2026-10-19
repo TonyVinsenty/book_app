@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -15,6 +16,7 @@ import java.util.concurrent.Executors
 // Channel and method names are checked against Dart by test/guards.
 class MainActivity : FlutterActivity() {
     private val filesChannel = "com.tonyvinsenty.bookapp/files"
+    private val screenChannel = "com.tonyvinsenty.bookapp/screen"
     private val pickBooksRequest = 4101
     private var pendingPick: MethodChannel.Result? = null
     private val io = Executors.newSingleThreadExecutor()
@@ -26,6 +28,17 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "pickBooks" -> pickBooks(result)
+                    else -> result.notImplemented()
+                }
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, screenChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setKeepOn" -> {
+                        val flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                        if (call.arguments == true) window.addFlags(flag) else window.clearFlags(flag)
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }
