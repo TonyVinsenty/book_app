@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "title": "Таблицы и знаки",
+    "authors": [
+      "Иванов"
+    ],
+    "lang": "ru",
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Глава первая",
+      "level": 0,
+      "section": 0
+    }
+  ],
+  "sections": [
+    {
+      "title": "Глава первая",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава первая",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "«Слово» — это т. е. пример & проверка.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Год Событие",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "1812 Война",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст в CDATA <без> тегов.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

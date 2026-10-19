@@ -1,0 +1,210 @@
+{
+  "meta": {
+    "title": "Утро над рекой",
+    "authors": [
+      "Анна Петровна Тестова",
+      "Аноним"
+    ],
+    "series": "Тестовые книги",
+    "seriesNumber": 2,
+    "lang": "ru",
+    "annotation": "Короткая повесть о тихом утре.\nВторая строка аннотации.",
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Часть первая",
+      "level": 0,
+      "section": 1
+    },
+    {
+      "title": "Глава 1. Туман",
+      "level": 1,
+      "section": 1
+    },
+    {
+      "title": "Глава 2. Гости",
+      "level": 1,
+      "section": 2
+    },
+    {
+      "title": "Часть вторая",
+      "level": 0,
+      "section": 3
+    },
+    {
+      "title": "Глава 3",
+      "level": 1,
+      "section": 4
+    }
+  ],
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Анна Тестова\nУтро над рекой",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Над рекой туман клубится,\nСолнце прячется в лесу.",
+          "style": "epigraph"
+        },
+        {
+          "type": "paragraph",
+          "text": "Народное",
+          "style": "epigraph"
+        }
+      ]
+    },
+    {
+      "title": "Часть первая",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Часть первая",
+          "level": 1
+        },
+        {
+          "type": "heading",
+          "text": "Глава 1\nТуман",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Утро было тихим, и над рекой ещё стоял туман. Анна вышла на крыльцо.",
+          "style": "normal",
+          "spans": [
+            [
+              10,
+              15,
+              "emphasis"
+            ],
+            [
+              60,
+              67,
+              "strong"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "— Ты опять встала раньше всех? — спросил отец.",
+          "style": "normal"
+        },
+        {
+          "type": "separator"
+        },
+        {
+          "type": "paragraph",
+          "text": "Слова жирные и курсивные рядом.",
+          "style": "normal",
+          "spans": [
+            [
+              6,
+              24,
+              "strong"
+            ],
+            [
+              15,
+              24,
+              "emphasis"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Кто рано встаёт, тому Бог подаёт.",
+          "style": "quote"
+        },
+        {
+          "type": "paragraph",
+          "text": "Пословица",
+          "style": "quote"
+        }
+      ]
+    },
+    {
+      "title": "Глава 2. Гости",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 2.\nГости",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Песня",
+          "style": "subtitle"
+        },
+        {
+          "type": "paragraph",
+          "text": "Едут гости по дороге,\nПыль клубится до небес.",
+          "style": "poem",
+          "spans": [
+            [
+              27,
+              35,
+              "emphasis"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Ждёт их Анна на пороге,\nСмотрит в поле, смотрит в лес.",
+          "style": "poem"
+        },
+        {
+          "type": "paragraph",
+          "text": "Анна",
+          "style": "poem"
+        },
+        {
+          "type": "paragraph",
+          "text": "К вечеру приехал доктор Петров.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Часть вторая",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Часть вторая",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Ночью пошёл дождь.",
+          "style": "epigraph"
+        }
+      ]
+    },
+    {
+      "title": "Глава 3",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 3",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Дождь стучал по крыше ровно и спокойно.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Раздел без заголовка.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

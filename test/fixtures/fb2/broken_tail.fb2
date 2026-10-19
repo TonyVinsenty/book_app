@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fb:FictionBook xmlns:fb="http://www.gribuser.ru/xml/fictionbook/2.0"><fb:body><fb:section><fb:title><fb:p>Начало</fb:p></fb:title>
+Текст прямо в разделе, без абзаца.
+<fb:p>Абзац без конца
+<fb:p>Следующий абзац.</fb:p></fb:section>
+<fb:section><fb:title><fb:p>Обрыв</fb:p></fb:title><fb:p>Первый целый абзац.</fb:p><fb:p>Этот абзац оборв

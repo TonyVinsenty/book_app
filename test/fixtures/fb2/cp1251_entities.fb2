@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='windows-1251'?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+<description><title-info><author><last-name>Иванов</last-name></author><book-title>Таблицы&nbsp;и&nbsp;знаки</book-title><lang>ru</lang></title-info></description>
+<body><section><title><p>Глава&#160;первая</p></title>
+<p>&laquo;Сло­во&raquo; &mdash; это т.&nbsp;е. пример &amp; проверка.</p>
+<table><tr><th>Год</th><th>Событие</th></tr><tr><td>1812</td><td>Война</td></tr></table>
+<p><![CDATA[Текст в CDATA <без> тегов.]]></p>
+</section></body></FictionBook>

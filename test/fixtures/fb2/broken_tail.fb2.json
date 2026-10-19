@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "title": "broken_tail.fb2",
+    "authors": [],
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Начало",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Обрыв",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Начало",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Начало",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст прямо в разделе, без абзаца.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац без конца",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Следующий абзац.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Обрыв",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Обрыв",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Первый целый абзац.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Этот абзац оборв",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}
