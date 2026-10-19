@@ -59,6 +59,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ImportFailed(:final fileName, :final error) => switch (error) {
           ImportError.unsupportedFormat => l10n.importUnsupported(fileName),
           ImportError.damaged => l10n.importDamaged(fileName),
+          ImportError.drm => l10n.importDrm(fileName),
           ImportError.unreadable => l10n.importUnreadable(fileName),
         },
       };

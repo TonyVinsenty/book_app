@@ -9,6 +9,7 @@ import 'dart:typed_data';
 
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/parsers/parse_utils.dart';
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
@@ -355,7 +356,7 @@ final class _Reader {
   }
 
   void _endTitleInfo(String name, int depth) {
-    final field = _field == null ? null : _clean(_field.toString());
+    final field = _field == null ? null : cleanSpaces(_field.toString());
     if (field != null) _field = null;
     switch (name) {
       case 'book-title' when field != null && field.isNotEmpty:
@@ -428,7 +429,7 @@ final class _Reader {
         _annotation ??= value;
         return;
       // `<subtitle>* * *</subtitle>`: a scene break.
-      case _Kind.paragraph when _separator.hasMatch(value):
+      case _Kind.paragraph when separatorPattern.hasMatch(value):
         _blocks.add(const SeparatorBlock());
       case _Kind.paragraph || _Kind.stanza:
         _blocks.add(
@@ -439,7 +440,7 @@ final class _Reader {
       case _Kind.sectionTitle:
         final level = _sectionDepth < 1 ? 1 : _sectionDepth;
         _blocks.add(HeadingBlock(text: value, level: level, spans: text.spans));
-        final title = _tocTitle(value);
+        final title = tocTitle(value);
         _toc.add(
           TocEntry(
             title: title,
@@ -485,24 +486,4 @@ final class _Reader {
       sections: _sections,
     );
   }
-}
-
-final _separator = RegExp(r'^[*\s]{3,}$|^[-–—\s]{3,}$|^[#\s]{3,}$');
-
-/// Not `\s`: no-break spaces (`т.&nbsp;е.`) stay.
-final _whitespace = RegExp(r'[ \t\r\n]+');
-
-String _clean(String s) => s.replaceAll(_whitespace, ' ').trim();
-
-final _lineEnd = RegExp(r'[.!?:;…]$');
-
-/// Title lines joined for the contents: `Глава 1. Начало`.
-String _tocTitle(String heading) {
-  final lines = heading.split('\n');
-  final out = StringBuffer(lines.first);
-  for (final line in lines.skip(1)) {
-    out.write(_lineEnd.hasMatch(out.toString()) ? ' ' : '. ');
-    out.write(line);
-  }
-  return out.toString();
 }

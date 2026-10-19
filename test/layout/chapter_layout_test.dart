@@ -268,6 +268,8 @@ void main() {
     final files = [
       ...Directory('test/fixtures/fb2').listSync(),
       ...Directory('test/fixtures/txt').listSync(),
+      for (final name in ['epub3_ru', 'epub2_gutenberg', 'cp1251'])
+        File('test/fixtures/epub/$name.epub'),
     ].whereType<File>().where((f) => !f.path.endsWith('.json'));
     expect(files, isNotEmpty);
     for (final file in files) {

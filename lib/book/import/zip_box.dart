@@ -19,8 +19,13 @@ const _boxedExtensions = ['.fb2', '.epub', '.txt'];
 bool startsLikeZip(List<int> b) =>
     b.length >= 4 && b[0] == 0x50 && b[1] == 0x4B && b[2] == 3 && b[3] == 4;
 
-bool isEpubArchive(Archive archive) =>
-    archive.findFile('META-INF/container.xml') != null;
+/// Also `meta-inf/Container.xml` or with Windows slashes: the EPUB parser
+/// finds those too.
+bool isEpubArchive(Archive archive) => archive.any(
+  (f) =>
+      f.isFile &&
+      f.name.replaceAll(r'\', '/').toLowerCase() == 'meta-inf/container.xml',
+);
 
 /// The book entries of a box, in archive order; nested archives and macOS
 /// resource forks (`__MACOSX/`, `._name`) are not books.

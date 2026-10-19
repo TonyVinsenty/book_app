@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/parsers/epub_parser.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/data/book_repository.dart';
@@ -63,6 +64,17 @@ void main() {
     expect(book.parserVersion, txtParserVersion);
   });
 
+  test('adds an EPUB book; the source is stored as is', () async {
+    final file = copyFixture('test/fixtures/epub/epub3_ru.epub');
+    final book = ((await importer.importFile(file)) as ImportAdded).book;
+
+    expect(book.title, 'Утро над рекой');
+    expect(book.sourceFormat, SourceFormat.epub);
+    expect(book.parserVersion, epubParserVersion);
+    expect(repo.sourceFile(book).path, endsWith('.epub'));
+    expect(repo.sourceFile(book).readAsBytesSync(), file.readAsBytesSync());
+  });
+
   test('the same file twice is a duplicate, also under another name', () async {
     final first = copyFixture('test/fixtures/txt/utf8_lines.txt');
     final added = (await importer.importFile(first)) as ImportAdded;
@@ -77,7 +89,7 @@ void main() {
 
   test('failures come back as results, nothing is stored', () async {
     final cases = <String, (File, ImportError)>{
-      'epub': (
+      'epub without opf': (
         write(
           'a.epub',
           ZipEncoder().encodeBytes(
@@ -85,8 +97,9 @@ void main() {
               ..addFile(ArchiveFile.string('META-INF/container.xml', '')),
           ),
         ),
-        ImportError.unsupportedFormat,
+        ImportError.damaged,
       ),
+      'drm epub': (copyFixture('test/fixtures/epub/drm.epub'), ImportError.drm),
       'zip without books': (
         copyFixture('test/fixtures/zip/only_picture.zip'),
         ImportError.unsupportedFormat,

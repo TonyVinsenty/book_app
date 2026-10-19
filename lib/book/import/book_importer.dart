@@ -12,6 +12,7 @@ import 'package:book_app/book/import/format_detector.dart';
 import 'package:book_app/book/import/import_error.dart';
 import 'package:book_app/book/import/zip_box.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/parsers/epub_parser.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
@@ -77,8 +78,17 @@ ParsedBook parseBook(Uint8List bytes, {required String fileName}) {
         throw const ImportException(ImportError.unsupportedFormat);
       }
       version = txtParserVersion;
+    case DetectedFormat.epub:
+      try {
+        content = parseEpub(bytes, title: title);
+      } on NotEpubException {
+        throw const ImportException(ImportError.damaged);
+      } on EpubDrmException {
+        throw const ImportException(ImportError.drm);
+      }
+      version = epubParserVersion;
     // Boxes are unpacked before parsing; one inside a box is not opened.
-    case DetectedFormat.epub || DetectedFormat.zip:
+    case DetectedFormat.zip:
       throw const ImportException(ImportError.unsupportedFormat);
   }
   final wordCount = tokenize(content).length;

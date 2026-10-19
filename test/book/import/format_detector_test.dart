@@ -29,6 +29,10 @@ void main() {
         zipOf({'OEBPS/a.xhtml': '<html/>', 'META-INF/container.xml': '<c/>'}),
         DetectedFormat.epub,
       ),
+      'epub zipped on Windows': (
+        zipOf({r'META-INF\Container.xml': '<c/>', 'a.xhtml': '<html/>'}),
+        DetectedFormat.epub,
+      ),
       'mimetype alone is not epub': (
         zipOf({'mimetype': 'application/epub+zip'}),
         DetectedFormat.zip,
@@ -74,6 +78,8 @@ void main() {
           ? DetectedFormat.fb2
           : path.endsWith('.zip')
           ? DetectedFormat.zip
+          : path.endsWith('.epub')
+          ? DetectedFormat.epub
           : DetectedFormat.txt;
       expect(detectFormat(f.readAsBytesSync()), expected, reason: path);
     }

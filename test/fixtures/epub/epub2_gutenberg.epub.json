@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "title": "The Quiet Morning",
+    "authors": [
+      "Ann Tester"
+    ],
+    "series": "Test Books",
+    "seriesNumber": 3,
+    "lang": "en",
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "CHAPTER I.",
+      "level": 0,
+      "section": 1
+    },
+    {
+      "title": "CHAPTER II.",
+      "level": 0,
+      "section": 3
+    }
+  ],
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "THE QUIET MORNING",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "by Ann Tester",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "CHAPTER I.",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "CHAPTER I.",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "It was a quiet morning—the river’s fog had not yet lifted. Ann went out onto the porch.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "“Up before everyone again?” asked her father.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "The fog lies over the river,\nThe sun is hiding in the wood.",
+          "style": "poem"
+        }
+      ]
+    },
+    {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "The chapter goes on in a second file, cut by size.\nNext line.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Another paragraph © 1900 & more.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "CHAPTER II.",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "CHAPTER II.",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Unquoted attribute, still a paragraph.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Fish & chips, and 1 < 2 is true.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Unknown &foo; entity stays.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "The last words of the book.",
+          "style": "normal",
+          "spans": [
+            [
+              9,
+              14,
+              "emphasis"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

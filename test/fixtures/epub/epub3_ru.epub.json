@@ -1,0 +1,175 @@
+{
+  "meta": {
+    "title": "Утро над рекой",
+    "authors": [
+      "Анна Тестова",
+      "Пётр Соавтор"
+    ],
+    "series": "Тестовые книги",
+    "seriesNumber": 2,
+    "lang": "ru",
+    "annotation": "Короткая повесть о тихом утре.\nВторая строка.",
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Глава 1. Туман",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Глава 2. Гости",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Глава 1. Туман",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 1\nТуман",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Над рекой туман клубится,\nСолнце прячется в лесу.",
+          "style": "epigraph"
+        },
+        {
+          "type": "paragraph",
+          "text": "Народное",
+          "style": "epigraph"
+        },
+        {
+          "type": "paragraph",
+          "text": "Утро было тихим, и над рекой ещё стоял туман. Анна вышла на крыльцо.",
+          "style": "normal",
+          "spans": [
+            [
+              10,
+              15,
+              "emphasis"
+            ],
+            [
+              60,
+              67,
+              "strong"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "— Ты опять встала раньше всех? — спросил отец.",
+          "style": "normal"
+        },
+        {
+          "type": "separator"
+        },
+        {
+          "type": "paragraph",
+          "text": "Тишина — лучший собеседник.",
+          "style": "quote",
+          "spans": [
+            [
+              16,
+              26,
+              "strong"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Белеет парус одинокий",
+          "style": "poem"
+        },
+        {
+          "type": "paragraph",
+          "text": "В тумане моря голубом.",
+          "style": "poem"
+        },
+        {
+          "type": "separator"
+        },
+        {
+          "type": "paragraph",
+          "text": "Конец главы со ссылкой и сноской.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Глава 2. Гости",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 2\nГости",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "Гости приехали к обеду — шумные «городские».",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Второй абзац без закрывающего тега.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст прямо в div",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "и абзац внутри",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "и хвост.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Ячейка 1 Ячейка 2",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Итог 3",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Первый пункт",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Второй пункт",
+          "style": "normal",
+          "spans": [
+            [
+              7,
+              12,
+              "emphasis"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "строка один\nстрока два",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Мама мыла раму.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

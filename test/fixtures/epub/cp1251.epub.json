@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "title": "cp1251.epub",
+    "authors": [],
+    "lang": "ru",
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Старая кодировка",
+      "level": 0,
+      "section": 0
+    }
+  ],
+  "sections": [
+    {
+      "title": "Старая кодировка",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Старая кодировка",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст в Windows-1251: ёжик, «ёлка», щука.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

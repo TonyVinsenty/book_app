@@ -60,6 +60,11 @@
   "@importDamaged": {
     "placeholders": {"fileName": {"type": "String"}}
   },
+  "importDrm": "Книга защищена от копирования (DRM), такие книги открыть нельзя: {fileName}",
+  "@importDrm": {
+    "description": "Import failed: the EPUB text is encrypted",
+    "placeholders": {"fileName": {"type": "String"}}
+  },
   "importUnreadable": "Не удалось открыть файл: {fileName}",
   "@importUnreadable": {
     "placeholders": {"fileName": {"type": "String"}}
