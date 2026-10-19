@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "title": "utf8_bom_crlf.txt",
+    "authors": [],
+    "lang": "en",
+    "sourceFormat": "txt"
+  },
+  "toc": [
+    {
+      "title": "Chapter 1",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Chapter 2",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Chapter 1",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Chapter 1",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "The morning was quiet. Mr. Brown opened the window, looked at the road and decided that the guests would not come before noon.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "\"Up again before everyone?\" asked his father.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Chapter 2",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Chapter 2",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "By evening the doctor arrived, e.g. the usual crowd followed.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}
