@@ -30,3 +30,9 @@ final class SettingsRepository {
   Future<void> remove(String key) =>
       (_db.delete(_db.appSettings)..where((s) => s.key.equals(key))).go();
 }
+
+/// Keys of the settings store.
+abstract final class SettingKeys {
+  /// Speed reading pace, words per minute.
+  static const speedWpm = 'speed.wpm';
+}

@@ -4,10 +4,15 @@ import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/chapter_layout.dart';
 import 'package:book_app/layout/page_style.dart';
+import 'package:book_app/speed/timing.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Normal reading: one page at a time (ADR 0003).
@@ -39,7 +44,8 @@ class ReaderScreen extends ConsumerWidget {
 }
 
 /// Pages of an opened book. Taps on the left and right thirds turn pages,
-/// the middle shows or hides the top bar; swipes turn pages too.
+/// the middle shows or hides the top bar; swipes turn pages too. A long
+/// press on a word starts speed reading from it.
 class ReaderView extends ConsumerStatefulWidget {
   const ReaderView({super.key, required this.opened});
 
@@ -49,7 +55,8 @@ class ReaderView extends ConsumerStatefulWidget {
   ConsumerState<ReaderView> createState() => ReaderViewState();
 }
 
-class ReaderViewState extends ConsumerState<ReaderView> {
+class ReaderViewState extends ConsumerState<ReaderView>
+    with SingleTickerProviderStateMixin {
   static const _margin = EdgeInsets.fromLTRB(24, 20, 24, 0);
   static const _footerHeight = 36.0;
 
@@ -65,11 +72,22 @@ class ReaderViewState extends ConsumerState<ReaderView> {
   late int _word;
   bool _barShown = false;
 
+  /// The word speed reading stopped on: lit for about a second, then fades
+  /// (ADR 0004 п. 10).
+  int? _litWord;
+  late final AnimationController _lit = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
   @visibleForTesting
   ChapterLayout get layout => _layoutOf(_section);
 
   @visibleForTesting
   ChapterPage get page => layout.pages[_page];
+
+  @visibleForTesting
+  int? get litWord => _litWord;
 
   @override
   void initState() {
@@ -84,6 +102,7 @@ class ReaderViewState extends ConsumerState<ReaderView> {
 
   @override
   void dispose() {
+    _lit.dispose();
     _clearLayouts();
     super.dispose();
   }
@@ -155,6 +174,47 @@ class ReaderViewState extends ConsumerState<ReaderView> {
     );
   }
 
+  Future<void> _onLongPress(LongPressStartDetails details) async {
+    final word = layout.wordAt(_page, details.localPosition - _margin.topLeft);
+    if (word == null) return;
+    unawaited(HapticFeedback.selectionClick());
+    final saved = await ref
+        .read(settingsRepositoryProvider)
+        .get(SettingKeys.speedWpm);
+    if (!mounted) return;
+    final last = await Navigator.of(context).push<int>(
+      MaterialPageRoute(
+        builder: (_) => RsvpScreen(
+          opened: widget.opened,
+          startWord: word,
+          wordsPerMinute: int.tryParse(saved ?? '') ?? SpeedLimits.initial,
+        ),
+      ),
+    );
+    if (mounted && last != null) _showWord(last);
+  }
+
+  /// Opens the page with [word], lights it and keeps the place on it.
+  void _showWord(int word) {
+    final section = widget.opened.tokens[word].sectionIndex;
+    setState(() {
+      _section = section;
+      _page = _layoutOf(section).pageOfWord(word);
+      _word = word;
+      _litWord = word;
+      _barShown = false;
+    });
+    unawaited(_lit.forward(from: 0));
+    unawaited(
+      ref
+          .read(bookRepositoryProvider)
+          .savePosition(
+            widget.opened.book.id,
+            widget.opened.tokens.positionOf(word),
+          ),
+    );
+  }
+
   void _onTapUp(TapUpDetails details, double width) {
     final x = details.localPosition.dx;
     if (x < width / 3) {
@@ -199,6 +259,7 @@ class ReaderViewState extends ConsumerState<ReaderView> {
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (d) => _onTapUp(d, constraints.maxWidth),
                 onHorizontalDragEnd: _onSwipe,
+                onLongPressStart: _onLongPress,
                 child: Padding(
                   padding: _margin,
                   child: Column(
@@ -208,7 +269,15 @@ class ReaderViewState extends ConsumerState<ReaderView> {
                         label: chapter.pageText(_page),
                         child: CustomPaint(
                           size: pageSize,
-                          painter: _PagePainter(chapter, _page),
+                          painter: _PagePainter(
+                            chapter,
+                            _page,
+                            lit: _litWord == null
+                                ? const []
+                                : chapter.wordBoxes(_page, _litWord!),
+                            litColor: colors.highlight,
+                            litAnimation: _lit,
+                          ),
                         ),
                       ),
                       SizedBox(
@@ -271,15 +340,49 @@ class ReaderViewState extends ConsumerState<ReaderView> {
 }
 
 class _PagePainter extends CustomPainter {
-  _PagePainter(this.chapter, this.page);
+  _PagePainter(
+    this.chapter,
+    this.page, {
+    required this.lit,
+    required this.litColor,
+    required this.litAnimation,
+  }) : super(repaint: litAnimation);
 
   final ChapterLayout chapter;
   final int page;
 
+  /// Boxes of the lit word on this page.
+  final List<Rect> lit;
+  final Color litColor;
+
+  /// Full for the first 70%, then fades out.
+  final AnimationController litAnimation;
+
+  double get _litOpacity {
+    if (!litAnimation.isAnimating) return 0;
+    final t = litAnimation.value;
+    return t < 0.7 ? 1 : (1 - t) / 0.3;
+  }
+
   @override
-  void paint(Canvas canvas, Size size) => chapter.paintPage(canvas, page);
+  void paint(Canvas canvas, Size size) {
+    final opacity = _litOpacity;
+    if (opacity > 0) {
+      final paint = Paint()..color = litColor.withValues(alpha: opacity);
+      for (final box in lit) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(box.inflate(2), const Radius.circular(4)),
+          paint,
+        );
+      }
+    }
+    chapter.paintPage(canvas, page);
+  }
 
   @override
   bool shouldRepaint(_PagePainter old) =>
-      old.chapter != chapter || old.page != page;
+      old.chapter != chapter ||
+      old.page != page ||
+      !listEquals(old.lit, lit) ||
+      old.litColor != litColor;
 }

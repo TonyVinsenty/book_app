@@ -52,6 +52,7 @@ final class ChapterLayout {
     this._section,
     this._blocks,
     this.pages,
+    this._tokens,
   );
 
   /// Lays out section [sectionIndex] of [tokens]' book. Must run on the main
@@ -75,6 +76,7 @@ final class ChapterLayout {
       section,
       blocks,
       pages,
+      tokens,
     );
   }
 
@@ -83,6 +85,7 @@ final class ChapterLayout {
   final PageStyle style;
   final Section _section;
   final List<_BlockLayout?> _blocks;
+  final BookTokens _tokens;
 
   /// Empty when the chapter shows nothing (no text, no separators).
   final List<ChapterPage> pages;
@@ -114,6 +117,96 @@ final class ChapterLayout {
         _ => _separatorText,
       },
   ].join('\n');
+
+  /// The word on page [index] under [point] (page coordinates), or null if
+  /// no word is within about a letter of it (ADR 0003 п. 3).
+  int? wordAt(int index, Offset point) {
+    final page = pages[index];
+    for (final slice in page.slices) {
+      final block = _blocks[slice.blockIndex]!;
+      final top = block.tops[slice.firstLine];
+      final bottom = slice.top + block.tops[slice.endLine] - top;
+      if (!block.isText || point.dy < slice.top || point.dy >= bottom) {
+        continue;
+      }
+      final shift = Offset(block.dx, slice.top - top);
+      final local = point - shift;
+      var line = slice.firstLine;
+      while (line + 1 < slice.endLine && block.tops[line + 1] <= local.dy) {
+        line++;
+      }
+      final caret = block.painter.getPositionForOffset(local).offset;
+      final char = (caret - block.prefix).clamp(0, block.textLength);
+      // The caret is between letters: the word holding it or the one ending
+      // right before it; take the nearer one on the touched line.
+      final next = _tokens.indexAt(
+        TextAnchor(
+          sectionIndex: sectionIndex,
+          blockIndex: slice.blockIndex,
+          charOffset: char,
+        ),
+      );
+      int? best;
+      var bestDistance = double.infinity;
+      for (final word in [next - 1, next]) {
+        if (word < page.firstWord ||
+            word >= page.endWord ||
+            _tokens[word].blockIndex != slice.blockIndex) {
+          continue;
+        }
+        for (final box in _boxesOf(block, word)) {
+          final middle = box.center.dy;
+          if (middle < block.tops[line] || middle >= block.tops[line + 1]) {
+            continue;
+          }
+          final distance = local.dx < box.left
+              ? box.left - local.dx
+              : math.max(0.0, local.dx - box.right);
+          if (distance < bestDistance) {
+            best = word;
+            bestDistance = distance;
+          }
+        }
+      }
+      final tolerance = style.textScaler.scale(style.fontSize);
+      return bestDistance <= tolerance ? best : null;
+    }
+    return null;
+  }
+
+  /// Rectangles of [wordIndex] on page [index] (page coordinates), one per
+  /// line it takes; empty if the word is not on that page.
+  List<Rect> wordBoxes(int index, int wordIndex) {
+    if (wordIndex < 0 || wordIndex >= _tokens.length) return const [];
+    final token = _tokens[wordIndex];
+    if (token.sectionIndex != sectionIndex) return const [];
+    final boxes = <Rect>[];
+    for (final slice in pages[index].slices) {
+      if (slice.blockIndex != token.blockIndex) continue;
+      final block = _blocks[slice.blockIndex]!;
+      final top = block.tops[slice.firstLine];
+      final bottom = block.tops[slice.endLine];
+      for (final box in _boxesOf(block, wordIndex)) {
+        final middle = box.center.dy;
+        if (middle < top || middle >= bottom) continue;
+        boxes.add(box.shift(Offset(block.dx, slice.top - top)));
+      }
+    }
+    return boxes;
+  }
+
+  /// Boxes of a word in its block painter's coordinates.
+  Iterable<Rect> _boxesOf(_BlockLayout block, int wordIndex) {
+    final token = _tokens[wordIndex];
+    return block.painter
+        .getBoxesForSelection(
+          TextSelection(
+            baseOffset: token.charStart + block.prefix,
+            extentOffset: token.charEnd + block.prefix,
+          ),
+        )
+        .map((box) => box.toRect());
+  }
 
   void paintPage(Canvas canvas, int index) {
     for (final slice in pages[index].slices) {
@@ -309,7 +402,8 @@ final class _BlockLayout {
           ParagraphStyle.quote => em * 1.5,
           _ => 0.0,
         };
-        final spaced = kind != ParagraphStyle.normal && kind != ParagraphStyle.note;
+        final spaced =
+            kind != ParagraphStyle.normal && kind != ParagraphStyle.note;
         return _text(
           block,
           style.paragraph(kind),

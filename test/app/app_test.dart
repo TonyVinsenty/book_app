@@ -54,7 +54,11 @@ void main() {
   Future<void> addBooks(WidgetTester tester) async {
     await tester.tap(find.text('Добавить книгу'));
     await tester.runAsync(() async {
-      for (var i = 0; i < 250 && find.byType(SnackBar).evaluate().isEmpty; i++) {
+      for (
+        var i = 0;
+        i < 250 && find.byType(SnackBar).evaluate().isEmpty;
+        i++
+      ) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
         await tester.pump();
       }

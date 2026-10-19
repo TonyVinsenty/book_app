@@ -47,10 +47,7 @@ void main() {
     expect(book.sourceFormat, SourceFormat.fb2);
     expect(book.parserVersion, fb2ParserVersion);
     expect(book.sourceName, 'utf8_nested.fb2');
-    expect(
-      book.sourceHash,
-      sha256.convert(file.readAsBytesSync()).toString(),
-    );
+    expect(book.sourceHash, sha256.convert(file.readAsBytesSync()).toString());
     expect(book.wordCount, greaterThan(0));
     expect(repo.sourceFile(book).readAsBytesSync(), file.readAsBytesSync());
     expect(await repo.loadContent(book), isNotNull);
@@ -94,7 +91,10 @@ void main() {
         write('a.fb2', utf8.encode('<?xml version="1.0"?><FictionBook><bo')),
         ImportError.damaged,
       ),
-      'empty text': (write('a.txt', utf8.encode(' \n\n ')), ImportError.damaged),
+      'empty text': (
+        write('a.txt', utf8.encode(' \n\n ')),
+        ImportError.damaged,
+      ),
       'missing file': (File('${temp.path}/nope.txt'), ImportError.unreadable),
     };
     for (final MapEntry(key: name, value: (file, error)) in cases.entries) {

@@ -7,7 +7,9 @@ import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
+import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +24,7 @@ void main() {
   late Directory temp;
   late BookRepository repo;
   late int bookId;
+  late AppDatabase db;
 
   setUp(() => temp = Directory.systemTemp.createTempSync('reader_'));
   tearDown(() => temp.deleteSync(recursive: true));
@@ -38,7 +41,7 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     // Closing a drift database under fake time hangs, so it is left open;
     // synchronous stream closing leaves no pending timer.
-    final db = AppDatabase(
+    db = AppDatabase(
       DatabaseConnection(
         NativeDatabase.memory(),
         closeStreamsSynchronously: true,
@@ -157,6 +160,109 @@ void main() {
     final page = reader(tester).page;
     expect(page.firstWord, lessThanOrEqualTo(word));
     expect(page.endWord, greaterThan(word));
+    await closeApp(tester);
+  });
+
+  /// Long-presses word [word] of the current page.
+  Future<void> longPressWord(WidgetTester tester, int word) async {
+    final state = reader(tester);
+    final box = state.layout
+        .wordBoxes(state.layout.pageOfWord(word), word)
+        .first;
+    final page = find.byWidgetPredicate(
+      (w) => w is CustomPaint && w.size == state.layout.pageSize,
+    );
+    await tester.longPressAt(tester.getTopLeft(page) + box.center);
+    await settle(tester);
+    // The route animation; speed reading keeps frames coming, so no
+    // pumpAndSettle while it plays.
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  RsvpScreenState rsvp(WidgetTester tester) =>
+      tester.state<RsvpScreenState>(find.byType(RsvpScreen));
+
+  testWidgets('a long press reads from the word; leaving lights the last one', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord + 5;
+
+    await longPressWord(tester, start);
+    final engine = rsvp(tester).engine;
+    expect(engine.isPlaying, isTrue);
+    // Started at the pressed word; 300 wpm by default = 200 ms per word.
+    expect(engine.wordIndex, inInclusiveRange(start, start + 3));
+    final before = engine.wordIndex;
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(engine.wordIndex, inInclusiveRange(before + 9, before + 11));
+
+    // A tap pauses and shows the controls.
+    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
+    await tester.pump();
+    expect(engine.isPlaying, isFalse);
+    final last = engine.wordIndex;
+    await tester.pump(const Duration(seconds: 1));
+    expect(engine.wordIndex, last);
+    expect(find.text('300 сл/мин'), findsOneWidget);
+    await tester.tap(find.byTooltip('Быстрее'));
+    await tester.pump();
+    expect(find.text('325 сл/мин'), findsOneWidget);
+    await settle(tester);
+    expect(
+      await tester.runAsync(
+        () => SettingsRepository(db).get(SettingKeys.speedWpm),
+      ),
+      '325',
+    );
+    expect(await tester.runAsync(savedWord), last, reason: 'saved on pause');
+
+    // Another tap continues.
+    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
+    await tester.pump();
+    expect(engine.isPlaying, isTrue);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tapAt(tester.getCenter(find.byType(RsvpScreen)));
+    await tester.pump();
+    final stopped = engine.wordIndex;
+    expect(stopped, greaterThan(last));
+
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RsvpScreen), findsNothing);
+    final page = reader(tester).page;
+    expect(page.firstWord, lessThanOrEqualTo(stopped));
+    expect(page.endWord, greaterThan(stopped));
+    await settle(tester);
+    expect(reader(tester).litWord, stopped);
+    expect(await tester.runAsync(savedWord), stopped);
+
+    // System back while playing also returns to the page of the word, and
+    // the speed set before is kept.
+    await longPressWord(tester, page.firstWord);
+    expect(find.text('325 сл/мин'), findsNothing, reason: 'playing');
+    expect(rsvp(tester).engine.timing.durationOf(0).inMilliseconds, 184);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(RsvpScreen), findsNothing);
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('a long press between words does nothing', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final size = tester.getSize(find.byType(ReaderView));
+    // Below the page text, in the footer row's left part.
+    await tester.longPressAt(Offset(size.width / 2, size.height - 4));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(RsvpScreen), findsNothing);
     await closeApp(tester);
   });
 }

@@ -73,12 +73,31 @@ void main() {
     }
   }
 
+  /// Every word on a page has boxes there, and touching the middle of each
+  /// box finds that word (long press → speed reading, ADR 0003 п. 3).
+  void expectWordsTouchable(ChapterLayout layout) {
+    for (final (p, page) in layout.pages.indexed) {
+      for (var w = page.firstWord; w < page.endWord; w++) {
+        final boxes = layout.wordBoxes(p, w);
+        expect(boxes, isNotEmpty, reason: 'word $w has boxes on page $p');
+        for (final box in boxes) {
+          expect(
+            layout.wordAt(p, box.center),
+            w,
+            reason: 'word $w at ${box.center} on page $p',
+          );
+        }
+      }
+    }
+  }
+
   void expectBookSplits(BookContent content, {List<Size> sizes = _sizes}) {
     final tokens = tokenize(content);
     for (final size in sizes) {
       for (var s = 0; s < content.sections.length; s++) {
         final layout = build(tokens, s, size, style());
         expectExactSplit(tokens, layout);
+        expectWordsTouchable(layout);
         layout.dispose();
       }
     }
@@ -86,6 +105,26 @@ void main() {
 
   test('a generated book splits exactly at several page sizes', () {
     expectBookSplits(sampleBook());
+  });
+
+  test('touching outside words finds nothing; other pages have no boxes', () {
+    final tokens = tokenize(sampleBook());
+    final layout = build(tokens, 0, _sizes.first, style());
+    final page = layout.pages[1];
+    expect(layout.wordBoxes(1, page.firstWord), isNotEmpty);
+    expect(layout.wordBoxes(0, page.firstWord), isEmpty);
+    expect(layout.wordBoxes(1, tokens.firstWordOfSection(1)), isEmpty);
+    expect(layout.wordAt(1, const Offset(100, -50)), isNull);
+    expect(layout.wordAt(1, const Offset(100, 10000)), isNull);
+    // Just after the chapter's last word still finds it; far after, nothing.
+    final last = layout.pages.length - 1;
+    final box = layout.wordBoxes(last, layout.pages[last].endWord - 1).last;
+    expect(
+      layout.wordAt(last, Offset(box.right + 2, box.center.dy)),
+      isNotNull,
+    );
+    expect(layout.wordAt(last, Offset(box.right + 60, box.center.dy)), isNull);
+    layout.dispose();
   });
 
   test('pages are filled and a long chapter takes several pages', () {

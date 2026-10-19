@@ -124,10 +124,11 @@ void main() {
 
     test('the tokenizer reads every word of the poem', () {
       final tokens = tokenize(book);
-      final words = [
-        for (var i = 0; i < tokens.length; i++) tokens.textOf(i),
-      ];
-      expect(words, containsAllInOrder(['пороге,', 'лес.', 'Анна', 'К', 'вечеру']));
+      final words = [for (var i = 0; i < tokens.length; i++) tokens.textOf(i)];
+      expect(
+        words,
+        containsAllInOrder(['пороге,', 'лес.', 'Анна', 'К', 'вечеру']),
+      );
     });
   });
 

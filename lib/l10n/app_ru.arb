@@ -88,5 +88,30 @@
   "@readerPageOfChapter": {
     "description": "Page number inside the current chapter, at the bottom of the reader",
     "placeholders": {"page": {"type": "int"}, "count": {"type": "int"}}
+  },
+  "speedExit": "Выйти из скорочтения",
+  "@speedExit": {
+    "description": "Button that closes speed reading and returns to the page"
+  },
+  "speedSlower": "Медленнее",
+  "@speedSlower": {
+    "description": "Button that lowers the speed reading pace"
+  },
+  "speedFaster": "Быстрее",
+  "@speedFaster": {
+    "description": "Button that raises the speed reading pace"
+  },
+  "speedWordsPerMinute": "{wpm} сл/мин",
+  "@speedWordsPerMinute": {
+    "description": "Speed reading pace, words per minute (short form)",
+    "placeholders": {"wpm": {"type": "int"}}
+  },
+  "speedTapToContinue": "Коснитесь экрана, чтобы продолжить",
+  "@speedTapToContinue": {
+    "description": "Hint under the word while speed reading is paused"
+  },
+  "speedBookEnd": "Конец книги",
+  "@speedBookEnd": {
+    "description": "Shown in speed reading after the last word of the book"
   }
 }
