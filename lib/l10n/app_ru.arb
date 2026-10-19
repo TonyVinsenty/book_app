@@ -1,0 +1,11 @@
+{
+  "@@locale": "ru",
+  "appTitle": "BookApp",
+  "@appTitle": {
+    "description": "Working app name; the visible name is not chosen yet"
+  },
+  "libraryEmpty": "Здесь появятся ваши книги",
+  "@libraryEmpty": {
+    "description": "Placeholder on the empty library screen"
+  }
+}

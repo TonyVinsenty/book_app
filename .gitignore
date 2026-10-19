@@ -1,0 +1,67 @@
+# Claude Code: личные настройки не коммитим (общие .claude/settings.json, agents, skills — коммитим)
+.claude/settings.local.json
+.claude/agent-memory-local/
+
+# Секреты и ключи подписи (создаёт и хранит владелец вне репозитория)
+.env
+.env.*
+!.env.example
+key.properties
+*.jks
+*.keystore
+*.p12
+
+# Большие «трудные» книги для ручной проверки — вне репозитория
+/books-local/
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+Thumbs.db
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IDE
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Flutter/Dart/Pub
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+app.*.symbols
+app.*.map.json
+.widget_preview/
+
+# Android
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/**/xcuserdata/
+**/ios/**/DerivedData/
+
+# Generated texts (gen-l10n, rebuilt by `flutter pub get`)
+lib/l10n/generated/

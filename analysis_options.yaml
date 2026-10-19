@@ -1,0 +1,35 @@
+# Настройки анализатора Dart (запуск: `flutter analyze`).
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - "**/*.g.dart" # сгенерированный код (drift)
+    - lib/l10n/generated/** # сгенерированные тексты (gen-l10n)
+  language:
+    strict-casts: true # запрет неявного приведения dynamic -> конкретный тип
+    strict-inference: true # если тип нельзя вывести, его нужно указать
+    strict-raw-types: true # запрет «сырых» дженериков вроде List вместо List<int>
+  errors:
+    missing_return: error
+    missing_required_param: error
+
+linter:
+  rules:
+    - always_declare_return_types
+    - always_use_package_imports # только package:-импорты
+    - avoid_dynamic_calls
+    - avoid_slow_async_io
+    - cancel_subscriptions
+    - close_sinks
+    - directives_ordering
+    - only_throw_errors
+    - prefer_final_in_for_each
+    - prefer_final_locals
+    - prefer_single_quotes
+    - sort_pub_dependencies
+    - unawaited_futures
+    - unnecessary_lambdas
