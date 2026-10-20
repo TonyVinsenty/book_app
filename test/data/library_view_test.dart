@@ -212,12 +212,27 @@ void main() {
       sort: LibrarySort.recent,
     );
 
-    test('"Продолжить" — the last opened book, on Все and Читаю only', () {
-      expect(view(Shelf.all).continueBook?.id, 2);
-      expect(view(Shelf.reading).continueBook?.id, 2);
-      expect(view(Shelf.finished).continueBook, isNull);
+    test('"Продолжить" — the last opened unread book, on every shelf', () {
+      // Book 2 was opened later but is read to the end.
+      expect(view(Shelf.all).continueBook?.id, 1);
+      expect(view(Shelf.reading).continueBook?.id, 1);
+      expect(view(Shelf.finished).continueBook?.id, 1);
       final mine = [collection(4, 'Мои')];
-      expect(view(Shelf.collection(4), collections: mine).continueBook, isNull);
+      expect(
+        view(Shelf.collection(4), collections: mine).continueBook?.id,
+        1,
+      );
+    });
+
+    test('no "Продолжить" when every opened book is read', () {
+      final done = libraryViewOf(
+        books: [_book(1, opened: 1, finished: 2), _book(2)],
+        collections: const [],
+        links: const [],
+        shelf: Shelf.all,
+        sort: LibrarySort.recent,
+      );
+      expect(done.continueBook, isNull);
     });
 
     test('no "Продолжить" before any book was opened', () {

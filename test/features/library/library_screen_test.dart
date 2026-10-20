@@ -233,7 +233,7 @@ void main() {
     expect(inRow('Шинель', find.text('Прочитано')), findsOneWidget);
     expect(inRow('Война и мир', find.byType(ReadMarkLine)), findsNothing);
 
-    // "Продолжить" is the book opened last.
+    // "Продолжить" is the book opened last of those not read to the end.
     final card = find.byType(ContinueCard);
     expect(card, findsOneWidget);
     expect(
@@ -251,22 +251,30 @@ void main() {
       links: [BookCollectionRow(bookId: 1, collectionId: 7, addedAt: _day)],
     );
 
+    // The shelf buttons stay put: "Продолжить" is on every shelf.
+    Offset chips() => tester.getTopLeft(find.byType(ChoiceChip).first);
+    final place = chips();
+
     await tester.tap(find.widgetWithText(ChoiceChip, 'Читаю'));
     await settle(tester);
     expect(titles(tester, BookTile), ['Анна Каренина']);
     expect(await stored(tester, SettingKeys.libraryShelf), 'reading');
     expect(find.byType(ContinueCard), findsOneWidget);
+    expect(chips(), place);
 
     await tester.tap(find.widgetWithText(ChoiceChip, 'Прочитано'));
     await settle(tester);
     expect(titles(tester, BookTile), ['Шинель']);
-    expect(find.byType(ContinueCard), findsNothing);
+    expect(find.byType(ContinueCard), findsOneWidget);
+    expect(chips(), place);
 
     await tester.tap(find.widgetWithText(ChoiceChip, 'Классика'));
     await settle(tester);
     expect(titles(tester, BookTile), ['Война и мир']);
     expect(find.text('1 книга'), findsOneWidget);
     expect(await stored(tester, SettingKeys.libraryShelf), 'c:7');
+    expect(find.byType(ContinueCard), findsOneWidget);
+    expect(chips(), place);
   });
 
   testWidgets('empty shelves explain themselves', (tester) async {

@@ -34,9 +34,6 @@ final class Shelf {
 
   bool get isAutomatic => collectionId == null;
 
-  /// "Продолжить" is shown here.
-  bool get showsContinue => this == all || this == reading;
-
   bool holds(BookRow book, Set<int> collectionBooks) => switch (this) {
     all => true,
     reading => book.openedAt != null && book.finishedAt == null,
@@ -266,7 +263,9 @@ final class LibraryView {
   /// The owner's collections by name.
   final List<CollectionRow> collections;
 
-  /// "Продолжить": the last opened book, on shelves that show it.
+  /// "Продолжить": the last opened book still being read. The same on
+  /// every shelf, so switching shelves does not move them (owner,
+  /// 2026-10-20).
   final BookRow? continueBook;
 
   final bool libraryIsEmpty;
@@ -287,7 +286,7 @@ LibraryView libraryViewOf({
   BookRow? last;
   for (final b in books) {
     final opened = b.openedAt;
-    if (opened == null) continue;
+    if (opened == null || b.finishedAt != null) continue;
     if (last == null || opened.isAfter(last.openedAt!)) last = b;
   }
   return LibraryView(
@@ -300,7 +299,7 @@ LibraryView libraryViewOf({
         final c = names[a.id]!.compareTo(names[b.id]!);
         return c != 0 ? c : a.id.compareTo(b.id);
       }),
-    continueBook: shown.showsContinue ? last : null,
+    continueBook: last,
     libraryIsEmpty: books.isEmpty,
   );
 }
