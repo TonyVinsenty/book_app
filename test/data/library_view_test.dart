@@ -75,6 +75,13 @@ void main() {
       test(key, () => expect(_sorted(value), expected[key]));
     }
 
+    test('Latin letters with marks go with their plain letter', () {
+      expect(SortKey('Éclair').compareTo(SortKey('Ezra')), lessThan(0));
+      expect(SortKey('Éclair').compareTo(SortKey('Zuno')), lessThan(0));
+      expect(SortKey('Éclair').compareTo(SortKey('eclair')), 0);
+      expect(SortKey('Straße').compareTo(SortKey('strasse')), 0);
+    });
+
     test('ё and е are equal', () {
       expect(SortKey('Ёлка').compareTo(SortKey('елка')), 0);
     });
@@ -141,12 +148,18 @@ void main() {
         ['Лев Николаевич Толстой'],
         ['лев толстой'],
         ['  Лев   Толстой '],
+        ['Толстой Лев Николаевич'],
+        ['Толстой Лев'],
       ]) {
         same(['Лев Толстой'], other);
       }
       same(['Пётр Алексеев'], ['П. Алексеев']);
       same(['Фёдор Достоевский'], ['Федор Достоевский']);
       same(['Гомер'], ['гомер']);
+      same(['Достоевский Фёдор'], ['Фёдор Достоевский']);
+      same(['Эйхенбаум Анна'], ['Анна Эйхенбаум']);
+      same(['Dupont Jean'], ['Jean Dupont']);
+      same(['Мамин-Сибиряк Дмитрий Наркисович'], ['Д. Н. Мамин-Сибиряк']);
     });
 
     test('namesakes are apart', () {
@@ -232,6 +245,10 @@ void main() {
         'Гомер': 'Гомер',
         'А. Б.': 'А. Б.',
         'эдгар по': 'по Э.',
+        'Толстой Лев Николаевич': 'Толстой Л. Н.',
+        'Достоевский Фёдор': 'Достоевский Ф.',
+        // Neither word is a known given name: as written, "Имя Фамилия".
+        'Ёлкин Ёрш': 'Ёрш Ё.',
       };
       for (final MapEntry(:key, :value) in cases.entries) {
         expect(authorHeaderOf(key), value, reason: key);

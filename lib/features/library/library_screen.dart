@@ -50,6 +50,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_summary(l10n, results)),
+        // With "Подробнее" it would stay until closed, over the list.
+        persist: false,
+        duration: const Duration(seconds: 8),
         action: results.length < 2
             ? null
             : SnackBarAction(

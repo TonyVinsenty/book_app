@@ -199,17 +199,9 @@ typedef AuthorKey = ({SortKey surname, SortKey initial});
 /// "Лев Толстой", "Л. Н. Толстой" and "Толстой, Лев Николаевич" give one key,
 /// "Алексей Толстой" another; null when there is no author.
 AuthorKey? authorKeyOf(List<String> authors) {
-  final surname = surnameOf(authors);
-  if (surname == null) return null;
-  final first = authors.first.trim();
-  final comma = first.indexOf(',');
-  final List<String> given;
-  if (comma > 0) {
-    given = [first.substring(comma + 1)];
-  } else {
-    // With only initials ("А. Б.") the surname is the whole name.
-    given = first.split(RegExp(r'\s+'))..remove(surname);
-  }
+  final first = authors.firstOrNull?.trim() ?? '';
+  if (first.isEmpty) return null;
+  final (:surname, :given) = _nameOf(first);
   final letter = _letter.firstMatch(given.join(' '))?[0] ?? '';
   return (surname: SortKey(surname), initial: SortKey(letter));
 }
@@ -274,16 +266,9 @@ String _mostFrequentAuthor(List<BookRow> books) {
 /// Лев Николаевич" all give "Толстой Л. Н."; a name of initials only stays.
 String authorHeaderOf(String name) {
   final full = name.trim();
-  final surname = surnameOf([full]);
-  if (surname == null || surname == full) return full;
-  final comma = full.indexOf(',');
-  final List<String> given;
-  if (comma > 0) {
-    given = full.substring(comma + 1).trim().split(RegExp(r'\s+'));
-  } else {
-    given = full.split(RegExp(r'\s+'));
-    given.removeAt(given.lastIndexOf(surname));
-  }
+  if (full.isEmpty) return full;
+  final (:surname, :given) = _nameOf(full);
+  if (surname == full) return full;
   final initials = [
     for (final w in given)
       if (_letter.firstMatch(w)?[0] case final l?) '${l.toUpperCase()}.',
@@ -291,21 +276,81 @@ String authorHeaderOf(String name) {
   return initials.isEmpty ? surname : '$surname ${initials.join(' ')}';
 }
 
-/// Surname of the first author: the part before a comma ("Толстой, Лев"),
-/// else the last word that is not an initial ("Л. Н. Толстой",
-/// "Толстой Л. Н."); null when there is no author.
+/// Surname of the first author ([_nameOf]); null when there is no author.
 String? surnameOf(List<String> authors) {
   final first = authors.firstOrNull?.trim() ?? '';
-  if (first.isEmpty) return null;
-  final comma = first.indexOf(',');
-  if (comma > 0) return first.substring(0, comma).trim();
-  final words = first.split(RegExp(r'\s+'));
-  final names = [
-    for (final w in words)
-      if (!_initial.hasMatch(w)) w,
-  ];
-  return names.isEmpty ? first : names.last;
+  return first.isEmpty ? null : _nameOf(first).surname;
 }
+
+/// The surname and the other words of one name: the part before a comma
+/// ("Толстой, Лев"); the first word before a given name and patronymic
+/// ("Толстой Лев Николаевич") or before a known given name ("Достоевский
+/// Фёдор"); else the last word that is not an initial ("Л. Н. Толстой",
+/// "Толстой Л. Н."). With only initials ("А. Б.") the surname is the
+/// whole name.
+({String surname, List<String> given}) _nameOf(String name) {
+  final comma = name.indexOf(',');
+  if (comma > 0) {
+    final rest = name.substring(comma + 1).trim();
+    return (
+      surname: name.substring(0, comma).trim(),
+      given: rest.isEmpty ? const [] : rest.split(_spaces),
+    );
+  }
+  final words = name.split(_spaces);
+  final names = [
+    for (var i = 0; i < words.length; i++)
+      if (!_initial.hasMatch(words[i])) i,
+  ];
+  if (names.isEmpty) return (surname: name, given: words);
+  bool given(int i) => _givenNames.contains(SortKey(words[i]));
+  final surnameFirst = switch (names.length) {
+    1 => false,
+    2 => given(names.last) && !given(names.first),
+    _ => _patronymic.hasMatch(words[names.last]) && !given(names.first),
+  };
+  final at = surnameFirst ? names.first : names.last;
+  return (surname: words[at], given: [...words]..removeAt(at));
+}
+
+final _spaces = RegExp(r'\s+');
+final _patronymic = RegExp(
+  r'(вич|вна|ична|ьич|оглы|кызы)$',
+  caseSensitive: false,
+);
+
+/// Common given names, to tell "Фамилия Имя" from "Имя Фамилия".
+final Set<SortKey> _givenNames = {
+  for (final n in const [
+    // Russian, male.
+    'александр', 'алексей', 'анатолий', 'андрей', 'антон', 'аркадий',
+    'арсений', 'артем', 'афанасий', 'борис', 'вадим', 'валентин', 'валерий',
+    'василий', 'вениамин', 'виктор', 'виталий', 'владимир', 'владислав',
+    'всеволод', 'вячеслав', 'гавриил', 'гаврила', 'геннадий', 'георгий',
+    'глеб', 'григорий', 'даниил', 'денис', 'дмитрий', 'евгений', 'егор',
+    'ефим', 'захар', 'иван', 'игорь', 'илья', 'иосиф', 'кирилл',
+    'константин', 'лев', 'леонид', 'максим', 'марк', 'михаил', 'николай',
+    'олег', 'осип', 'павел', 'петр', 'роман', 'савва', 'самуил', 'семен',
+    'сергей', 'станислав', 'степан', 'тарас', 'тимофей', 'федор', 'филипп',
+    'эдуард', 'юрий', 'яков', 'ян',
+    // Russian, female.
+    'агния', 'александра', 'алла', 'анастасия', 'анна', 'валентина',
+    'варвара', 'вера', 'виктория', 'галина', 'дарья', 'евгения',
+    'екатерина', 'елена', 'елизавета', 'зинаида', 'зоя', 'ирина', 'клавдия',
+    'ксения', 'лариса', 'лидия', 'любовь', 'людмила', 'маргарита', 'марина',
+    'мария', 'марфа', 'надежда', 'наталия', 'наталья', 'нина', 'ольга',
+    'полина', 'светлана', 'софия', 'софья', 'тамара', 'татьяна', 'юлия',
+    // Latin script.
+    'agatha', 'alexandre', 'anna', 'anne', 'arthur', 'charles', 'charlotte',
+    'david', 'edith', 'edward', 'elizabeth', 'emile', 'emily', 'francis',
+    'frank', 'franz', 'friedrich', 'george', 'gustave', 'henry', 'herbert',
+    'honore', 'jack', 'james', 'jane', 'jean', 'johann', 'john', 'joseph',
+    'jules', 'karl', 'louisa', 'marcel', 'mark', 'mary', 'michael', 'oscar',
+    'paul', 'peter', 'pierre', 'richard', 'robert', 'stefan', 'thomas',
+    'victor', 'virginia', 'walter', 'william',
+  ])
+    SortKey(n),
+};
 
 final _initial = RegExp(r'^\p{L}{1,2}\.$', unicode: true);
 final _letter = RegExp(r'\p{L}', unicode: true);
@@ -318,7 +363,7 @@ final class SortKey implements Comparable<SortKey> {
   final String _s;
 
   static String _normal(String text) {
-    final lower = text.toLowerCase().replaceAll('ё', 'е');
+    final lower = _foldLatin(text.toLowerCase().replaceAll('ё', 'е'));
     final start = lower.indexOf(RegExp(r'[\p{L}\p{N}]', unicode: true));
     return start < 0 ? lower.trim() : lower.substring(start);
   }
@@ -375,6 +420,47 @@ final class SortKey implements Comparable<SortKey> {
     if (c < 0x80 || (c >= 0x2000 && c <= 0x206F)) return 0;
     return 4;
   }
+
+  /// "é" sorts as "e", "ß" as "ss": Latin letters with marks stay with
+  /// their plain letter.
+  static String _foldLatin(String s) {
+    if (!s.contains(_marked)) return s;
+    final out = StringBuffer();
+    for (final rune in s.runes) {
+      final c = String.fromCharCode(rune);
+      out.write(_latinFold[c] ?? c);
+    }
+    return out.toString();
+  }
+
+  static final _marked = RegExp('[\u00C0-\u024F]');
+
+  static final Map<String, String> _latinFold = {
+    for (final (plain, marked) in const [
+      ('a', 'àáâãäåāăą'),
+      ('c', 'çćĉċč'),
+      ('d', 'ďđ'),
+      ('e', 'èéêëēĕėęě'),
+      ('g', 'ĝğġģ'),
+      ('h', 'ĥħ'),
+      ('i', 'ìíîïĩīĭįı'),
+      ('j', 'ĵ'),
+      ('k', 'ķ'),
+      ('l', 'ĺļľŀł'),
+      ('n', 'ñńņň'),
+      ('o', 'òóôõöøōŏő'),
+      ('r', 'ŕŗř'),
+      ('s', 'śŝşš'),
+      ('t', 'ţťŧ'),
+      ('u', 'ùúûüũūŭůűų'),
+      ('y', 'ýÿŷ'),
+      ('z', 'źżž'),
+      ('ss', 'ß'),
+      ('ae', 'æ'),
+      ('oe', 'œ'),
+    ])
+      for (final m in marked.split('')) m: plain,
+  };
 
   @override
   bool operator ==(Object other) => other is SortKey && other._s == _s;
@@ -535,8 +621,8 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>(
 
 /// A collection screen: its books with [LibraryFilter.status] (chosen on
 /// that screen, not stored).
-final collectionViewProvider =
-    Provider.autoDispose.family<AsyncValue<LibraryView>, LibraryFilter>(
+final collectionViewProvider = Provider.autoDispose
+    .family<AsyncValue<LibraryView>, LibraryFilter>(
       (ref, filter) => _viewOf(ref, AsyncData(filter)),
     );
 
