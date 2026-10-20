@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/book_opener.dart';
+import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/collection_repository.dart';
 import 'package:book_app/data/content_store.dart';
@@ -78,6 +79,15 @@ Future<List<Override>> openStorageOverrides() async {
     contentStoreProvider.overrideWithValue(store),
   ];
 }
+
+/// The page the reader laid out last (`reader.lastLayout`), for the book
+/// page.
+final lastLayoutProvider = StreamProvider<LastLayout?>(
+  (ref) => ref
+      .watch(settingsRepositoryProvider)
+      .watch(SettingKeys.readerLastLayout)
+      .map(LastLayout.decode),
+);
 
 /// Hyphenation patterns, loaded in `main()`; null (tests) — no hyphens.
 final hyphenationProvider = Provider<Hyphenation?>((ref) => null);

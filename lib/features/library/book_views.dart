@@ -80,8 +80,9 @@ class BookStatusLabel extends StatelessWidget {
   }
 }
 
-class _Bar extends StatelessWidget {
-  const _Bar({required this.share});
+/// How much of a book is read, as a thin bar.
+class ReadBar extends StatelessWidget {
+  const ReadBar({super.key, required this.share});
 
   static const height = 5.0;
 
@@ -271,7 +272,7 @@ class BookTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         SizedBox(
                           width: 56,
-                          child: _Bar(share: mark.percent / 100),
+                          child: ReadBar(share: mark.percent / 100),
                         ),
                       ],
                     ],
@@ -492,7 +493,7 @@ class ContinueCard extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Expanded(child: _Bar(share: percent / 100)),
+                            Expanded(child: ReadBar(share: percent / 100)),
                             const SizedBox(width: 10),
                             Text(
                               l10n.libraryPercent(percent),

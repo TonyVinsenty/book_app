@@ -48,22 +48,44 @@ Future<void> showBookMenu(
   if (action == null || !context.mounted) return;
   switch (action) {
     case _BookAction.collections:
-      await showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        builder: (_) => _BookCollections(bookId: book.id, header: header),
-      );
+      await _showCollections(context, book.id, header);
     case _BookAction.status:
       await chooseBookStatus(context, ref, book);
     case _BookAction.uncollect:
       await collections.removeBook(collectionId!, book.id);
     case _BookAction.delete:
-      if (await _confirmDelete(context, book.title)) {
+      if (await confirmBookDelete(context, book.title)) {
         await books.deleteBook(book.id);
       }
   }
 }
+
+/// "В подборку…" for [book], from its page.
+Future<void> showBookCollections(
+  BuildContext context,
+  WidgetRef ref, {
+  required BookRow book,
+  String? titleFont,
+}) => _showCollections(
+  context,
+  book.id,
+  _BookHeader(
+    book: book,
+    coverFile: ref.read(bookRepositoryProvider).coverFile(book),
+    titleFont: titleFont,
+  ),
+);
+
+Future<void> _showCollections(
+  BuildContext context,
+  int bookId,
+  Widget header,
+) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  builder: (_) => _BookCollections(bookId: bookId, header: header),
+);
 
 /// "Статус книги": Читаю, На очереди, Брошена, Прочитано (ADR 0005
 /// addendum 3). "Новая" is not chosen by hand, and a book never opened
@@ -141,7 +163,8 @@ String statusName(AppLocalizations l10n, BookStatus status) => switch (status) {
   BookStatus.finished => l10n.statusFinished,
 };
 
-Future<bool> _confirmDelete(BuildContext context, String title) async {
+/// Asks before deleting the book [title].
+Future<bool> confirmBookDelete(BuildContext context, String title) async {
   final l10n = AppLocalizations.of(context);
   final yes = await showDialog<bool>(
     context: context,

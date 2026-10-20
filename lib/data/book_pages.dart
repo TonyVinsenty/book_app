@@ -29,6 +29,35 @@ PageStyle pageStyleOf(
   hyphenation: settings.hyphenate ? hyphenation : null,
 );
 
+/// The reader's space above the text and its footer under it.
+const readerTopMargin = 20.0;
+const readerFooterHeight = 36.0;
+
+/// The reader's page in [area] (the screen without the system bars) with
+/// [side] margins.
+Size readerPageOf(Size area, double side) => Size(
+  area.width - 2 * side,
+  area.height - readerTopMargin - readerFooterHeight,
+);
+
+/// The page for the book page: the reader's last one while it still fits
+/// the width of [area] with [side] margins (no turn of the phone, no new
+/// margins); otherwise the page this screen would give.
+Size bookPageSizeOf({
+  required LastLayout? last,
+  required Size area,
+  required double side,
+}) {
+  final guess = readerPageOf(area, side);
+  if (last != null && (last.pageSize.width - guess.width).abs() < 1) {
+    return last.pageSize;
+  }
+  return guess;
+}
+
+/// Books shorter than this give no words per page for estimates.
+const minPagesForDensity = 10;
+
 /// The page the reader laid out last (setting `reader.lastLayout`): its
 /// size, look ([styleKeyOf]) and words per page of the last book split to
 /// the end with that look, if any.

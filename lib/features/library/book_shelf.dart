@@ -6,6 +6,7 @@ import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/features/library/book_menu.dart';
+import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -74,7 +75,7 @@ class _BookList extends ConsumerWidget {
         final book = books[i];
         return BookTile(
           key: ValueKey(book.id),
-          onTap: () => openBook(context, book.id),
+          onTap: () => openBookPage(context, book.id),
           onLongPress: () => showShelfMenu(context, ref, book, view, titleFont),
           coverFile: repository.coverFile(book),
           title: book.title,
@@ -126,7 +127,7 @@ class _BookGrid extends ConsumerWidget {
               final book = books[i];
               return BookGridTile(
                 key: ValueKey(book.id),
-                onTap: () => openBook(context, book.id),
+                onTap: () => openBookPage(context, book.id),
                 onLongPress: () =>
                     showShelfMenu(context, ref, book, view, titleFont),
                 coverFile: repository.coverFile(book),

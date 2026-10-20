@@ -11,6 +11,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/platform/screen_channel.dart';
@@ -107,6 +108,15 @@ void main() {
       await settle(tester);
     }
     await tester.tap(find.byType(BookTile));
+    // The book page opens first; its main button opens the book.
+    final read = find.descendant(
+      of: find.byType(BookPageScreen),
+      matching: find.byType(FilledButton),
+    );
+    for (var i = 0; i < 100 && read.evaluate().isEmpty; i++) {
+      await settle(tester);
+    }
+    await tester.tap(read);
     for (
       var i = 0;
       i < 100 && find.byType(ReaderView).evaluate().isEmpty;

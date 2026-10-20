@@ -93,7 +93,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
     with SingleTickerProviderStateMixin {
   /// Page margins from the reading settings (the bottom one is the footer).
   EdgeInsets _margin = EdgeInsets.zero;
-  static const _footerHeight = 36.0;
 
   /// Chapters laid out for the current page size and style.
   final _layouts = <int, ChapterLayout>{};
@@ -284,7 +283,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
       LastLayout.decode(await settings.get(SettingKeys.readerLastLayout)),
       pageSize: pageSize,
       styleKey: styleKeyOf(style: style, pageSize: pageSize),
-      wordsPerPage: pagination.isComplete && pages > 0
+      // A short book is mostly half-empty chapter ends: no measure.
+      wordsPerPage: pagination.isComplete && pages >= minPagesForDensity
           ? widget.opened.tokens.length / pages
           : null,
     );
@@ -547,7 +547,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       hyphenation: ref.watch(hyphenationProvider),
     );
     final side = settings.margins.side;
-    _margin = EdgeInsets.fromLTRB(side, 20, side, 0);
+    _margin = EdgeInsets.fromLTRB(side, readerTopMargin, side, 0);
     final screenSize = MediaQuery.sizeOf(context);
     if (screenSize != _screenSize) {
       _screenSize = screenSize;
@@ -570,10 +570,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final area = insets.deflateSize(constraints.biggest);
-            final pageSize = Size(
-              area.width - _margin.horizontal,
-              area.height - _margin.vertical - _footerHeight,
-            );
+            final pageSize = readerPageOf(area, side);
             _relayoutIfNeeded(pageSize, style);
             // Speed reading shows the word in the middle of a plain safe
             // area: without the status bar, unlike the page's [insets].
@@ -619,7 +616,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                             ),
                           ),
                           SizedBox(
-                            height: _footerHeight,
+                            height: readerFooterHeight,
                             child: Center(
                               child: Text(pageLabel, style: secondary),
                             ),

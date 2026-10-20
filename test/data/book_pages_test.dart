@@ -223,4 +223,31 @@ void main() {
       const ReadingSettings().fontSizeFor(TextScaler.noScaling),
     );
   });
+
+  group('the page for the book page', () {
+    const area = Size(360, 700);
+
+    test('the reader page: the area without margins, top and footer', () {
+      expect(readerPageOf(area, 20), const Size(320, 644));
+    });
+
+    test('the last reader page while its width fits', () {
+      const last = LastLayout(pageSize: Size(320, 610), styleKey: 'k');
+      expect(bookPageSizeOf(last: last, area: area, side: 20), last.pageSize);
+    });
+
+    test('a turned phone, new margins or no last page: from the screen', () {
+      const last = LastLayout(pageSize: Size(320, 610), styleKey: 'k');
+      for (final (lastPage, side, screen) in [
+        (last, 20.0, const Size(700, 360)),
+        (last, 32.0, area),
+        (null, 20.0, area),
+      ]) {
+        expect(
+          bookPageSizeOf(last: lastPage, area: screen, side: side),
+          readerPageOf(screen, side),
+        );
+      }
+    });
+  });
 }
