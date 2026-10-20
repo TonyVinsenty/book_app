@@ -479,6 +479,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ),
       ),
     );
+    // Switched to the leading highlight: for now the page of the word
+    // (the highlight itself comes in a later step of stage 10).
     if (mounted && last != null) _showWord(last.word, last.end);
   }
 

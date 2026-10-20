@@ -301,9 +301,13 @@ void main() {
         while (e.isPlaying) {
           shown += clock.run(const Duration(milliseconds: 1)).length - 1;
         }
-        final words = tokens.firstWordOfSection(2) - tokens.firstWordOfSection(1);
+        final words =
+            tokens.firstWordOfSection(2) - tokens.firstWordOfSection(1);
         final expected = words * 60000 / wpm;
-        expect(clock.now.inMilliseconds, closeTo(expected, expected * 0.002 + 2));
+        expect(
+          clock.now.inMilliseconds,
+          closeTo(expected, expected * 0.002 + 2),
+        );
         expect(shown, lessThan(words * 0.7), reason: 'phrases, not words');
       }
     });

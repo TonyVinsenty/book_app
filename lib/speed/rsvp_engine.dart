@@ -125,7 +125,8 @@ final class RsvpEngine {
       if (shown >= rampWords) {
         total += duration;
       } else {
-        total += duration * (1 / (rampFrom + (1 - rampFrom) * shown / rampWords));
+        total +=
+            duration * (1 / (rampFrom + (1 - rampFrom) * shown / rampWords));
       }
     }
     return total;

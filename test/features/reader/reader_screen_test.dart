@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:book_app/app/app.dart';
+import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
@@ -26,6 +27,7 @@ import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/phrases.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/speed_mode.dart';
+import 'package:book_app/speed/steps.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -68,6 +70,7 @@ void main() {
     WidgetTester tester, {
     bool reopen = false,
     bool lostFiles = false,
+    bool pro = true,
   }) async {
     // Closing a drift database under fake time hangs, so it is left open;
     // synchronous stream closing leaves no pending timer.
@@ -99,6 +102,7 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
+          proUnlockedProvider.overrideWithValue(pro),
           contentStoreProvider.overrideWithValue(store),
           bookRepositoryProvider.overrideWithValue(repo),
           keepScreenOnProvider.overrideWithValue((on) async {
@@ -922,6 +926,93 @@ void main() {
     expect(reader(tester).litEnd, end);
     expect(await tester.runAsync(savedWord), word);
 
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('the pause panel switches word and phrase in place', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () =>
+          SettingsRepository(db)
+              .set(SettingKeys.speedWpmOf(SpeedMode.phrase), '400'),
+    );
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord + 7;
+
+    await longPressWord(tester, start);
+    final engine = rsvp(tester).engine;
+    expect(engine.steps, isA<WordSteps>());
+    expect(find.text('300 сл/мин'), findsOneWidget);
+
+    // To phrases: the phrase of the current word, at the phrase pace.
+    await tester.tap(find.text('Фраза'));
+    await settle(tester);
+    await tester.pump();
+    final phrases = engine.steps as PhraseSteps;
+    expect(engine.wordIndex, phrases.startOf(start));
+    expect(engine.unitEnd, greaterThan(start));
+    expect(find.text('400 сл/мин'), findsOneWidget);
+    expect((rsvp(tester).engine.timing as SmartPace).wordsPerMinute, 400);
+    expect(
+      await tester.runAsync<String?>(
+        () => SettingsRepository(db).get(SettingKeys.speedMode),
+      ),
+      'phrase',
+    );
+
+    // Reads on in phrases, then back to words from the phrase's first word.
+    await tapRsvp(tester);
+    await tester.pump(const Duration(seconds: 2));
+    await tapRsvp(tester);
+    final phrase = engine.wordIndex;
+    expect(phrase, greaterThan(start));
+    await tester.tap(find.text('Слово'));
+    await settle(tester);
+    await tester.pump();
+    expect(engine.steps, isA<WordSteps>());
+    expect(engine.wordIndex, phrase);
+    expect(engine.unitEnd, phrase + 1);
+    expect(find.text('300 сл/мин'), findsOneWidget);
+    expect(await tester.runAsync(savedWord), phrase);
+
+    // "Подсветка" leaves for the book page on the word.
+    await tester.tap(find.text('Подсветка'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(find.byType(RsvpScreen), findsNothing);
+    expect(reader(tester).litWord, phrase);
+    expect(
+      await tester.runAsync<String?>(
+        () => SettingsRepository(db).get(SettingKeys.speedMode),
+      ),
+      'guide',
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('without "Pro" speed reading is words only', (tester) async {
+    await pumpApp(tester, pro: false);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'phrase'),
+    );
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    await longPressWord(tester, reader(tester).page.firstWord + 5);
+
+    expect(rsvp(tester).widget.mode, SpeedMode.word);
+    expect(rsvp(tester).engine.steps, isA<WordSteps>());
+    expect(find.byType(SegmentedButton<SpeedMode>), findsNothing);
+
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     await closeApp(tester);

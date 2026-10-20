@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
@@ -13,13 +14,15 @@ import 'package:book_app/speed/phrases.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/rsvp_engine.dart';
 import 'package:book_app/speed/speed_mode.dart';
+import 'package:book_app/speed/steps.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Where speed reading stopped: the words on screen, [word]..[end].
-typedef RsvpExit = ({int word, int end});
+/// Where speed reading stopped: the words on screen, [word]..[end], and
+/// the [mode] to go on in ([SpeedMode.guide]: on the book page).
+typedef RsvpExit = ({int word, int end, SpeedMode mode});
 
 /// Speed reading one word or one phrase at a time (RSVP, ADR 0004). Opens
 /// paused on the start word with the controls shown; a tap anywhere starts
@@ -37,7 +40,8 @@ class RsvpScreen extends ConsumerStatefulWidget {
   final int startWord;
   final int wordsPerMinute;
 
-  /// [SpeedMode.word] or [SpeedMode.phrase].
+  /// [SpeedMode.word] or [SpeedMode.phrase] to start in; the pause panel
+  /// switches them.
   final SpeedMode mode;
 
   @override
@@ -50,6 +54,10 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   late final Ticker _ticker;
   late final AppLifecycleListener _lifecycle;
   late int _wpm;
+  late SpeedMode _mode = widget.mode;
+
+  /// The phrases for the screen's width, kept while switching modes.
+  PhraseSteps? _phrases;
 
   /// The speed shown for a moment after a swipe changed it while playing.
   bool _speedHint = false;
@@ -80,14 +88,35 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (widget.mode != SpeedMode.phrase) return;
     // Phrases as long as the screen holds (ADR 0004, addendum for stage 10
     // п. 3); a turned phone splits them anew.
     final maxChars = _phraseChars(context);
-    final steps = _engine.steps;
-    if (steps is! PhraseSteps || steps.maxChars != maxChars) {
-      _engine.steps = PhraseSteps(widget.opened.tokens, maxChars: maxChars);
+    if (_phrases?.maxChars == maxChars) return;
+    _phrases = PhraseSteps(widget.opened.tokens, maxChars: maxChars);
+    if (_mode == SpeedMode.phrase) _engine.steps = _phrases!;
+  }
+
+  /// Word ↔ phrase in place, from the current word, at the pace of the new
+  /// mode; the leading highlight goes on on the book page (ADR 0004,
+  /// addendum for stage 10 п. 10).
+  Future<void> _switchMode(SpeedMode mode) async {
+    if (mode == _mode) return;
+    final settings = ref.read(speedSettingsProvider);
+    unawaited(settings.setMode(mode));
+    if (mode == SpeedMode.guide) {
+      _exit(mode);
+      return;
     }
+    final wpm = await settings.wordsPerMinute(mode);
+    if (!mounted) return;
+    setState(() {
+      _mode = mode;
+      _wpm = wpm;
+      _engine
+        ..timing = (_engine.timing as SmartPace).withSpeed(wpm)
+        ..steps = mode == SpeedMode.phrase ? _phrases! : const WordSteps();
+    });
+    _savePosition();
   }
 
   /// Letters with spaces that fit across the screen in the word's font.
@@ -202,9 +231,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     _hintTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _speedHint = false);
     });
-    unawaited(
-      ref.read(speedSettingsProvider).setWordsPerMinute(widget.mode, _wpm),
-    );
+    unawaited(ref.read(speedSettingsProvider).setWordsPerMinute(_mode, _wpm));
   }
 
   void _savePosition() {
@@ -218,9 +245,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     );
   }
 
-  void _exit() =>
-      Navigator.of(context)
-          .pop<RsvpExit>((word: _engine.wordIndex, end: _engine.unitEnd));
+  void _exit([SpeedMode? mode]) => Navigator.of(context).pop<RsvpExit>((
+    word: _engine.wordIndex,
+    end: _engine.unitEnd,
+    mode: mode ?? _mode,
+  ));
 
   /// The word or the phrase on screen.
   String get _shownText =>
@@ -321,12 +350,29 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 
   static const _wordSize = 36.0;
 
+  Widget _modeSwitch(AppLocalizations l10n) => SegmentedButton<SpeedMode>(
+    segments: [
+      for (final mode in SpeedMode.values)
+        ButtonSegment(
+          value: mode,
+          label: Text(switch (mode) {
+            SpeedMode.word => l10n.speedModeWord,
+            SpeedMode.phrase => l10n.speedModePhrase,
+            SpeedMode.guide => l10n.speedModeGuide,
+          }),
+        ),
+    ],
+    selected: {_mode},
+    showSelectedIcon: false,
+    onSelectionChanged: (picked) => unawaited(_switchMode(picked.first)),
+  );
+
   @override
   Widget build(BuildContext context) {
     final colors = context.readingColors;
     final l10n = AppLocalizations.of(context);
     final token = widget.opened.tokens[_engine.wordIndex];
-    final phrase = widget.mode == SpeedMode.phrase;
+    final phrase = _mode == SpeedMode.phrase;
     final text = phrase ? _shownText : token.text;
     final paused = !_engine.isPlaying;
     final showText = paused && !_engine.isStopped;
@@ -468,6 +514,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                               ),
                             ],
                           ),
+                          // Without "Pro" there is only the word mode.
+                          if (ref.watch(proUnlockedProvider)) ...[
+                            const SizedBox(height: 12),
+                            _modeSwitch(l10n),
+                          ],
                         ],
                       ),
                     ),

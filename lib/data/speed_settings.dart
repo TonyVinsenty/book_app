@@ -11,9 +11,9 @@ final class SpeedSettings {
 
   /// The last mode used; [SpeedMode.word] when none, or when it needs "Pro"
   /// and [pro] is off.
-  Future<SpeedMode> mode({required bool pro}) async => SpeedMode.parse(
-    await _settings.get(SettingKeys.speedMode),
-  ).availableWith(pro: pro);
+  Future<SpeedMode> mode({required bool pro}) async =>
+      SpeedMode.parse(await _settings.get(SettingKeys.speedMode))
+          .availableWith(pro: pro);
 
   Future<void> setMode(SpeedMode mode) =>
       _settings.set(SettingKeys.speedMode, mode.name);
