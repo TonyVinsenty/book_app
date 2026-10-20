@@ -17,9 +17,16 @@ String layoutKeyOf({
   required PageStyle style,
   required Size pageSize,
   required int parserVersion,
-}) => [
+}) => _keyOf(style, pageSize, parserVersion).join('|');
+
+/// [layoutKeyOf] without the book's parser version: the same for every
+/// book read with this look on this screen (ADR 0005, addendum 3).
+String styleKeyOf({required PageStyle style, required Size pageSize}) =>
+    _keyOf(style, pageSize, null).join('|');
+
+List<Object> _keyOf(PageStyle style, Size pageSize, int? parserVersion) => [
   'v$layoutVersion',
-  'p$parserVersion',
+  if (parserVersion != null) 'p$parserVersion',
   't$tokenizerVersion',
   style.fontFamily,
   style.textScaler.scale(style.fontSize),
@@ -27,7 +34,7 @@ String layoutKeyOf({
   style.align.name,
   if (style.hyphenation != null) 'hyphens',
   '${pageSize.width.toStringAsFixed(1)}x${pageSize.height.toStringAsFixed(1)}',
-].join('|');
+];
 
 /// First words of each chapter's pages; null for a chapter not split.
 typedef ChapterPages = List<List<int>?>;
@@ -72,6 +79,19 @@ final class PageCache {
     return null;
   }
 
+  /// The saved split for [key] in a book of [words] words, for a look from
+  /// outside the reader (the book page): the chapters are not counted, the
+  /// file is not marked as used, and a broken one is left to the reader.
+  ChapterPages? peek(String key, {required int words}) {
+    try {
+      final file = fileOf(key);
+      if (!file.existsSync()) return null;
+      return _parse(jsonDecode(file.readAsStringSync()), key, null, words);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Writes the split for [key] and removes all but the [keep] last used.
   /// Through a temporary file, so a half-written file never has the name.
   /// Nothing when the book folder is gone: a deleted book must not come
@@ -104,17 +124,18 @@ final class PageCache {
     }
   }
 
-  /// Null unless the file is for [key] and every chapter's first words never
-  /// go down within the book.
+  /// Null unless the file is for [key], has [sections] chapters (if given)
+  /// and every chapter's first words never go down within the book.
   static ChapterPages? _parse(
     Object? json,
     String key,
-    int sections,
+    int? sections,
     int words,
   ) {
     if (json is! Map || json['key'] != key) return null;
     final chapters = json['chapters'];
-    if (chapters is! List || chapters.length != sections) return null;
+    if (chapters is! List) return null;
+    if (sections != null && chapters.length != sections) return null;
     final result = <List<int>?>[];
     for (final chapter in chapters) {
       if (chapter == null) {

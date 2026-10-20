@@ -52,4 +52,8 @@ abstract final class SettingKeys {
 
   /// Library look, a `LibraryLayout` name.
   static const libraryLayout = 'library.layout';
+
+  /// The page the reader laid out last, a `LastLayout` (for the page count
+  /// on the book page).
+  static const readerLastLayout = 'reader.lastLayout';
 }

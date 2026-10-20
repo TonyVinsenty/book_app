@@ -5,6 +5,7 @@ import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
 import 'package:book_app/data/book_opener.dart';
+import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
@@ -116,6 +117,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   late int _section;
   int _page = 0;
+
+  /// The book has been read on here ([_readOn]).
+  bool _readingOn = false;
 
   /// The book page (from 1) the slider is being dragged to.
   double? _dragPage;
@@ -252,6 +256,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ),
         save: (chapters) => _pageCache.save(key, chapters),
       )..addListener(_onPagination);
+      unawaited(_saveLastLayout(_pagination!, pageSize, style));
     }
     _pageSize = pageSize;
     _style = style;
@@ -259,7 +264,42 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   void _onPagination() {
+    final pagination = _pagination!;
+    if (pagination.isComplete) {
+      unawaited(_saveLastLayout(pagination, _pageSize!, _style!));
+    }
     if (mounted) setState(() {});
+  }
+
+  /// Remembers this page and look for the book page (ADR 0005, addendum
+  /// 3), with the words per page once the book is split to the end.
+  Future<void> _saveLastLayout(
+    BookPagination pagination,
+    Size pageSize,
+    PageStyle style,
+  ) async {
+    final settings = ref.read(settingsRepositoryProvider);
+    final pages = pagination.pageCount.value;
+    final layout = LastLayout.update(
+      LastLayout.decode(await settings.get(SettingKeys.readerLastLayout)),
+      pageSize: pageSize,
+      styleKey: styleKeyOf(style: style, pageSize: pageSize),
+      wordsPerPage: pagination.isComplete && pages > 0
+          ? widget.opened.tokens.length / pages
+          : null,
+    );
+    await settings.set(SettingKeys.readerLastLayout, layout.encode());
+  }
+
+  /// "Queued" / "abandoned" go away once the book is read on: a page
+  /// turned, a jump, speed reading — not opening or a new layout (ADR 0005,
+  /// addendum 3).
+  void _readOn() {
+    if (_readingOn) return;
+    _readingOn = true;
+    unawaited(
+      ref.read(bookRepositoryProvider).clearStatusMark(widget.opened.book.id),
+    );
   }
 
   void _next() {
@@ -280,6 +320,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   void _show(int section, int pageIndex, {bool keepReturn = false}) {
     final shown = _layoutOf(section).pages[pageIndex];
+    _readOn();
     _leaveSection(section);
     setState(() {
       _section = section;
@@ -392,6 +433,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Speed reading from [word]; back on the page of the last word shown.
   Future<void> _speedRead(int word) async {
     _setPanels(false);
+    _readOn();
     final saved = await ref
         .read(settingsRepositoryProvider)
         .get(SettingKeys.speedWpm);
@@ -498,17 +540,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final settings = ref.watch(readingSettingsProvider);
     // The system text scale only picks the default size (ADR 0003,
     // addendum 2 п. 2); the text itself is not scaled again.
-    final fontSize = settings.fontSizeFor(MediaQuery.textScalerOf(context));
-    final style = PageStyle(
-      fontFamily: settings.font.family,
-      fontSize: fontSize,
-      lineHeight: settings.lineHeight,
+    final style = pageStyleOf(
+      settings,
+      system: MediaQuery.textScalerOf(context),
       color: colors.text,
-      align: switch (settings.align) {
-        BookAlign.left => TextAlign.left,
-        BookAlign.justify => TextAlign.justify,
-      },
-      hyphenation: settings.hyphenate ? ref.watch(hyphenationProvider) : null,
+      hyphenation: ref.watch(hyphenationProvider),
     );
     final side = settings.margins.side;
     _margin = EdgeInsets.fromLTRB(side, 20, side, 0);
@@ -616,7 +652,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       insets,
                       pageLabel: pageLabel,
                       pagesLeft: _pagesLeftInChapter(chapter),
-                      fontSize: fontSize,
+                      fontSize: style.fontSize,
                     ),
                   ),
                 ],

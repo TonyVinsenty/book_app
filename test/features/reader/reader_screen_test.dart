@@ -6,6 +6,7 @@ import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
+import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -17,6 +18,7 @@ import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
 import 'package:book_app/speed/pause_text.dart';
@@ -674,7 +676,7 @@ void main() {
     expect(find.text('325 сл/мин'), findsOneWidget);
     await settle(tester);
     expect(
-      await tester.runAsync(
+      await tester.runAsync<String?>(
         () => SettingsRepository(db).get(SettingKeys.speedWpm),
       ),
       '325',
@@ -897,6 +899,71 @@ void main() {
     await settle(tester);
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);
+    await closeApp(tester);
+  });
+
+  testWidgets('the book page counts the pages the reader shows; queued goes '
+      'away when the book is read on, not when it is opened', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(() => repo.setStatusMark(bookId, StatusMark.queued));
+    await openBook(tester);
+    await settle(tester);
+    Future<StatusMark?> mark() async =>
+        (await tester.runAsync(() => repo.findById(bookId)))!.statusMark;
+    expect(await mark(), StatusMark.queued, reason: 'opening is not reading');
+
+    for (var i = 0; i < 4; i++) {
+      await tapAt(tester, 0.95);
+    }
+    expect(await mark(), isNull);
+
+    final pagination = reader(tester).pagination;
+    expect(pagination.isComplete, isTrue);
+    final last = LastLayout.decode(
+      await tester.runAsync<String?>(
+        () => SettingsRepository(db).get(SettingKeys.readerLastLayout),
+      ),
+    )!;
+    final words = reader(tester).widget.opened.tokens.length;
+    expect(last.wordsPerPage, words / pagination.pageCount.value);
+
+    // The book page builds the key from the settings the same way.
+    final style = pageStyleOf(
+      const ReadingSettings(),
+      system: TextScaler.noScaling,
+      color: const Color(0xFF000000),
+    );
+    expect(last.styleKey, styleKeyOf(style: style, pageSize: last.pageSize));
+    final book = (await tester.runAsync(() => repo.findById(bookId)))!;
+    final pages = bookPagesOf(
+      words: book.wordCount,
+      positionWord: book.positionWord,
+      style: style,
+      pageSize: last.pageSize,
+      cached: PageCache(store.pagesDir(bookId)).peek(
+        layoutKeyOf(
+          style: style,
+          pageSize: last.pageSize,
+          parserVersion: book.parserVersion,
+        ),
+        words: book.wordCount,
+      ),
+      last: last,
+    );
+    expect(pages.exact, isTrue);
+    expect(pages.total, pagination.pageCount.value);
+    expect(
+      pages.current,
+      pagination.pagesBefore(reader(tester).layout.sectionIndex).value +
+          reader(tester).layout.pageOfWord(reader(tester).page.firstWord) +
+          1,
+    );
+    expect(pages.current, 5);
+    await tapAt(tester, 0.5);
+    expect(
+      find.text('стр. ${pages.current} / ${pages.total}'),
+      findsOneWidget,
+    );
     await closeApp(tester);
   });
 }

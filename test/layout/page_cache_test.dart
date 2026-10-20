@@ -127,6 +127,29 @@ void main() {
     }
   });
 
+  test('the style key is the same for every parser version', () {
+    final key = styleKeyOf(style: style, pageSize: size);
+    expect(key, isNot(keyOf(style)));
+    expect(keyOf(style, size, 1), isNot(keyOf(style, size, 2)));
+    expect(key, isNot(styleKeyOf(style: style, pageSize: const Size(300, 520))));
+    expect(key, isNot(styleKeyOf(style: _sized(19), pageSize: size)));
+  });
+
+  test('peek: any chapter count, not marked as used, broken file kept', () {
+    final key = keyOf(style);
+    expect(cache.peek(key, words: 600), isNull);
+    cache.save(key, chapters);
+    final file = cache.fileOf(key);
+    final saved = file.lastModifiedSync();
+    expect(cache.peek(key, words: 600), chapters);
+    expect(file.lastModifiedSync(), saved);
+    expect(cache.peek(key, words: 500), isNull, reason: 'another book');
+    expect(cache.peek(keyOf(style, size, 2), words: 600), isNull);
+    file.writeAsStringSync('not json');
+    expect(cache.peek(key, words: 600), isNull);
+    expect(file.existsSync(), isTrue, reason: 'left to the reader');
+  });
+
   test('only the three last used splits are kept', () {
     final keys = [for (var s = 14; s < 18; s++) keyOf(_sized(s.toDouble()))];
     cache.save(keys[0], chapters);
