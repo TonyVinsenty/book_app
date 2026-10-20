@@ -32,6 +32,41 @@ enum PageTexture {
   };
 }
 
+/// [texture] for its small sample in the settings: on the page it is barely
+/// seen, so here it is drawn smaller, to fit a few repeats, and several
+/// times over itself, so it is stronger; more at night, where the
+/// light pixels are weak on a dark page (owner, 2026-10-21).
+class TextureSample extends StatelessWidget {
+  const TextureSample({super.key, required this.texture});
+
+  final PageTexture texture;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = texture.image;
+    if (image == null) return const SizedBox.expand();
+    final night = Theme.of(context).brightness == Brightness.dark;
+    final layers = night ? 7 : 4;
+    final layer = DecoratedBox(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: image,
+          repeat: ImageRepeat.repeat,
+          alignment: Alignment.topLeft,
+          // 512 px tiles cover 170 logical pixels: two or three scales or
+          // cushions across the sample.
+          scale: 3,
+          filterQuality: FilterQuality.medium,
+        ),
+      ),
+    );
+    return Stack(
+      fit: StackFit.expand,
+      children: [for (var i = 0; i < layers; i++) layer],
+    );
+  }
+}
+
 /// The chosen [PageTexture] behind [child], painted once in its own layer
 /// so turning pages does not repaint it.
 class TexturedPage extends ConsumerWidget {

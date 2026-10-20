@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/collection_repository.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -96,11 +97,7 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
     } on Object {
       if (!mounted) rethrow;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).collectionSaveFailed),
-        ),
-      );
+      showNotice(context, AppLocalizations.of(context).collectionSaveFailed);
       rethrow;
     }
   }
@@ -124,9 +121,7 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
       return;
     }
     final l10n = AppLocalizations.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.collectionCreated(created.name))),
-    );
+    showNotice(context, l10n.collectionCreated(created.name));
     unawaited(
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(

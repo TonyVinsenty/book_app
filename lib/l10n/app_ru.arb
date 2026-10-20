@@ -118,6 +118,8 @@
   "@libraryCollectionEmptyHint": {
     "description": "Second line of an empty collection shelf"
   },
+  "libraryBackToBook": "Вернуться к «{title}»",
+  "@libraryBackToBook": {"description": "Library: back to the book the reader was closed on", "placeholders": {"title": {"type": "String"}}},
   "libraryTabBooks": "Книги",
   "@libraryTabBooks": {"description": "Library tab: all books"},
   "libraryTabCollections": "Подборки",

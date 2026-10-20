@@ -2,7 +2,7 @@ name: book_app
 description: "Book reader with seamless switch to speed reading (RSVP)."
 publish_to: 'none'
 
-version: 0.1.0+5
+version: 0.1.0+6
 
 environment:
   sdk: ^3.13.4

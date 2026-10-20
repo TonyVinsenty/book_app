@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/import_queue.dart';
@@ -35,9 +36,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       paths = await ref.read(pickBooksProvider)();
     } on PlatformException {
       if (!mounted) return;
-      final l10n = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.importPickFailed)));
+      showNotice(context, AppLocalizations.of(context).importPickFailed);
       return;
     }
     if (!mounted) return;
@@ -47,22 +46,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   void _showSummary(List<ImportResult> results) {
     final l10n = AppLocalizations.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_summary(l10n, results)),
-        // With "Подробнее" it would stay until closed, over the list.
-        persist: false,
-        duration: const Duration(seconds: 8),
-        action: results.length < 2
-            ? null
-            : SnackBarAction(
-                label: l10n.importDetails,
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => _ImportDetails(results: results),
-                ),
+    showNotice(
+      context,
+      _summary(l10n, results),
+      // With "Подробнее" it would stay until closed, over the list.
+      persist: false,
+      duration: const Duration(seconds: 8),
+      action: results.length < 2
+          ? null
+          : SnackBarAction(
+              label: l10n.importDetails,
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => _ImportDetails(results: results),
               ),
-      ),
+            ),
     );
   }
 
@@ -107,6 +105,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         bottom: false,
         child: Column(
           children: [
+            const _BackToBook(),
             _Tabs(
               selected: _tab,
               onChanged: (tab) => setState(() => _tab = tab),
@@ -138,6 +137,36 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               icon: const Icon(Icons.add),
               label: Text(l10n.addBook),
             ),
+    );
+  }
+}
+
+/// "Вернуться к «…»": back to the book the reader was closed on, whatever
+/// the shelf (owner, 2026-10-21); nothing if that book is gone.
+class _BackToBook extends ConsumerWidget {
+  const _BackToBook();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = ref.watch(leftBookProvider);
+    final book = id == null
+        ? null
+        : ref.watch(booksProvider).value?.where((b) => b.id == id).firstOrNull;
+    if (book == null) return const SizedBox.shrink();
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(8, 2, 16, 0),
+        child: TextButton.icon(
+          onPressed: () => openBook(context, book.id),
+          icon: const Icon(Icons.arrow_back),
+          label: Text(
+            AppLocalizations.of(context).libraryBackToBook(book.title),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -212,8 +212,11 @@ class ReadingSettingsPanel extends ConsumerWidget {
                       _Swatch(
                         decoration: BoxDecoration(
                           color: colors.background,
-                          image: texture.decoration(night: night),
                           borderRadius: BorderRadius.circular(8),
+                        ),
+                        content: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: TextureSample(texture: texture),
                         ),
                         label: switch (texture) {
                           PageTexture.none => l10n.textureNone,

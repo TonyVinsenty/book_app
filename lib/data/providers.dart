@@ -64,6 +64,17 @@ final openedBookProvider = FutureProvider.autoDispose.family<OpenedBook, int>(
   retry: (_, _) => null,
 );
 
+/// The book the reader was last closed on, for "К книге" in the library
+/// (owner, 2026-10-21); null until a book is closed in this run.
+final leftBookProvider = NotifierProvider<LeftBook, int?>(LeftBook.new);
+
+class LeftBook extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  void set(int? bookId) => state = bookId;
+}
+
 /// Opens the database and the book files in the app support directory
 /// (hidden from the user; on iOS it may not exist yet). Needs a running
 /// Flutter engine (`path_provider`).

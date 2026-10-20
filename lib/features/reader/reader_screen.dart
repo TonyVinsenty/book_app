@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
@@ -42,35 +43,42 @@ class ReaderScreen extends ConsumerWidget {
     if (reopened) {
       ref.listen(openedBookProvider(bookId), (_, next) {
         if (next is! AsyncError) return;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l10n.readerReopenFailed)));
+        showNotice(context, l10n.readerReopenFailed);
         Navigator.of(context).pop();
       });
     }
     final opened = ref.watch(openedBookProvider(bookId));
-    return Scaffold(
-      backgroundColor: context.readingColors.background,
-      body: TexturedPage(
-        child: switch (opened) {
-          AsyncData(:final value) => ReaderView(opened: value),
-          AsyncError() => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.readerOpenFailed, textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.readerBackToLibrary),
-                  ),
-                ],
+    return PopScope(
+      // The library offers to go back to a book that opened.
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop && opened.hasValue) {
+          ref.read(leftBookProvider.notifier).set(bookId);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: context.readingColors.background,
+        body: TexturedPage(
+          child: switch (opened) {
+            AsyncData(:final value) => ReaderView(opened: value),
+            AsyncError() => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.readerOpenFailed, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(l10n.readerBackToLibrary),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        ),
       ),
     );
   }

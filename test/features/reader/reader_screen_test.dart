@@ -229,9 +229,10 @@ void main() {
     await tester.binding.handlePopRoute(); // system "back"
     await tester.pumpAndSettle();
     expect(find.byType(BookTile), findsOneWidget);
+    expect(find.byType(ContinueCard), findsOneWidget);
 
-    // «Продолжить» opens it again.
-    await tester.tap(find.byType(ContinueCard));
+    // «Вернуться к «…»» opens it again, whatever the shelf.
+    await tester.tap(find.textContaining('Вернуться к «'));
     for (
       var i = 0;
       i < 100 && find.byType(ReaderView).evaluate().isEmpty;
@@ -255,6 +256,12 @@ void main() {
     expect(find.text('Не удалось открыть последнюю книгу'), findsOneWidget);
     expect(find.byType(ReaderScreen), findsNothing);
     expect(find.byType(BookTile), findsOneWidget);
+    expect(find.textContaining('Вернуться к'), findsNothing, reason: 'broken');
+
+    // A tap closes the message.
+    await tester.tap(find.text('Не удалось открыть последнюю книгу'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
     await closeApp(tester);
   });
 
@@ -285,6 +292,7 @@ void main() {
     await tester.tap(find.text('К библиотеке'));
     await tester.pumpAndSettle();
     expect(find.byType(ReaderScreen), findsNothing);
+    expect(find.textContaining('Вернуться к'), findsNothing, reason: 'broken');
     await closeApp(tester);
   });
 
