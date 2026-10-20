@@ -960,10 +960,7 @@ void main() {
     );
     expect(pages.current, 5);
     await tapAt(tester, 0.5);
-    expect(
-      find.text('стр. ${pages.current} / ${pages.total}'),
-      findsOneWidget,
-    );
+    expect(find.text('стр. ${pages.current} / ${pages.total}'), findsOneWidget);
     await closeApp(tester);
   });
 }

@@ -6,6 +6,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/settings_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -225,7 +226,7 @@ void main() {
         books: books,
         collections: const [],
         links: const [],
-        shelf: Shelf.all,
+        filter: LibraryFilter.all,
         sort: LibrarySort.author,
       );
       expect(v.groups, hasLength(5));
@@ -233,47 +234,114 @@ void main() {
     });
   });
 
-  group('shelves', () {
+  group('filters', () {
     final books = [
       _book(1),
       _book(2, opened: 1),
       _book(3, opened: 2, finished: 3),
       _book(4, finished: 4),
       _book(5, opened: 5, mark: StatusMark.queued),
+      _book(6, opened: 6, mark: StatusMark.abandoned),
     ];
     final links = [
       BookCollectionRow(bookId: 1, collectionId: 7, addedAt: _day),
       BookCollectionRow(bookId: 3, collectionId: 7, addedAt: _day),
+      BookCollectionRow(bookId: 5, collectionId: 7, addedAt: _day),
       BookCollectionRow(bookId: 2, collectionId: 8, addedAt: _day),
     ];
-    final cases = <Shelf, List<int>>{
-      Shelf.all: [1, 2, 3, 4, 5],
-      Shelf.reading: [2],
-      Shelf.finished: [3, 4],
-      Shelf.collection(7): [1, 3],
-      Shelf.collection(9): [],
+    const reading = BookStatus.reading;
+    const finished = BookStatus.finished;
+    final cases = <LibraryFilter, List<int>>{
+      LibraryFilter.all: [1, 2, 3, 4, 5, 6],
+      const LibraryFilter(status: BookStatus.notStarted): [1],
+      const LibraryFilter(status: reading): [2],
+      const LibraryFilter(status: BookStatus.queued): [5],
+      const LibraryFilter(status: BookStatus.abandoned): [6],
+      const LibraryFilter(status: finished): [3, 4],
+      const LibraryFilter(collectionId: 7): [1, 3, 5],
+      const LibraryFilter(collectionId: 9): [],
+      // Status and collection together.
+      const LibraryFilter(status: finished, collectionId: 7): [3],
+      const LibraryFilter(status: reading, collectionId: 7): [],
+      const LibraryFilter(status: reading, collectionId: 8): [2],
     };
     for (final MapEntry(:key, :value) in cases.entries) {
-      test(key.key, () {
-        final shown = shelfBooks(books, key, LibrarySort.added, links);
+      test('$key', () {
+        final shown = filterBooks(books, key, LibrarySort.added, links);
         expect(_ids(shown)..sort(), value);
       });
     }
+
+    test('books by status in the library or a collection', () {
+      expect(statusCounts(books, null, links), {
+        BookStatus.notStarted: 1,
+        BookStatus.reading: 1,
+        BookStatus.queued: 1,
+        BookStatus.abandoned: 1,
+        BookStatus.finished: 2,
+      });
+      expect(statusCounts(books, 7, links), {
+        BookStatus.notStarted: 1,
+        BookStatus.reading: 0,
+        BookStatus.queued: 1,
+        BookStatus.abandoned: 0,
+        BookStatus.finished: 1,
+      });
+      expect(statusCounts(books, 9, links).values.every((n) => n == 0), isTrue);
+    });
+
+    test('the view counts the collection whatever the status', () {
+      final v = libraryViewOf(
+        books: books,
+        collections: [CollectionRow(id: 7, name: 'Мои', createdAt: _day)],
+        links: links,
+        filter: const LibraryFilter(status: finished, collectionId: 7),
+        sort: LibrarySort.added,
+      );
+      expect(_ids(v.books), [3]);
+      expect(v.statusCounts[BookStatus.finished], 1);
+      expect(v.statusCounts[BookStatus.queued], 1);
+    });
   });
 
-  test('shelf and sort keys; unknown ones fall back', () {
-    for (final shelf in [
-      Shelf.all,
-      Shelf.reading,
-      Shelf.finished,
-      Shelf.collection(12),
+  test('stored filters; unknown values mean any', () {
+    for (final filter in [
+      LibraryFilter.all,
+      const LibraryFilter(status: BookStatus.queued),
+      const LibraryFilter(collectionId: 12),
+      const LibraryFilter(status: BookStatus.finished, collectionId: 12),
     ]) {
-      expect(Shelf.fromKey(shelf.key), shelf);
+      final stored = {
+        for (final MapEntry(:key, :value) in filter.stored.entries) key: ?value,
+      };
+      expect(LibraryFilter.fromStored(stored), filter);
     }
-    for (final key in [null, '', 'c:', 'c:x', 'other']) {
-      expect(Shelf.fromKey(key), Shelf.all, reason: '$key');
+    expect(
+      LibraryFilter.fromStored({
+        SettingKeys.libraryStatus: 'bad',
+        SettingKeys.libraryCollection: 'x',
+      }),
+      LibraryFilter.all,
+    );
+  });
+
+  test('the old shelf becomes a filter', () {
+    final cases = <String?, LibraryFilter>{
+      'all': LibraryFilter.all,
+      'reading': const LibraryFilter(status: BookStatus.reading),
+      'finished': const LibraryFilter(status: BookStatus.finished),
+      'c:12': const LibraryFilter(collectionId: 12),
+      'c:': LibraryFilter.all,
+      'c:x': LibraryFilter.all,
+      'other': LibraryFilter.all,
+      null: LibraryFilter.all,
+    };
+    for (final MapEntry(:key, :value) in cases.entries) {
+      expect(LibraryFilter.fromShelf(key), value, reason: '$key');
     }
-    expect(Shelf.fromKey('c:12').collectionId, 12);
+  });
+
+  test('sort keys; unknown ones fall back', () {
     for (final sort in LibrarySort.values) {
       expect(LibrarySort.fromKey(sort.name), sort);
     }
@@ -334,23 +402,35 @@ void main() {
         CollectionRow(id: id, name: name, createdAt: _day);
 
     LibraryView view(
-      Shelf shelf, {
+      LibraryFilter filter, {
       List<CollectionRow> collections = const [],
     }) => libraryViewOf(
       books: books,
       collections: collections,
       links: const [],
-      shelf: shelf,
+      filter: filter,
       sort: LibrarySort.recent,
     );
 
     test('"Продолжить" — the last opened unread book, on every shelf', () {
       // Book 2 was opened later but is read to the end.
-      expect(view(Shelf.all).continueBook?.id, 1);
-      expect(view(Shelf.reading).continueBook?.id, 1);
-      expect(view(Shelf.finished).continueBook?.id, 1);
+      expect(view(LibraryFilter.all).continueBook?.id, 1);
+      expect(
+        view(const LibraryFilter(status: BookStatus.reading)).continueBook?.id,
+        1,
+      );
+      expect(
+        view(const LibraryFilter(status: BookStatus.finished)).continueBook?.id,
+        1,
+      );
       final mine = [collection(4, 'Мои')];
-      expect(view(Shelf.collection(4), collections: mine).continueBook?.id, 1);
+      expect(
+        view(
+          const LibraryFilter(collectionId: 4),
+          collections: mine,
+        ).continueBook?.id,
+        1,
+      );
     });
 
     test('"Продолжить" skips queued and abandoned books', () {
@@ -362,7 +442,7 @@ void main() {
         ],
         collections: const [],
         links: const [],
-        shelf: Shelf.all,
+        filter: LibraryFilter.all,
         sort: LibrarySort.recent,
       );
       expect(aside.continueBook?.id, 1);
@@ -373,7 +453,7 @@ void main() {
         books: [_book(1, opened: 1, finished: 2), _book(2)],
         collections: const [],
         links: const [],
-        shelf: Shelf.all,
+        filter: LibraryFilter.all,
         sort: LibrarySort.recent,
       );
       expect(done.continueBook, isNull);
@@ -384,22 +464,29 @@ void main() {
         books: [_book(1)],
         collections: const [],
         links: const [],
-        shelf: Shelf.all,
+        filter: LibraryFilter.all,
         sort: LibrarySort.recent,
       );
       expect(fresh.continueBook, isNull);
       expect(fresh.libraryIsEmpty, isFalse);
     });
 
-    test('a deleted collection falls back to Все', () {
-      final v = view(Shelf.collection(9), collections: [collection(4, 'Мои')]);
-      expect(v.shelf, Shelf.all);
+    test('a deleted collection falls back to all books, the status stays', () {
+      final mine = [collection(4, 'Мои')];
+      final v = view(const LibraryFilter(collectionId: 9), collections: mine);
+      expect(v.filter, LibraryFilter.all);
       expect(v.books, hasLength(3));
+      final finished = view(
+        const LibraryFilter(status: BookStatus.finished, collectionId: 9),
+        collections: mine,
+      );
+      expect(finished.filter, const LibraryFilter(status: BookStatus.finished));
+      expect(_ids(finished.books), [2]);
     });
 
     test('collections by name', () {
       final v = view(
-        Shelf.all,
+        LibraryFilter.all,
         collections: [
           collection(1, 'Сказки'),
           collection(2, 'английские'),
@@ -411,7 +498,7 @@ void main() {
     });
   });
 
-  test('provider: shelf and sort are stored settings', () async {
+  test('provider: filter and sort are stored settings', () async {
     final db = AppDatabase(NativeDatabase.memory());
     final container = ProviderContainer(
       overrides: [
@@ -433,16 +520,48 @@ void main() {
     }
 
     final first = await next();
-    expect(first.shelf, Shelf.all);
+    expect(first.filter, LibraryFilter.all);
     expect(first.sort, LibrarySort.recent);
     expect(first.libraryIsEmpty, isTrue);
 
     final c = await CollectionRepository(db).create('Мои');
     final settings = container.read(settingsRepositoryProvider);
-    await chooseShelf(settings, Shelf.collection(c.id));
+    final filter = LibraryFilter(status: BookStatus.queued, collectionId: c.id);
+    await chooseFilter(settings, filter);
     await chooseSort(settings, LibrarySort.title);
     final chosen = await next();
-    expect(chosen.shelf, Shelf.collection(c.id));
+    expect(chosen.filter, filter);
     expect(chosen.sort, LibrarySort.title);
+
+    await chooseFilter(settings, filter.withStatus(null));
+    expect((await next()).filter, LibraryFilter(collectionId: c.id));
+    expect(await settings.get(SettingKeys.libraryStatus), isNull);
+  });
+
+  test('provider: the old shelf is moved to the filter once', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final settings = SettingsRepository(db);
+    await settings.set(SettingKeys.libraryShelf, 'finished');
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        contentStoreProvider.overrideWithValue(
+          ContentStore(Directory('${Directory.systemTemp.path}/none')),
+        ),
+      ],
+    );
+    addTearDown(() async {
+      container.dispose();
+      await db.close();
+    });
+    final sub = container.listen(libraryViewProvider, (_, _) {});
+    addTearDown(sub.close);
+    await pumpEventQueue();
+    expect(
+      sub.read().requireValue.filter,
+      const LibraryFilter(status: BookStatus.finished),
+    );
+    expect(await settings.get(SettingKeys.libraryShelf), isNull);
+    expect(await settings.get(SettingKeys.libraryStatus), 'finished');
   });
 }

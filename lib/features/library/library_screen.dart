@@ -160,7 +160,7 @@ class _Library extends ConsumerWidget {
         if (view.books.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
-            child: _EmptyShelf(shelf: view.shelf),
+            child: _EmptyShelf(filter: view.filter),
           )
         else ...[
           switch (view.layout) {
@@ -202,7 +202,7 @@ void _showMenu(
     context,
     ref,
     book: book,
-    shelf: view.shelf,
+    collectionId: view.filter.collectionId,
     titleFont: titleFont,
   ),
 );
@@ -262,7 +262,8 @@ class _BookGrid extends ConsumerWidget {
   }
 }
 
-/// "Все · Читаю · Прочитано · collections", one tap to switch.
+/// "Все · Читаю · Прочитано · collections", one tap to switch; a status or
+/// a collection, not both (until the library screen v2, stage 9.11).
 class _Shelves extends ConsumerWidget {
   const _Shelves({required this.view});
 
@@ -273,10 +274,17 @@ class _Shelves extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
     final shelves = [
-      (Shelf.all, l10n.libraryShelfAll),
-      (Shelf.reading, l10n.libraryShelfReading),
-      (Shelf.finished, l10n.libraryShelfFinished),
-      for (final c in view.collections) (Shelf.collection(c.id), c.name),
+      (LibraryFilter.all, l10n.libraryShelfAll),
+      (
+        const LibraryFilter(status: BookStatus.reading),
+        l10n.libraryShelfReading,
+      ),
+      (
+        const LibraryFilter(status: BookStatus.finished),
+        l10n.libraryShelfFinished,
+      ),
+      for (final c in view.collections)
+        (LibraryFilter(collectionId: c.id), c.name),
     ];
     return SizedBox(
       height: 60,
@@ -287,7 +295,7 @@ class _Shelves extends ConsumerWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final (shelf, name) = shelves[i];
-          final selected = shelf == view.shelf;
+          final selected = shelf == view.filter;
           return ChoiceChip(
             label: Text(name),
             selected: selected,
@@ -309,7 +317,7 @@ class _Shelves extends ConsumerWidget {
               color: selected ? colors.background : colors.text,
             ),
             onSelected: (_) => unawaited(
-              chooseShelf(ref.read(settingsRepositoryProvider), shelf),
+              chooseFilter(ref.read(settingsRepositoryProvider), shelf),
             ),
           );
         },
@@ -501,16 +509,19 @@ class _EmptyLibrary extends StatelessWidget {
 }
 
 class _EmptyShelf extends StatelessWidget {
-  const _EmptyShelf({required this.shelf});
+  const _EmptyShelf({required this.filter});
 
-  final Shelf shelf;
+  final LibraryFilter filter;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final (title, hint) = switch (shelf) {
-      Shelf.reading => (l10n.libraryReadingEmpty, l10n.libraryReadingEmptyHint),
-      Shelf.finished => (
+    final (title, hint) = switch (filter.status) {
+      BookStatus.reading => (
+        l10n.libraryReadingEmpty,
+        l10n.libraryReadingEmptyHint,
+      ),
+      BookStatus.finished => (
         l10n.libraryFinishedEmpty,
         l10n.libraryFinishedEmptyHint,
       ),

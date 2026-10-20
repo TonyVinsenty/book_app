@@ -20,7 +20,7 @@ Future<void> showBookMenu(
   BuildContext context,
   WidgetRef ref, {
   required BookRow book,
-  required Shelf shelf,
+  required int? collectionId,
   String? titleFont,
 }) async {
   final books = ref.read(bookRepositoryProvider);
@@ -31,7 +31,6 @@ Future<void> showBookMenu(
     titleFont: titleFont,
   );
   // "Продолжить" shows on every shelf, its book may be in another one.
-  final collectionId = shelf.collectionId;
   final inCollection =
       collectionId != null &&
       (ref.read(collectionLinksProvider).value ?? const []).any(

@@ -131,7 +131,10 @@ void main() {
     final key = styleKeyOf(style: style, pageSize: size);
     expect(key, isNot(keyOf(style)));
     expect(keyOf(style, size, 1), isNot(keyOf(style, size, 2)));
-    expect(key, isNot(styleKeyOf(style: style, pageSize: const Size(300, 520))));
+    expect(
+      key,
+      isNot(styleKeyOf(style: style, pageSize: const Size(300, 520))),
+    );
     expect(key, isNot(styleKeyOf(style: _sized(19), pageSize: size)));
   });
 

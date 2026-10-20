@@ -1,54 +1,65 @@
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// What the library list shows: everything, an automatic shelf or one of
-/// the owner's collections (ADR 0005 addendum 2). Stored as [key].
-final class Shelf {
-  const Shelf._(this.key, [this.collectionId]);
+/// Which books the library shows (ADR 0005 addendum 3): those with
+/// [status] (null — any) in the collection [collectionId] (null — all
+/// books). Stored as `library.status` and `library.collection`.
+@immutable
+final class LibraryFilter {
+  const LibraryFilter({this.status, this.collectionId});
 
-  factory Shelf.collection(int id) => Shelf._('c:$id', id);
+  /// Unknown or broken values mean "any".
+  factory LibraryFilter.fromStored(Map<String, String> stored) => LibraryFilter(
+    status: BookStatus.values.asNameMap()[stored[SettingKeys.libraryStatus]],
+    collectionId: int.tryParse(stored[SettingKeys.libraryCollection] ?? ''),
+  );
 
-  /// Unknown or broken keys mean [all].
-  factory Shelf.fromKey(String? key) {
-    for (final shelf in const [all, reading, finished]) {
-      if (shelf.key == key) return shelf;
-    }
-    final id = key != null && key.startsWith('c:')
-        ? int.tryParse(key.substring(2))
-        : null;
-    return id == null ? all : Shelf.collection(id);
-  }
-
-  static const all = Shelf._('all');
-
-  /// Opened and not read to the end.
-  static const reading = Shelf._('reading');
-  static const finished = Shelf._('finished');
-
-  final String key;
-
-  /// Set for a collection shelf.
-  final int? collectionId;
-
-  bool get isAutomatic => collectionId == null;
-
-  bool holds(BookRow book, Set<int> collectionBooks) => switch (this) {
-    all => true,
-    reading => statusOf(book) == BookStatus.reading,
-    finished => statusOf(book) == BookStatus.finished,
-    _ => collectionBooks.contains(book.id),
+  /// The shelf stored before statuses: `reading`, `finished` or
+  /// `c:<collection id>`; anything else is [all].
+  factory LibraryFilter.fromShelf(String? key) => switch (key) {
+    'reading' => const LibraryFilter(status: BookStatus.reading),
+    'finished' => const LibraryFilter(status: BookStatus.finished),
+    final String k when k.startsWith('c:') => LibraryFilter(
+      collectionId: int.tryParse(k.substring(2)),
+    ),
+    _ => all,
   };
 
-  @override
-  bool operator ==(Object other) => other is Shelf && other.key == key;
+  static const all = LibraryFilter();
+
+  final BookStatus? status;
+  final int? collectionId;
+
+  LibraryFilter withStatus(BookStatus? status) =>
+      LibraryFilter(status: status, collectionId: collectionId);
+
+  LibraryFilter withCollection(int? id) =>
+      LibraryFilter(status: status, collectionId: id);
+
+  /// The settings to write; null — remove.
+  Map<String, String?> get stored => {
+    SettingKeys.libraryStatus: status?.name,
+    SettingKeys.libraryCollection: collectionId?.toString(),
+  };
+
+  bool holds(BookRow book, Set<int> collectionBooks) =>
+      (status == null || statusOf(book) == status) &&
+      (collectionId == null || collectionBooks.contains(book.id));
 
   @override
-  int get hashCode => key.hashCode;
+  bool operator ==(Object other) =>
+      other is LibraryFilter &&
+      other.status == status &&
+      other.collectionId == collectionId;
 
   @override
-  String toString() => 'Shelf($key)';
+  int get hashCode => Object.hash(status, collectionId);
+
+  @override
+  String toString() => 'LibraryFilter($status, $collectionId)';
 }
 
 /// One order for every shelf; stored by name.
@@ -100,23 +111,42 @@ int? percentRead(BookRow book) {
   return (book.positionWord * 100 ~/ book.wordCount).clamp(0, 100);
 }
 
-/// The books of [shelf] in [sort] order. [links] — all book-in-collection
+/// The books of [filter] in [sort] order. [links] — all book-in-collection
 /// rows.
-List<BookRow> shelfBooks(
+List<BookRow> filterBooks(
   List<BookRow> books,
-  Shelf shelf,
+  LibraryFilter filter,
   LibrarySort sort,
   List<BookCollectionRow> links,
 ) {
-  final inCollection = {
-    for (final l in links)
-      if (l.collectionId == shelf.collectionId) l.bookId,
-  };
+  final inCollection = _booksOf(filter.collectionId, links);
   final shown = [
     for (final b in books)
-      if (shelf.holds(b, inCollection)) b,
+      if (filter.holds(b, inCollection)) b,
   ];
   return sortBooks(shown, sort);
+}
+
+Set<int> _booksOf(int? collectionId, List<BookCollectionRow> links) => {
+  for (final l in links)
+    if (l.collectionId == collectionId) l.bookId,
+};
+
+/// How many books of each status the collection [collectionId] (null — the
+/// library) has; every status is there, 0 for none.
+Map<BookStatus, int> statusCounts(
+  List<BookRow> books,
+  int? collectionId,
+  List<BookCollectionRow> links,
+) {
+  final inCollection = _booksOf(collectionId, links);
+  final counts = {for (final s in BookStatus.values) s: 0};
+  for (final b in books) {
+    if (collectionId == null || inCollection.contains(b.id)) {
+      counts.update(statusOf(b), (n) => n + 1);
+    }
+  }
+  return counts;
 }
 
 List<BookRow> sortBooks(List<BookRow> books, LibrarySort sort) {
@@ -338,7 +368,7 @@ final class SortKey implements Comparable<SortKey> {
 /// What the library screen shows.
 final class LibraryView {
   const LibraryView({
-    required this.shelf,
+    required this.filter,
     required this.sort,
     this.layout = LibraryLayout.list,
     required this.books,
@@ -346,14 +376,15 @@ final class LibraryView {
     required this.collections,
     required this.continueBook,
     required this.libraryIsEmpty,
+    this.statusCounts = const {},
   });
 
-  /// The chosen shelf; a deleted collection falls back to "Все".
-  final Shelf shelf;
+  /// The chosen filter; a deleted collection falls back to all books.
+  final LibraryFilter filter;
   final LibrarySort sort;
   final LibraryLayout layout;
 
-  /// Books of [shelf] in [sort] order.
+  /// Books of [filter] in [sort] order.
   final List<BookRow> books;
 
   /// [books] under headers: by author for [LibrarySort.author], else one
@@ -369,21 +400,27 @@ final class LibraryView {
   final BookRow? continueBook;
 
   final bool libraryIsEmpty;
+
+  /// Books of each status in the chosen collection (or the library),
+  /// whatever the chosen status.
+  final Map<BookStatus, int> statusCounts;
 }
 
 LibraryView libraryViewOf({
   required List<BookRow> books,
   required List<CollectionRow> collections,
   required List<BookCollectionRow> links,
-  required Shelf shelf,
+  required LibraryFilter filter,
   required LibrarySort sort,
   LibraryLayout layout = LibraryLayout.list,
 }) {
-  final known =
-      shelf.isAutomatic || collections.any((c) => c.id == shelf.collectionId);
-  final shown = known ? shelf : Shelf.all;
+  final collectionId = filter.collectionId;
+  final shown =
+      collectionId == null || collections.any((c) => c.id == collectionId)
+      ? filter
+      : filter.withCollection(null);
   final names = {for (final c in collections) c.id: SortKey(c.name)};
-  final shownBooks = shelfBooks(books, shown, sort, links);
+  final shownBooks = filterBooks(books, shown, sort, links);
   BookRow? last;
   for (final b in books) {
     final opened = b.openedAt;
@@ -391,7 +428,7 @@ LibraryView libraryViewOf({
     if (last == null || opened.isAfter(last.openedAt!)) last = b;
   }
   return LibraryView(
-    shelf: shown,
+    filter: shown,
     sort: sort,
     layout: layout,
     books: shownBooks,
@@ -403,15 +440,28 @@ LibraryView libraryViewOf({
       }),
     continueBook: last,
     libraryIsEmpty: books.isEmpty,
+    statusCounts: statusCounts(books, shown.collectionId, links),
   );
 }
 
-final libraryShelfProvider = StreamProvider<Shelf>(
-  (ref) => ref
-      .watch(settingsRepositoryProvider)
-      .watch(SettingKeys.libraryShelf)
-      .map(Shelf.fromKey),
-);
+final libraryFilterProvider = StreamProvider<LibraryFilter>((ref) async* {
+  final settings = ref.watch(settingsRepositoryProvider);
+  await moveOldShelf(settings);
+  yield* settings
+      .watchKeys([SettingKeys.libraryStatus, SettingKeys.libraryCollection])
+      .map(LibraryFilter.fromStored);
+});
+
+/// Once: the shelf chosen before statuses becomes the filter (ADR 0005
+/// addendum 3).
+Future<void> moveOldShelf(SettingsRepository settings) async {
+  final shelf = await settings.get(SettingKeys.libraryShelf);
+  if (shelf == null) return;
+  await settings.setAll({
+    ...LibraryFilter.fromShelf(shelf).stored,
+    SettingKeys.libraryShelf: null,
+  });
+}
 
 final librarySortProvider = StreamProvider<LibrarySort>(
   (ref) => ref
@@ -427,8 +477,8 @@ final libraryLayoutProvider = StreamProvider<LibraryLayout>(
       .map(LibraryLayout.fromKey),
 );
 
-Future<void> chooseShelf(SettingsRepository settings, Shelf shelf) =>
-    settings.set(SettingKeys.libraryShelf, shelf.key);
+Future<void> chooseFilter(SettingsRepository settings, LibraryFilter filter) =>
+    settings.setAll(filter.stored);
 
 Future<void> chooseSort(SettingsRepository settings, LibrarySort sort) =>
     settings.set(SettingKeys.librarySort, sort.name);
@@ -441,10 +491,10 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
   final books = ref.watch(booksProvider);
   final collections = ref.watch(collectionsProvider);
   final links = ref.watch(collectionLinksProvider);
-  final shelf = ref.watch(libraryShelfProvider);
+  final filter = ref.watch(libraryFilterProvider);
   final sort = ref.watch(librarySortProvider);
   final layout = ref.watch(libraryLayoutProvider);
-  for (final part in [books, collections, links, shelf, sort, layout]) {
+  for (final part in [books, collections, links, filter, sort, layout]) {
     if (part case AsyncError(:final error, :final stackTrace)) {
       return AsyncError(error, stackTrace);
     }
@@ -455,7 +505,7 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
       books: books.requireValue,
       collections: collections.requireValue,
       links: links.requireValue,
-      shelf: shelf.requireValue,
+      filter: filter.requireValue,
       sort: sort.requireValue,
       layout: layout.requireValue,
     ),

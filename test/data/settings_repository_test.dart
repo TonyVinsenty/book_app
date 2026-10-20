@@ -45,4 +45,25 @@ void main() {
 
     expect(values, [null, 'paper', 'night', null]);
   });
+
+  test(
+    'setAll writes and removes at once; watchKeys follows those keys',
+    () async {
+      await settings.set('a', '1');
+      final values = <Map<String, String>>[];
+      final sub = settings.watchKeys(['a', 'b']).listen(values.add);
+      addTearDown(sub.cancel);
+      await pumpEventQueue();
+
+      await settings.setAll({'a': null, 'b': '2'});
+      await pumpEventQueue();
+      await settings.set('other', 'x');
+      await pumpEventQueue();
+
+      expect(values, [
+        {'a': '1'},
+        {'b': '2'},
+      ]);
+    },
+  );
 }

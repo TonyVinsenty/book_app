@@ -29,6 +29,24 @@ final class SettingsRepository {
           .map((rows) => rows.isEmpty ? null : rows.single.value)
           .distinct();
 
+  /// Current values of [keys] (missing ones left out), then each change of
+  /// them.
+  Stream<Map<String, String>> watchKeys(List<String> keys) =>
+      (_db.select(_db.appSettings)..where((s) => s.key.isIn(keys)))
+          .watch()
+          .map((rows) => {for (final row in rows) row.key: row.value})
+          .distinct(_sameMap);
+
+  static bool _sameMap(Map<String, String> a, Map<String, String> b) =>
+      a.length == b.length && a.entries.every((e) => b[e.key] == e.value);
+
+  /// Sets the values given and removes those given as null, all at once.
+  Future<void> setAll(Map<String, String?> values) => _db.transaction(() async {
+    for (final MapEntry(:key, :value) in values.entries) {
+      await (value == null ? remove(key) : set(key, value));
+    }
+  });
+
   Future<void> set(String key, String value) => _db
       .into(_db.appSettings)
       .insertOnConflictUpdate(
@@ -44,8 +62,16 @@ abstract final class SettingKeys {
   /// Speed reading pace, words per minute.
   static const speedWpm = 'speed.wpm';
 
-  /// Library shelf shown: `all`, `reading`, `finished` or `c:<collection id>`.
+  /// Before statuses (stage 9.10): the library shelf shown, `all`,
+  /// `reading`, `finished` or `c:<collection id>`; read once into
+  /// [libraryStatus] / [libraryCollection] and removed.
   static const libraryShelf = 'library.shelf';
+
+  /// Library filter: a `BookStatus` name; none — any status.
+  static const libraryStatus = 'library.status';
+
+  /// Library filter: a collection id; none — all books.
+  static const libraryCollection = 'library.collection';
 
   /// Library order, a `LibrarySort` name.
   static const librarySort = 'library.sort';

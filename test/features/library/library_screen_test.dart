@@ -262,7 +262,7 @@ void main() {
     await tester.tap(find.widgetWithText(ChoiceChip, 'Читаю'));
     await settle(tester);
     expect(titles(tester, BookTile), ['Анна Каренина']);
-    expect(await stored(tester, SettingKeys.libraryShelf), 'reading');
+    expect(await stored(tester, SettingKeys.libraryStatus), 'reading');
     expect(find.byType(ContinueCard), findsOneWidget);
     expect(chips(), place);
 
@@ -276,7 +276,8 @@ void main() {
     await settle(tester);
     expect(titles(tester, BookTile), ['Война и мир']);
     expect(find.text('1 книга'), findsOneWidget);
-    expect(await stored(tester, SettingKeys.libraryShelf), 'c:7');
+    expect(await stored(tester, SettingKeys.libraryCollection), '7');
+    expect(await stored(tester, SettingKeys.libraryStatus), isNull);
     expect(find.byType(ContinueCard), findsOneWidget);
     expect(chips(), place);
   });
