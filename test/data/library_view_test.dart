@@ -22,6 +22,7 @@ BookRow _book(
   int? finished,
   int added = 0,
   int? touched,
+  StatusMark? mark,
 }) => BookRow(
   id: id,
   title: title,
@@ -40,6 +41,7 @@ BookRow _book(
   openedAt: opened == null ? null : _day.add(Duration(hours: opened)),
   touchedAt: _day.add(Duration(hours: touched ?? opened ?? added)),
   finishedAt: finished == null ? null : _day.add(Duration(hours: finished)),
+  statusMark: mark,
 );
 
 List<int> _ids(List<BookRow> books) => [for (final b in books) b.id];
@@ -102,12 +104,142 @@ void main() {
     expect(percentRead(_book(1, words: 10, position: 50, opened: 1)), 100);
   });
 
+  test('status: read, then a mark, then opened, else new', () {
+    const q = StatusMark.queued;
+    const a = StatusMark.abandoned;
+    final cases = <(int?, int?, StatusMark?), BookStatus>{
+      (null, null, null): BookStatus.notStarted,
+      (1, null, null): BookStatus.reading,
+      (1, 2, null): BookStatus.finished,
+      (null, 2, null): BookStatus.finished,
+      (null, null, q): BookStatus.queued,
+      (1, null, q): BookStatus.queued,
+      (1, null, a): BookStatus.abandoned,
+      (null, null, a): BookStatus.abandoned,
+      // Never written together; the read mark wins.
+      (1, 2, a): BookStatus.finished,
+    };
+    for (final MapEntry(key: (opened, finished, mark), :value)
+        in cases.entries) {
+      final book = _book(1, opened: opened, finished: finished, mark: mark);
+      expect(statusOf(book), value, reason: '$opened $finished $mark');
+    }
+  });
+
+  group('author key', () {
+    void same(List<String> a, List<String> b) =>
+        expect(authorKeyOf(a), authorKeyOf(b), reason: '$a = $b');
+    void differs(List<String> a, List<String> b) =>
+        expect(authorKeyOf(a), isNot(authorKeyOf(b)), reason: '$a ≠ $b');
+
+    test('spellings of one author give one key', () {
+      for (final other in [
+        ['Л. Н. Толстой'],
+        ['Толстой, Лев Николаевич'],
+        ['Толстой Л. Н.'],
+        ['Лев Николаевич Толстой'],
+        ['лев толстой'],
+        ['  Лев   Толстой '],
+      ]) {
+        same(['Лев Толстой'], other);
+      }
+      same(['Пётр Алексеев'], ['П. Алексеев']);
+      same(['Фёдор Достоевский'], ['Федор Достоевский']);
+      same(['Гомер'], ['гомер']);
+    });
+
+    test('namesakes are apart', () {
+      differs(['Лев Толстой'], ['Алексей Толстой']);
+      differs(['Лев Толстой'], ['Толстой']);
+      differs(['Анна Ан'], ['Николай Ан']);
+    });
+
+    test('only the first author counts', () {
+      same(['Аркадий Стругацкий', 'Борис Стругацкий'], ['А. Стругацкий']);
+      differs(['Илья Ильф', 'Евгений Петров'], ['Евгений Петров']);
+    });
+
+    test('no author, or only initials', () {
+      expect(authorKeyOf(const []), isNull);
+      expect(authorKeyOf(const ['  ']), isNull);
+      same(['А. Б.'], ['А. Б.']);
+    });
+  });
+
+  group('groups', () {
+    final books = [
+      _book(1, title: 'Война и мир', authors: ['Толстой, Лев Николаевич']),
+      _book(2, title: 'Анна Каренина', authors: ['Лев Толстой']),
+      _book(3, title: 'Воскресение', authors: ['Л. Н. Толстой']),
+      _book(4, title: 'Хаджи-Мурат', authors: ['Лев Толстой']),
+      _book(5, title: 'Аэлита', authors: ['Алексей Толстой']),
+      _book(6, title: 'Сказки'),
+      _book(7, title: 'Бесы', authors: ['Достоевский Ф. М.']),
+      _book(8, title: 'Alice', authors: ['Lewis Carroll']),
+      _book(9, title: 'Песни', authors: ['  ']),
+    ];
+    List<(String?, bool, String)> groups(LibrarySort sort) => [
+      for (final g in groupBooks(sortBooks(books, sort), sort))
+        (g.author, g.hasHeader, _ids(g.books).join(' ')),
+    ];
+
+    test('by author: surname, then name; no author last', () {
+      expect(groups(LibrarySort.author), [
+        ('Достоевский Ф. М.', true, '7'),
+        ('Алексей Толстой', true, '5'),
+        ('Лев Толстой', true, '2 1 3 4'),
+        ('Lewis Carroll', true, '8'),
+        (null, true, '9 6'),
+      ]);
+    });
+
+    test('other sorts: one group without a header', () {
+      for (final sort in LibrarySort.values) {
+        if (sort == LibrarySort.author) continue;
+        final all = groups(sort);
+        expect(all, hasLength(1), reason: sort.name);
+        expect(all.single.$2, isFalse);
+        expect(all.single.$3, _ids(sortBooks(books, sort)).join(' '));
+      }
+    });
+
+    test('no books, no groups', () {
+      expect(groupBooks(const [], LibrarySort.author), isEmpty);
+      expect(groupBooks(const [], LibrarySort.recent), isEmpty);
+    });
+
+    test('the header is the most frequent spelling, else the first', () {
+      final tie = [
+        _book(1, title: 'Б', authors: ['Л. Толстой']),
+        _book(2, title: 'А', authors: ['Лев Толстой']),
+      ];
+      final g = groupBooks(
+        sortBooks(tie, LibrarySort.author),
+        LibrarySort.author,
+      );
+      expect(g.single.author, 'Лев Толстой');
+    });
+
+    test('the view gives the groups of the shown books', () {
+      final v = libraryViewOf(
+        books: books,
+        collections: const [],
+        links: const [],
+        shelf: Shelf.all,
+        sort: LibrarySort.author,
+      );
+      expect(v.groups, hasLength(5));
+      expect([for (final g in v.groups) ...g.books], v.books);
+    });
+  });
+
   group('shelves', () {
     final books = [
       _book(1),
       _book(2, opened: 1),
       _book(3, opened: 2, finished: 3),
       _book(4, finished: 4),
+      _book(5, opened: 5, mark: StatusMark.queued),
     ];
     final links = [
       BookCollectionRow(bookId: 1, collectionId: 7, addedAt: _day),
@@ -115,7 +247,7 @@ void main() {
       BookCollectionRow(bookId: 2, collectionId: 8, addedAt: _day),
     ];
     final cases = <Shelf, List<int>>{
-      Shelf.all: [1, 2, 3, 4],
+      Shelf.all: [1, 2, 3, 4, 5],
       Shelf.reading: [2],
       Shelf.finished: [3, 4],
       Shelf.collection(7): [1, 3],
@@ -177,8 +309,8 @@ void main() {
       LibrarySort.recent: [2, 5, 6, 4, 3, 1],
       LibrarySort.added: [6, 5, 4, 3, 2, 1],
       LibrarySort.title: [2, 5, 4, 6, 1, 3],
-      // Достоевский: «Достоевский, Фёдор» < «Ф. М. Достоевский»; then
-      // Толстой: «Лев Толстой» < «Толстой Л. Н.»; Carroll; no author last.
+      // Достоевский Ф.: by title; Толстой Л.: by title; Carroll; no author
+      // last.
       LibrarySort.author: [4, 1, 2, 6, 3, 5],
       LibrarySort.progress: [4, 5, 2, 6, 3, 1],
     };
@@ -218,10 +350,22 @@ void main() {
       expect(view(Shelf.reading).continueBook?.id, 1);
       expect(view(Shelf.finished).continueBook?.id, 1);
       final mine = [collection(4, 'Мои')];
-      expect(
-        view(Shelf.collection(4), collections: mine).continueBook?.id,
-        1,
+      expect(view(Shelf.collection(4), collections: mine).continueBook?.id, 1);
+    });
+
+    test('"Продолжить" skips queued and abandoned books', () {
+      final aside = libraryViewOf(
+        books: [
+          _book(1, opened: 1),
+          _book(2, opened: 2, mark: StatusMark.abandoned),
+          _book(3, opened: 3, mark: StatusMark.queued),
+        ],
+        collections: const [],
+        links: const [],
+        shelf: Shelf.all,
+        sort: LibrarySort.recent,
       );
+      expect(aside.continueBook?.id, 1);
     });
 
     test('no "Продолжить" when every opened book is read', () {

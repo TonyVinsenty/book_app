@@ -36,8 +36,8 @@ final class Shelf {
 
   bool holds(BookRow book, Set<int> collectionBooks) => switch (this) {
     all => true,
-    reading => book.openedAt != null && book.finishedAt == null,
-    finished => book.finishedAt != null,
+    reading => statusOf(book) == BookStatus.reading,
+    finished => statusOf(book) == BookStatus.finished,
     _ => collectionBooks.contains(book.id),
   };
 
@@ -77,6 +77,19 @@ enum LibraryLayout {
   /// Unknown or broken names mean [list].
   static LibraryLayout fromKey(String? key) =>
       values.firstWhere((l) => l.name == key, orElse: () => list);
+}
+
+/// The one status of a book (ADR 0005 addendum 3). Only "queued" and
+/// "abandoned" are stored as such; the others follow from the dates.
+enum BookStatus { notStarted, reading, queued, abandoned, finished }
+
+BookStatus statusOf(BookRow book) {
+  if (book.finishedAt != null) return BookStatus.finished;
+  return switch (book.statusMark) {
+    StatusMark.queued => BookStatus.queued,
+    StatusMark.abandoned => BookStatus.abandoned,
+    null => book.openedAt != null ? BookStatus.reading : BookStatus.notStarted,
+  };
 }
 
 /// Whole percent read, rounded down (99.6% is not 100%); null for a book
@@ -119,28 +132,13 @@ List<BookRow> sortBooks(List<BookRow> books, LibrarySort sort) {
     case LibrarySort.author:
       final keys = {
         for (final b in books)
-          b.id: (
-            surname: switch (surnameOf(b.authors)) {
-              final s? => SortKey(s),
-              null => null,
-            },
-            author: SortKey(b.authors.firstOrNull ?? ''),
-            title: SortKey(b.title),
-          ),
+          b.id: (author: authorKeyOf(b.authors), title: SortKey(b.title)),
       };
       order = (a, b) {
         final ka = keys[a.id]!;
         final kb = keys[b.id]!;
-        final byName = switch ((ka.surname, kb.surname)) {
-          (null, null) => 0,
-          (null, _) => 1,
-          (_, null) => -1,
-          (final x?, final y?) => x.compareTo(y),
-        };
-        if (byName != 0) return byName;
-        final byAuthor = ka.author.compareTo(kb.author);
-        if (byAuthor != 0) return byAuthor;
-        return ka.title.compareTo(kb.title);
+        final byAuthor = _compareAuthors(ka.author, kb.author);
+        return byAuthor != 0 ? byAuthor : ka.title.compareTo(kb.title);
       };
     case LibrarySort.progress:
       double share(BookRow b) => b.finishedAt != null ? 1 : b.progress;
@@ -150,6 +148,97 @@ List<BookRow> sortBooks(List<BookRow> books, LibrarySort sort) {
     final c = order(a, b);
     return c != 0 ? c : b.id.compareTo(a.id);
   });
+}
+
+/// Books by one author come together: by [authorKeyOf], books without an
+/// author last.
+int _compareAuthors(AuthorKey? a, AuthorKey? b) => switch ((a, b)) {
+  (null, null) => 0,
+  (null, _) => 1,
+  (_, null) => -1,
+  (final x?, final y?) => switch (x.surname.compareTo(y.surname)) {
+    0 => x.initial.compareTo(y.initial),
+    final c => c,
+  },
+};
+
+/// Who a book is grouped under: the surname and the first letter of the
+/// given name of the first author.
+typedef AuthorKey = ({SortKey surname, SortKey initial});
+
+/// "Лев Толстой", "Л. Н. Толстой" and "Толстой, Лев Николаевич" give one key,
+/// "Алексей Толстой" another; null when there is no author.
+AuthorKey? authorKeyOf(List<String> authors) {
+  final surname = surnameOf(authors);
+  if (surname == null) return null;
+  final first = authors.first.trim();
+  final comma = first.indexOf(',');
+  final List<String> given;
+  if (comma > 0) {
+    given = [first.substring(comma + 1)];
+  } else {
+    // With only initials ("А. Б.") the surname is the whole name.
+    given = first.split(RegExp(r'\s+'))..remove(surname);
+  }
+  final letter =
+      RegExp(r'\p{L}', unicode: true).firstMatch(given.join(' '))?[0] ?? '';
+  return (surname: SortKey(surname), initial: SortKey(letter));
+}
+
+/// Books under one header: an author when sorted by author, else one group
+/// of all books without a header.
+final class BookGroup {
+  const BookGroup.all(this.books) : author = null, hasHeader = false;
+  const BookGroup.author(String this.author, this.books) : hasHeader = true;
+  const BookGroup.noAuthor(this.books) : author = null, hasHeader = true;
+
+  /// The most frequent spelling of the author in the group; null for
+  /// [BookGroup.all] and "Без автора".
+  final String? author;
+  final bool hasHeader;
+  final List<BookRow> books;
+}
+
+/// [sorted] in groups: by author for [LibrarySort.author] (its order already
+/// puts them together), else one group; none for no books.
+List<BookGroup> groupBooks(List<BookRow> sorted, LibrarySort sort) {
+  if (sorted.isEmpty) return const [];
+  if (sort != LibrarySort.author) return [BookGroup.all(sorted)];
+  final groups = <BookGroup>[];
+  var start = 0;
+  AuthorKey? key = authorKeyOf(sorted.first.authors);
+  void close(int end) {
+    final books = sorted.sublist(start, end);
+    groups.add(
+      key == null
+          ? BookGroup.noAuthor(books)
+          : BookGroup.author(_mostFrequentAuthor(books), books),
+    );
+  }
+
+  for (var i = 1; i < sorted.length; i++) {
+    final next = authorKeyOf(sorted[i].authors);
+    if (_compareAuthors(key, next) == 0) continue;
+    close(i);
+    start = i;
+    key = next;
+  }
+  close(sorted.length);
+  return groups;
+}
+
+/// Ties go to the spelling seen first (the first book by title).
+String _mostFrequentAuthor(List<BookRow> books) {
+  final counts = <String, int>{};
+  for (final b in books) {
+    final name = b.authors.first.trim();
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+  var best = counts.keys.first;
+  for (final MapEntry(:key, :value) in counts.entries) {
+    if (value > counts[best]!) best = key;
+  }
+  return best;
 }
 
 /// Surname of the first author: the part before a comma ("Толстой, Лев"),
@@ -237,6 +326,12 @@ final class SortKey implements Comparable<SortKey> {
   }
 
   @override
+  bool operator ==(Object other) => other is SortKey && other._s == _s;
+
+  @override
+  int get hashCode => _s.hashCode;
+
+  @override
   String toString() => 'SortKey($_s)';
 }
 
@@ -247,6 +342,7 @@ final class LibraryView {
     required this.sort,
     this.layout = LibraryLayout.list,
     required this.books,
+    required this.groups,
     required this.collections,
     required this.continueBook,
     required this.libraryIsEmpty,
@@ -260,10 +356,14 @@ final class LibraryView {
   /// Books of [shelf] in [sort] order.
   final List<BookRow> books;
 
+  /// [books] under headers: by author for [LibrarySort.author], else one
+  /// group without a header; empty when there are no books.
+  final List<BookGroup> groups;
+
   /// The owner's collections by name.
   final List<CollectionRow> collections;
 
-  /// "Продолжить": the last opened book still being read. The same on
+  /// "Продолжить": the last opened book with the status "Читаю". The same on
   /// every shelf, so switching shelves does not move them (owner,
   /// 2026-10-20).
   final BookRow? continueBook;
@@ -283,17 +383,19 @@ LibraryView libraryViewOf({
       shelf.isAutomatic || collections.any((c) => c.id == shelf.collectionId);
   final shown = known ? shelf : Shelf.all;
   final names = {for (final c in collections) c.id: SortKey(c.name)};
+  final shownBooks = shelfBooks(books, shown, sort, links);
   BookRow? last;
   for (final b in books) {
     final opened = b.openedAt;
-    if (opened == null || b.finishedAt != null) continue;
+    if (opened == null || statusOf(b) != BookStatus.reading) continue;
     if (last == null || opened.isAfter(last.openedAt!)) last = b;
   }
   return LibraryView(
     shelf: shown,
     sort: sort,
     layout: layout,
-    books: shelfBooks(books, shown, sort, links),
+    books: shownBooks,
+    groups: groupBooks(shownBooks, sort),
     collections: [...collections]
       ..sort((a, b) {
         final c = names[a.id]!.compareTo(names[b.id]!);
