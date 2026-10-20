@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:book_app/app/notice.dart';
+import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
@@ -156,9 +157,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   double _topInset = 0;
   Size? _screenSize;
 
-  /// The word speed reading stopped on: lit for about a second, then fades
-  /// (ADR 0004 п. 10).
+  /// The words speed reading stopped on, [_litWord]..[_litEnd]: lit for
+  /// about a second, then fade (ADR 0004 п. 10).
   int? _litWord;
+  int _litEnd = 0;
   late final AnimationController _lit = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -179,6 +181,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   @visibleForTesting
   int? get litWord => _litWord;
+
+  @visibleForTesting
+  int get litEnd => _litEnd;
 
   @visibleForTesting
   bool get panelsShown => _panelsShown;
@@ -458,20 +463,23 @@ class ReaderViewState extends ConsumerState<ReaderView>
   Future<void> _speedRead(int word) async {
     _setPanels(false);
     _readOn();
-    final wpm = await ref
-        .read(speedSettingsProvider)
-        .wordsPerMinute(SpeedMode.word);
+    final settings = ref.read(speedSettingsProvider);
+    var mode = await settings.mode(pro: ref.read(proUnlockedProvider));
+    // The leading highlight comes in a later step (stage 10).
+    if (mode == SpeedMode.guide) mode = SpeedMode.word;
+    final wpm = await settings.wordsPerMinute(mode);
     if (!mounted) return;
-    final last = await Navigator.of(context).push<int>(
+    final last = await Navigator.of(context).push<RsvpExit>(
       MaterialPageRoute(
         builder: (_) => RsvpScreen(
           opened: widget.opened,
           startWord: word,
           wordsPerMinute: wpm,
+          mode: mode,
         ),
       ),
     );
-    if (mounted && last != null) _showWord(last);
+    if (mounted && last != null) _showWord(last.word, last.end);
   }
 
   /// The current chapter goes back to the normal split when the reader
@@ -484,8 +492,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   /// Opens the page with [word], its line where speed reading showed it,
-  /// lights it and keeps the place on it.
-  void _showWord(int word) {
+  /// lights it with the rest of its phrase (up to [end]) and keeps the place
+  /// on it.
+  void _showWord(int word, int end) {
     final section = widget.opened.tokens[word].sectionIndex;
     _leaveSection(section);
     setState(() {
@@ -493,6 +502,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _shiftTo = word;
       _word = word;
       _litWord = word;
+      _litEnd = end;
       _returnTo = null;
     });
     _setPanels(false);
@@ -631,9 +641,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
                               painter: _PagePainter(
                                 chapter,
                                 _page,
-                                lit: _litWord == null
-                                    ? const []
-                                    : chapter.wordBoxes(_page, _litWord!),
+                                lit: [
+                                  if (_litWord case final lit?)
+                                    for (var w = lit; w < _litEnd; w++)
+                                      ...chapter.wordBoxes(_page, w),
+                                ],
                                 litColor: colors.highlight,
                                 litAnimation: _lit,
                               ),
@@ -890,7 +902,7 @@ class _PagePainter extends CustomPainter {
   final ChapterLayout chapter;
   final int page;
 
-  /// Boxes of the lit word on this page.
+  /// Boxes of the lit words on this page.
   final List<Rect> lit;
   final Color litColor;
 

@@ -26,3 +26,9 @@ String textBefore(BookTokens tokens, int word, {int maxWords = 60}) {
 }
 
 final _lineBreaks = RegExp(r'[\r\n]+');
+
+/// Words [start]..[end] on one line, as speed reading shows them (a phrase
+/// never crosses a paragraph).
+String phraseText(BookTokens tokens, int start, int end) => [
+  for (var i = start; i < end; i++) tokens.textOf(i).replaceAll(_lineBreaks, ' '),
+].join(' ');

@@ -23,7 +23,9 @@ import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
 import 'package:book_app/speed/pause_text.dart';
+import 'package:book_app/speed/phrases.dart';
 import 'package:book_app/speed/rewind.dart';
+import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -839,11 +841,97 @@ void main() {
     await closeApp(tester);
   });
 
+  testWidgets('the phrase mode shows phrases; leaving lights all of one', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'phrase'),
+    );
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord + 5;
+
+    await longPressWord(tester, start);
+    final screen = rsvp(tester);
+    final engine = screen.engine;
+    final tokens = screen.widget.opened.tokens;
+    expect(screen.widget.mode, SpeedMode.phrase);
+    final steps = engine.steps as PhraseSteps;
+    expect(steps.maxChars, inInclusiveRange(12, 24));
+    // Opens on the phrase of the pressed word.
+    expect(engine.wordIndex, steps.startOf(start));
+    expect(engine.wordIndex, lessThanOrEqualTo(start));
+    expect(engine.unitEnd, greaterThan(start));
+
+    RsvpWordPainter painter() =>
+        tester
+                .widget<CustomPaint>(
+                  find.byWidgetPredicate(
+                    (w) => w is CustomPaint && w.painter is RsvpWordPainter,
+                  ),
+                )
+                .painter!
+            as RsvpWordPainter;
+    String shown() => phraseText(tokens, engine.wordIndex, engine.unitEnd);
+    // The whole phrase, with no marked letter; on pause the text before it
+    // ends with it.
+    expect(painter().text, shown());
+    expect(painter().orp, isNull);
+    expect(
+      find.text(
+        textBefore(tokens, engine.wordIndex) + shown(),
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
+
+    await tapRsvp(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tapRsvp(tester);
+    final word = engine.wordIndex;
+    final end = engine.unitEnd;
+    expect(word, greaterThan(start));
+    expect(end - word, inInclusiveRange(1, PhraseSteps.maxWords));
+    expect(painter().text, shown());
+
+    // Its own pace is kept apart from the word mode's.
+    await tester.tap(find.byTooltip('Быстрее'));
+    await tester.pump();
+    await settle(tester);
+    expect(
+      await tester.runAsync<String?>(
+        () =>
+            SettingsRepository(db)
+                .get(SettingKeys.speedWpmOf(SpeedMode.phrase)),
+      ),
+      '325',
+    );
+    expect(
+      await tester.runAsync<String?>(
+        () => SettingsRepository(db).get(SettingKeys.speedWpm),
+      ),
+      isNull,
+    );
+
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(reader(tester).litWord, word);
+    expect(reader(tester).litEnd, end);
+    expect(await tester.runAsync(savedWord), word);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
   /// Speed reading pushed over the reader from [word], fast, and started.
   Future<void> speedReadFrom(WidgetTester tester, int word) async {
     final opened = reader(tester).widget.opened;
     unawaited(
-      Navigator.of(tester.element(find.byType(ReaderView))).push<int>(
+      Navigator.of(tester.element(find.byType(ReaderView))).push<RsvpExit>(
         MaterialPageRoute(
           builder: (_) => RsvpScreen(
             opened: opened,

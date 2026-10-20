@@ -9,6 +9,7 @@ import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/speed/pause_text.dart';
+import 'package:book_app/speed/phrases.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/rsvp_engine.dart';
 import 'package:book_app/speed/speed_mode.dart';
@@ -17,20 +18,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Speed reading one word at a time (RSVP, ADR 0004). Opens paused on the
-/// start word with the controls shown; a tap anywhere starts (gently), the
-/// next one pauses. Pops with the word it stopped on.
+/// Where speed reading stopped: the words on screen, [word]..[end].
+typedef RsvpExit = ({int word, int end});
+
+/// Speed reading one word or one phrase at a time (RSVP, ADR 0004). Opens
+/// paused on the start word with the controls shown; a tap anywhere starts
+/// (gently), the next one pauses. Pops with the [RsvpExit] it stopped on.
 class RsvpScreen extends ConsumerStatefulWidget {
   const RsvpScreen({
     super.key,
     required this.opened,
     required this.startWord,
     required this.wordsPerMinute,
-  });
+    this.mode = SpeedMode.word,
+  }) : assert(mode != SpeedMode.guide);
 
   final OpenedBook opened;
   final int startWord;
   final int wordsPerMinute;
+
+  /// [SpeedMode.word] or [SpeedMode.phrase].
+  final SpeedMode mode;
 
   @override
   ConsumerState<RsvpScreen> createState() => RsvpScreenState();
@@ -68,6 +76,48 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     _ticker = createTicker(_onTick);
     _lifecycle = AppLifecycleListener(onInactive: _pause);
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.mode != SpeedMode.phrase) return;
+    // Phrases as long as the screen holds (ADR 0004, addendum for stage 10
+    // п. 3); a turned phone splits them anew.
+    final maxChars = _phraseChars(context);
+    final steps = _engine.steps;
+    if (steps is! PhraseSteps || steps.maxChars != maxChars) {
+      _engine.steps = PhraseSteps(widget.opened.tokens, maxChars: maxChars);
+    }
+  }
+
+  /// Letters with spaces that fit across the screen in the word's font.
+  static int _phraseChars(BuildContext context) {
+    final padding = MediaQuery.paddingOf(context);
+    final room =
+        MediaQuery.sizeOf(context).width - padding.horizontal - 2 * _side;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: _sample,
+        style: TextStyle(
+          fontFamily: BookFont.literata.family,
+          fontSize: _wordSize,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final letter = painter.width / _sample.length;
+    painter.dispose();
+    return (room / letter).floor().clamp(_minChars, _maxChars);
+  }
+
+  /// Common letters with a space, for the average letter width.
+  static const _sample = 'в старом доме on the stairs';
+  static const _minChars = 12;
+  static const _maxChars = 24;
+
+  /// Room left on each side of a phrase.
+  static const _side = 16.0;
 
   @override
   void dispose() {
@@ -153,9 +203,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
       if (mounted) setState(() => _speedHint = false);
     });
     unawaited(
-      ref
-          .read(speedSettingsProvider)
-          .setWordsPerMinute(SpeedMode.word, _wpm),
+      ref.read(speedSettingsProvider).setWordsPerMinute(widget.mode, _wpm),
     );
   }
 
@@ -170,7 +218,13 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     );
   }
 
-  void _exit() => Navigator.of(context).pop(_engine.wordIndex);
+  void _exit() =>
+      Navigator.of(context)
+          .pop<RsvpExit>((word: _engine.wordIndex, end: _engine.unitEnd));
+
+  /// The word or the phrase on screen.
+  String get _shownText =>
+      phraseText(widget.opened.tokens, _engine.wordIndex, _engine.unitEnd);
 
   /// The engine paused before a new chapter: its title and "Start".
   Widget _chapterStart(BuildContext context) {
@@ -210,7 +264,8 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   }
 
   /// The text before the word on pause, pressed down to the word line from
-  /// above (ADR 0004 п. 7, «Изменения»); its last word is the current one.
+  /// above (ADR 0004 п. 7, «Изменения»); it ends with the word or phrase on
+  /// screen, lit.
   Widget _pauseText(BuildContext context, BoxConstraints box) {
     final colors = context.readingColors;
     final tokens = widget.opened.tokens;
@@ -249,7 +304,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                 children: [
                   TextSpan(text: textBefore(tokens, word)),
                   TextSpan(
-                    text: tokens.textOf(word),
+                    text: _shownText,
                     style: TextStyle(
                       color: colors.text,
                       backgroundColor: colors.highlight,
@@ -271,6 +326,8 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     final colors = context.readingColors;
     final l10n = AppLocalizations.of(context);
     final token = widget.opened.tokens[_engine.wordIndex];
+    final phrase = widget.mode == SpeedMode.phrase;
+    final text = phrase ? _shownText : token.text;
     final paused = !_engine.isPlaying;
     final showText = paused && !_engine.isStopped;
     final secondary = Theme.of(context).textTheme.bodyMedium
@@ -296,11 +353,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                   else
                     Positioned.fill(
                       child: Semantics(
-                        label: token.text,
+                        label: text,
                         child: CustomPaint(
                           painter: RsvpWordPainter(
-                            text: token.text,
-                            orp: token.orp,
+                            text: text,
+                            orp: phrase ? null : token.orp,
                             style: TextStyle(
                               fontFamily: BookFont.literata.family,
                               fontSize: _wordSize,
@@ -426,7 +483,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 }
 
 /// One word with its fixation letter centred on a fixed point at 38% of the
-/// width (ADR 0004 п. 3), with thin marks above and below that point.
+/// width (ADR 0004 п. 3), with thin marks above and below that point. A
+/// phrase ([orp] is null) stands in the middle with no marked letter, the
+/// marks in the middle too (ADR 0004, addendum for stage 10 п. 5).
 class RsvpWordPainter extends CustomPainter {
   RsvpWordPainter({
     required this.text,
@@ -442,15 +501,15 @@ class RsvpWordPainter extends CustomPainter {
 
   final String text;
 
-  /// UTF-16 offset of the fixation letter in [text].
-  final int orp;
+  /// UTF-16 offset of the fixation letter in [text]; null for a phrase.
+  final int? orp;
   final TextStyle style;
   final TextScaler textScaler;
   final Color orpColor;
   final Color markColor;
 
   /// End of the fixation letter; a surrogate pair stays whole.
-  int get _orpEnd {
+  static int _orpEnd(String text, int orp) {
     if (orp >= text.length) return text.length;
     final unit = text.codeUnitAt(orp);
     final pair = unit >= 0xD800 && unit < 0xDC00 && orp + 2 <= text.length;
@@ -473,48 +532,63 @@ class RsvpWordPainter extends CustomPainter {
     return height * (0.5 + _markGap + _markLength);
   }
 
-  TextPainter _layout(double fontSize) => TextPainter(
-    text: TextSpan(
-      style: style.copyWith(fontSize: fontSize),
-      children: [
-        TextSpan(text: text.substring(0, orp)),
-        TextSpan(
-          text: text.substring(orp, _orpEnd),
-          style: TextStyle(color: orpColor),
-        ),
-        TextSpan(text: text.substring(_orpEnd)),
-      ],
-    ),
-    textDirection: TextDirection.ltr,
-    textScaler: textScaler,
-    maxLines: 1,
-  )..layout();
+  TextPainter _layout(double fontSize) {
+    final orp = this.orp;
+    final end = orp == null ? 0 : _orpEnd(text, orp);
+    return TextPainter(
+      text: TextSpan(
+        style: style.copyWith(fontSize: fontSize),
+        text: orp == null ? text : null,
+        children: orp == null
+            ? null
+            : [
+                TextSpan(text: text.substring(0, orp)),
+                TextSpan(
+                  text: text.substring(orp, end),
+                  style: TextStyle(color: orpColor),
+                ),
+                TextSpan(text: text.substring(end)),
+              ],
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+      maxLines: 1,
+    )..layout();
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (text.isEmpty) return;
     final fontSize = style.fontSize ?? 36;
     var painter = _layout(fontSize);
-    // A word wider than the screen gets a smaller font (splitting long words
-    // comes later, ADR 0004 п. 1).
+    // A word or phrase wider than the screen gets a smaller font (splitting
+    // long words comes later, ADR 0004 п. 1).
     final room = size.width - 16;
     if (painter.width > room && room > 0) {
       final smaller = fontSize * room / painter.width;
       painter.dispose();
       painter = _layout(smaller);
     }
-    final boxes = painter.getBoxesForSelection(
-      TextSelection(baseOffset: orp, extentOffset: _orpEnd),
-    );
-    final letter = boxes.isEmpty
-        ? painter.width / 2
-        : (boxes.first.left + boxes.first.right) / 2;
-    final anchor = size.width * fixationX;
-    // Only a word too wide to fit leaves the fixation point.
-    final spare = size.width - painter.width;
-    final left = (anchor - letter)
-        .clamp(math.min(0.0, spare), math.max(0.0, spare))
-        .toDouble();
+    final orp = this.orp;
+    final double anchor;
+    final double left;
+    if (orp == null) {
+      anchor = size.width / 2;
+      left = (size.width - painter.width) / 2;
+    } else {
+      final boxes = painter.getBoxesForSelection(
+        TextSelection(baseOffset: orp, extentOffset: _orpEnd(text, orp)),
+      );
+      final letter = boxes.isEmpty
+          ? painter.width / 2
+          : (boxes.first.left + boxes.first.right) / 2;
+      anchor = size.width * fixationX;
+      // Only a word too wide to fit leaves the fixation point.
+      final spare = size.width - painter.width;
+      left = (anchor - letter)
+          .clamp(math.min(0.0, spare), math.max(0.0, spare))
+          .toDouble();
+    }
     final top = (size.height - painter.height) / 2;
     painter.paint(canvas, Offset(left, top));
 
