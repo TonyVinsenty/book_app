@@ -12,6 +12,7 @@ import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
@@ -109,6 +110,9 @@ void main() {
   }
 
   Future<void> openBook(WidgetTester tester) async {
+    for (var i = 0; i < 100 && find.byType(BookTile).evaluate().isEmpty; i++) {
+      await settle(tester);
+    }
     await tester.tap(find.byType(BookTile));
     for (
       var i = 0;
@@ -214,8 +218,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BookTile), findsOneWidget);
 
-    // «Назад к книге» opens it again.
-    await tester.tap(find.text('Назад к книге'));
+    // «Продолжить» opens it again.
+    await tester.tap(find.byType(ContinueCard));
     for (
       var i = 0;
       i < 100 && find.byType(ReaderView).evaluate().isEmpty;
@@ -244,6 +248,9 @@ void main() {
 
   testWidgets('a lost book opened by hand shows the way back', (tester) async {
     await pumpApp(tester, lostFiles: true);
+    for (var i = 0; i < 100 && find.byType(BookTile).evaluate().isEmpty; i++) {
+      await settle(tester);
+    }
     await tester.tap(find.byType(BookTile));
     for (
       var i = 0;

@@ -49,4 +49,7 @@ abstract final class SettingKeys {
 
   /// Library order, a `LibrarySort` name.
   static const librarySort = 'library.sort';
+
+  /// Library look, a `LibraryLayout` name.
+  static const libraryLayout = 'library.layout';
 }

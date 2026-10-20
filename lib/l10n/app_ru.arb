@@ -28,13 +28,95 @@
   "@nightMode": {
     "description": "Night variant of the reading palette"
   },
-  "libraryEmptyHint": "Нажмите «Добавить книгу» и выберите файл FB2 или TXT",
+  "libraryEmptyHint": "Нажмите «Добавить книгу» и выберите файл EPUB, FB2, TXT или ZIP",
   "@libraryEmptyHint": {
     "description": "Second line on the empty library screen"
   },
-  "libraryBackToBook": "Назад к книге",
-  "@libraryBackToBook": {
-    "description": "Library button that opens the book read last"
+  "libraryContinue": "Продолжить",
+  "@libraryContinue": {
+    "description": "Label of the library card with the book read last (shown in capitals)"
+  },
+  "libraryShelfAll": "Все",
+  "@libraryShelfAll": {
+    "description": "Library shelf: every book"
+  },
+  "libraryShelfReading": "Читаю",
+  "@libraryShelfReading": {
+    "description": "Library shelf: opened and not read to the end"
+  },
+  "libraryShelfFinished": "Прочитано",
+  "@libraryShelfFinished": {
+    "description": "Library shelf: books read to the end"
+  },
+  "libraryBookCount": "{count, plural, one{{count} книга} few{{count} книги} many{{count} книг} other{{count} книги}}",
+  "@libraryBookCount": {
+    "description": "Number of books on the shown shelf",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "libraryPercent": "{percent} %",
+  "@libraryPercent": {
+    "description": "Share of a book read",
+    "placeholders": {"percent": {"type": "int"}}
+  },
+  "libraryFinished": "Прочитано",
+  "@libraryFinished": {
+    "description": "Mark of a book read to the end"
+  },
+  "librarySort": "Сортировка",
+  "@librarySort": {
+    "description": "Title of the library sort menu"
+  },
+  "librarySortRecent": "Недавние",
+  "@librarySortRecent": {
+    "description": "Library order: last added or opened first"
+  },
+  "librarySortAdded": "Дата добавления",
+  "@librarySortAdded": {
+    "description": "Library order: last added first"
+  },
+  "librarySortTitle": "Название",
+  "@librarySortTitle": {
+    "description": "Library order: by title"
+  },
+  "librarySortAuthor": "Автор",
+  "@librarySortAuthor": {
+    "description": "Library order: by author's surname"
+  },
+  "librarySortProgress": "Прогресс",
+  "@librarySortProgress": {
+    "description": "Library order: most read first"
+  },
+  "libraryShowList": "Показать списком",
+  "@libraryShowList": {
+    "description": "Hint of the button that shows books as a list"
+  },
+  "libraryShowGrid": "Показать обложками",
+  "@libraryShowGrid": {
+    "description": "Hint of the button that shows books as a grid of covers"
+  },
+  "libraryReadingEmpty": "Сейчас вы ничего не читаете",
+  "@libraryReadingEmpty": {
+    "description": "Empty shelf «Читаю»"
+  },
+  "libraryReadingEmptyHint": "Откройте книгу, и она появится здесь.",
+  "@libraryReadingEmptyHint": {
+    "description": "Second line of the empty shelf «Читаю»"
+  },
+  "libraryFinishedEmpty": "Прочитанных книг нет",
+  "@libraryFinishedEmpty": {
+    "description": "Empty shelf «Прочитано»"
+  },
+  "libraryFinishedEmptyHint": "Книга окажется здесь, когда вы дочитаете её до конца.",
+  "@libraryFinishedEmptyHint": {
+    "description": "Second line of the empty shelf «Прочитано»"
+  },
+  "libraryCollectionEmpty": "В подборке пока пусто",
+  "@libraryCollectionEmpty": {
+    "description": "Empty collection shelf"
+  },
+  "libraryCollectionEmptyHint": "Добавьте в неё книги из библиотеки.",
+  "@libraryCollectionEmptyHint": {
+    "description": "Second line of an empty collection shelf"
   },
   "addBook": "Добавить книгу",
   "@addBook": {

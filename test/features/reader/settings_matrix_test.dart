@@ -11,7 +11,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
-import 'package:book_app/features/library/library_screen.dart';
+import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
@@ -103,6 +103,9 @@ void main() {
   }
 
   Future<void> openBook(WidgetTester tester) async {
+    for (var i = 0; i < 100 && find.byType(BookTile).evaluate().isEmpty; i++) {
+      await settle(tester);
+    }
     await tester.tap(find.byType(BookTile));
     for (
       var i = 0;

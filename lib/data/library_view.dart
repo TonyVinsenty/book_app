@@ -72,6 +72,16 @@ enum LibrarySort {
       values.firstWhere((s) => s.name == key, orElse: () => recent);
 }
 
+/// Books as rows or as a grid of covers, three in a row; stored by name.
+enum LibraryLayout {
+  list,
+  grid;
+
+  /// Unknown or broken names mean [list].
+  static LibraryLayout fromKey(String? key) =>
+      values.firstWhere((l) => l.name == key, orElse: () => list);
+}
+
 /// Whole percent read, rounded down (99.6% is not 100%); null for a book
 /// never opened.
 int? percentRead(BookRow book) {
@@ -238,6 +248,7 @@ final class LibraryView {
   const LibraryView({
     required this.shelf,
     required this.sort,
+    this.layout = LibraryLayout.list,
     required this.books,
     required this.collections,
     required this.continueBook,
@@ -247,6 +258,7 @@ final class LibraryView {
   /// The chosen shelf; a deleted collection falls back to "Все".
   final Shelf shelf;
   final LibrarySort sort;
+  final LibraryLayout layout;
 
   /// Books of [shelf] in [sort] order.
   final List<BookRow> books;
@@ -266,6 +278,7 @@ LibraryView libraryViewOf({
   required List<BookCollectionRow> links,
   required Shelf shelf,
   required LibrarySort sort,
+  LibraryLayout layout = LibraryLayout.list,
 }) {
   final known =
       shelf.isAutomatic || collections.any((c) => c.id == shelf.collectionId);
@@ -280,6 +293,7 @@ LibraryView libraryViewOf({
   return LibraryView(
     shelf: shown,
     sort: sort,
+    layout: layout,
     books: shelfBooks(books, shown, sort, links),
     collections: [...collections]
       ..sort((a, b) {
@@ -305,11 +319,21 @@ final librarySortProvider = StreamProvider<LibrarySort>(
       .map(LibrarySort.fromKey),
 );
 
+final libraryLayoutProvider = StreamProvider<LibraryLayout>(
+  (ref) => ref
+      .watch(settingsRepositoryProvider)
+      .watch(SettingKeys.libraryLayout)
+      .map(LibraryLayout.fromKey),
+);
+
 Future<void> chooseShelf(SettingsRepository settings, Shelf shelf) =>
     settings.set(SettingKeys.libraryShelf, shelf.key);
 
 Future<void> chooseSort(SettingsRepository settings, LibrarySort sort) =>
     settings.set(SettingKeys.librarySort, sort.name);
+
+Future<void> chooseLayout(SettingsRepository settings, LibraryLayout layout) =>
+    settings.set(SettingKeys.libraryLayout, layout.name);
 
 /// Everything the library screen shows; loading until every part came once.
 final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
@@ -318,7 +342,8 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
   final links = ref.watch(collectionLinksProvider);
   final shelf = ref.watch(libraryShelfProvider);
   final sort = ref.watch(librarySortProvider);
-  for (final part in [books, collections, links, shelf, sort]) {
+  final layout = ref.watch(libraryLayoutProvider);
+  for (final part in [books, collections, links, shelf, sort, layout]) {
     if (part case AsyncError(:final error, :final stackTrace)) {
       return AsyncError(error, stackTrace);
     }
@@ -331,6 +356,7 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
       links: links.requireValue,
       shelf: shelf.requireValue,
       sort: sort.requireValue,
+      layout: layout.requireValue,
     ),
   );
 });

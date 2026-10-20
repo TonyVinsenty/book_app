@@ -1,10 +1,13 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/import_queue.dart';
+import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
@@ -12,7 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// The book list and the "Add book" button (stage 5: a plain list).
+/// Shelves of books as a list or a grid, "Продолжить" and the "Add book"
+/// button (stage 9, mockup `docs/design/library.html`).
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
@@ -81,7 +85,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final books = ref.watch(booksProvider);
+    final view = ref.watch(libraryViewProvider);
     final queue = ref.watch(importQueueProvider);
     ref.listen(importQueueProvider, (previous, next) {
       final finished = next.finished;
@@ -89,48 +93,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         _showSummary(finished);
       }
     });
-    // The book read last, to go back to (the library is the root screen).
-    final last = switch (books) {
-      AsyncData(value: final list) =>
-        list
-            .where((b) => b.openedAt != null)
-            .fold<BookRow?>(
-              null,
-              (best, b) => best == null || b.openedAt!.isAfter(best.openedAt!)
-                  ? b
-                  : best,
-            ),
-      _ => null,
-    };
     return Scaffold(
       // No app bar: the name is not needed here (owner, 2026-10-20).
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            if (last != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.arrow_back),
-                    label: Text(l10n.libraryBackToBook),
-                    onPressed: () => _openBook(context, last.id),
-                  ),
-                ),
-              ),
-            if (queue.busy) _ImportProgress(queue: queue),
-            Expanded(
-              child: switch (books) {
-                AsyncData(value: final list) when list.isEmpty =>
-                  const _EmptyLibrary(),
-                AsyncData(value: final list) => _BookList(books: list),
-                _ => const SizedBox.shrink(),
-              },
-            ),
-          ],
-        ),
+        child: switch (view) {
+          AsyncData(value: final view) when view.libraryIsEmpty => Column(
+            children: [
+              if (queue.busy) _ImportProgress(queue: queue),
+              const Expanded(child: _EmptyLibrary()),
+            ],
+          ),
+          AsyncData(value: final view) => _Library(view: view, queue: queue),
+          _ => const SizedBox.shrink(),
+        },
       ),
       // The picker replaces its previous copies, so it waits for the queue.
       floatingActionButton: queue.busy
@@ -145,6 +121,275 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
     );
   }
+}
+
+/// "Продолжить", shelves, the count with the look and order buttons, then
+/// the books of the shelf; all of it scrolls together.
+class _Library extends ConsumerWidget {
+  const _Library({required this.view, required this.queue});
+
+  final LibraryView view;
+  final ImportQueueState queue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repository = ref.watch(bookRepositoryProvider);
+    final titleFont = ref.watch(
+      readingSettingsProvider.select((s) => s.font.family),
+    );
+    final last = view.continueBook;
+    return CustomScrollView(
+      slivers: [
+        if (last != null)
+          SliverToBoxAdapter(
+            child: ContinueCard(
+              onTap: () => _openBook(context, last.id),
+              coverFile: repository.coverFile(last),
+              title: last.title,
+              authors: last.authors.join(', '),
+              mark: _markOf(last),
+              titleFont: titleFont,
+            ),
+          ),
+        SliverToBoxAdapter(child: _Shelves(view: view)),
+        SliverToBoxAdapter(child: _ShelfHeader(view: view)),
+        if (queue.busy)
+          SliverToBoxAdapter(child: _ImportProgress(queue: queue)),
+        if (view.books.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _EmptyShelf(shelf: view.shelf),
+          )
+        else ...[
+          switch (view.layout) {
+            LibraryLayout.list => SliverList.builder(
+              itemCount: view.books.length,
+              itemBuilder: (context, i) {
+                final book = view.books[i];
+                return BookTile(
+                  key: ValueKey(book.id),
+                  onTap: () => _openBook(context, book.id),
+                  coverFile: repository.coverFile(book),
+                  title: book.title,
+                  authors: book.authors.join(', '),
+                  mark: _markOf(book),
+                  titleFont: titleFont,
+                );
+              },
+            ),
+            LibraryLayout.grid => _BookGrid(
+              books: view.books,
+              titleFont: titleFont,
+            ),
+          },
+          // Room for the button over the last book.
+          const SliverToBoxAdapter(child: SizedBox(height: 88)),
+        ],
+      ],
+    );
+  }
+}
+
+ReadMark _markOf(BookRow book) =>
+    ReadMark(percent: percentRead(book), finished: book.finishedAt != null);
+
+/// Covers three in a row; tiles grow with the system text size.
+class _BookGrid extends ConsumerWidget {
+  const _BookGrid({required this.books, required this.titleFont});
+
+  static const _columns = 3;
+  static const _side = 16.0;
+  static const _gapX = 14.0;
+  static const _gapY = 18.0;
+
+  final List<BookRow> books;
+  final String titleFont;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repository = ref.watch(bookRepositoryProvider);
+    final scaler = MediaQuery.textScalerOf(context);
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(_side, 6, _side, 0),
+      sliver: SliverLayoutBuilder(
+        builder: (context, constraints) {
+          final width =
+              (constraints.crossAxisExtent - _gapX * (_columns - 1)) / _columns;
+          return SliverGrid.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _columns,
+              crossAxisSpacing: _gapX,
+              mainAxisSpacing: _gapY,
+              mainAxisExtent: BookGridTile.heightFor(width, scaler),
+            ),
+            itemCount: books.length,
+            itemBuilder: (context, i) {
+              final book = books[i];
+              return BookGridTile(
+                key: ValueKey(book.id),
+                onTap: () => _openBook(context, book.id),
+                coverFile: repository.coverFile(book),
+                title: book.title,
+                authors: book.authors.join(', '),
+                mark: _markOf(book),
+                titleFont: titleFont,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// "Все · Читаю · Прочитано · collections", one tap to switch.
+class _Shelves extends ConsumerWidget {
+  const _Shelves({required this.view});
+
+  final LibraryView view;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final colors = context.readingColors;
+    final shelves = [
+      (Shelf.all, l10n.libraryShelfAll),
+      (Shelf.reading, l10n.libraryShelfReading),
+      (Shelf.finished, l10n.libraryShelfFinished),
+      for (final c in view.collections) (Shelf.collection(c.id), c.name),
+    ];
+    return SizedBox(
+      height: 60,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+        itemCount: shelves.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final (shelf, name) = shelves[i];
+          final selected = shelf == view.shelf;
+          return ChoiceChip(
+            label: Text(name),
+            selected: selected,
+            showCheckmark: false,
+            shape: const StadiumBorder(),
+            side: BorderSide(
+              color: selected
+                  ? colors.accent
+                  : colors.text.withValues(alpha: 0.14),
+              width: 1.5,
+            ),
+            color: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? colors.accent
+                  : colors.background,
+            ),
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: selected ? colors.background : colors.text,
+            ),
+            onSelected: (_) => unawaited(
+              chooseShelf(ref.read(settingsRepositoryProvider), shelf),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// "12 книг", the list/grid button and the order button.
+class _ShelfHeader extends ConsumerWidget {
+  const _ShelfHeader({required this.view});
+
+  final LibraryView view;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final colors = context.readingColors;
+    final grid = view.layout == LibraryLayout.grid;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 4, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              l10n.libraryBookCount(view.books.length),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: grid ? l10n.libraryShowList : l10n.libraryShowGrid,
+            color: colors.textSecondary,
+            icon: Icon(grid ? Icons.view_list_outlined : Icons.grid_view),
+            onPressed: () => unawaited(
+              chooseLayout(
+                ref.read(settingsRepositoryProvider),
+                grid ? LibraryLayout.list : LibraryLayout.grid,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: colors.textSecondary),
+            icon: const Icon(Icons.sort, size: 20),
+            label: Text(_sortName(l10n, view.sort)),
+            onPressed: () => unawaited(_chooseSort(context, ref)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _chooseSort(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final chosen = await showModalBottomSheet<LibrarySort>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: RadioGroup<LibrarySort>(
+          groupValue: view.sort,
+          onChanged: (sort) => Navigator.of(context).pop(sort),
+          // Scrolls on a low screen (landscape, large text).
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    l10n.librarySort,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                for (final sort in LibrarySort.values)
+                  RadioListTile<LibrarySort>(
+                    value: sort,
+                    controlAffinity: ListTileControlAffinity.trailing,
+                    title: Text(_sortName(l10n, sort)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (chosen == null || chosen == view.sort) return;
+    await chooseSort(ref.read(settingsRepositoryProvider), chosen);
+  }
+
+  static String _sortName(AppLocalizations l10n, LibrarySort sort) =>
+      switch (sort) {
+        LibrarySort.recent => l10n.librarySortRecent,
+        LibrarySort.added => l10n.librarySortAdded,
+        LibrarySort.title => l10n.librarySortTitle,
+        LibrarySort.author => l10n.librarySortAuthor,
+        LibrarySort.progress => l10n.librarySortProgress,
+      };
 }
 
 /// "Adding 2 of 5: name" with a progress line, over the book list.
@@ -231,22 +476,60 @@ class _EmptyLibrary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    return _Empty(title: l10n.libraryEmpty, hint: l10n.libraryEmptyHint);
+  }
+}
+
+class _EmptyShelf extends StatelessWidget {
+  const _EmptyShelf({required this.shelf});
+
+  final Shelf shelf;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final (title, hint) = switch (shelf) {
+      Shelf.reading => (l10n.libraryReadingEmpty, l10n.libraryReadingEmptyHint),
+      Shelf.finished => (
+        l10n.libraryFinishedEmpty,
+        l10n.libraryFinishedEmptyHint,
+      ),
+      // "Все" is empty only with an empty library, shown on its own.
+      _ => (l10n.libraryCollectionEmpty, l10n.libraryCollectionEmptyHint),
+    };
+    return _Empty(title: title, hint: hint);
+  }
+}
+
+class _Empty extends StatelessWidget {
+  const _Empty({required this.title, required this.hint});
+
+  final String title;
+  final String hint;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.readingColors;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.fromLTRB(36, 32, 36, 96),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Icon(Icons.menu_book_outlined, size: 56, color: colors.accent),
+            const SizedBox(height: 12),
             Text(
-              l10n.libraryEmpty,
+              title,
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              l10n.libraryEmptyHint,
-              style: theme.textTheme.bodyMedium,
+              hint,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -261,138 +544,3 @@ void _openBook(BuildContext context, int bookId) => unawaited(
     context,
   ).push(MaterialPageRoute<void>(builder: (_) => ReaderScreen(bookId: bookId))),
 );
-
-class _BookList extends ConsumerWidget {
-  const _BookList({required this.books});
-
-  final List<BookRow> books;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(bookRepositoryProvider);
-    return ListView.builder(
-      // Room for the button over the last item.
-      padding: const EdgeInsets.only(bottom: 88),
-      itemCount: books.length,
-      itemBuilder: (context, i) {
-        final book = books[i];
-        return BookTile(
-          onTap: () => _openBook(context, book.id),
-          cover: _Cover(file: repository.coverFile(book), title: book.title),
-          title: book.title,
-          authors: book.authors.join(', '),
-        );
-      },
-    );
-  }
-}
-
-/// One book of the list: cover, title (up to two lines), authors. Every
-/// row is at least as tall as the cover, with the same gap between rows.
-class BookTile extends StatelessWidget {
-  const BookTile({
-    super.key,
-    required this.onTap,
-    required this.cover,
-    required this.title,
-    required this.authors,
-  });
-
-  final VoidCallback onTap;
-  final Widget cover;
-  final String title;
-
-  /// Empty when unknown.
-  final String authors;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            cover,
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (authors.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      authors,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A small cover, decoded at the size it is shown; a book without one gets
-/// a plain tile with the first letter of its title (stage 9 draws better).
-class _Cover extends StatelessWidget {
-  const _Cover({required this.file, required this.title});
-
-  static const _width = 40.0;
-  static const _height = 60.0;
-
-  final File? file;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final file = this.file;
-    final placeholder = _placeholder(Theme.of(context));
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: SizedBox(
-        width: _width,
-        height: _height,
-        child: file == null
-            ? placeholder
-            : Image.file(
-                file,
-                fit: BoxFit.cover,
-                // Covers are portrait: decoded by height, they fill the box.
-                cacheHeight: (_height * MediaQuery.devicePixelRatioOf(context))
-                    .round(),
-                errorBuilder: (_, _, _) => placeholder,
-              ),
-      ),
-    );
-  }
-
-  Widget _placeholder(ThemeData theme) {
-    final letter = title.trim().characters.firstOrNull?.toUpperCase() ?? '';
-    return ColoredBox(
-      color: theme.colorScheme.secondaryContainer,
-      child: Center(
-        child: Text(
-          letter,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.onSecondaryContainer,
-          ),
-        ),
-      ),
-    );
-  }
-}

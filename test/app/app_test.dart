@@ -5,7 +5,7 @@ import 'package:book_app/app/app.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
-import 'package:book_app/features/library/library_screen.dart';
+import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
