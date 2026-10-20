@@ -8,6 +8,7 @@ import 'generated_migrations/schema.dart';
 import 'generated_migrations/schema_v1.dart' as v1;
 import 'generated_migrations/schema_v2.dart' as v2;
 import 'generated_migrations/schema_v3.dart' as v3;
+import 'generated_migrations/schema_v4.dart' as v4;
 
 // Snapshots of every schema are in `drift_schemas/`; after a table change:
 //   dart run drift_dev schema dump lib/data/db/app_database.dart drift_schemas/
@@ -38,15 +39,15 @@ void main() {
 
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
-  for (final from in [1, 2]) {
-    test('v$from → v3 gives the v3 schema', () async {
+  for (final from in [1, 2, 3]) {
+    test('v$from → v4 gives the v4 schema', () async {
       final db = AppDatabase(await verifier.startAt(from));
-      await verifier.migrateAndValidate(db, 3);
+      await verifier.migrateAndValidate(db, 4);
       await db.close();
     });
   }
 
-  test('v1 → v3 does not give out ids of deleted books again', () async {
+  test('v1 → v4 does not give out ids of deleted books again', () async {
     final schema = await verifier.schemaAt(1);
     final old = v1.DatabaseAtV1(schema.newConnection());
     for (final title in ['А', 'Б', 'В']) {
@@ -56,7 +57,7 @@ void main() {
     await old.close();
 
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 3);
+    await verifier.migrateAndValidate(db, 4);
     final id = await db
         .into(db.books)
         .insert(
@@ -78,12 +79,12 @@ void main() {
     expect(id, 4);
   });
 
-  test('v1 → v3 keeps the books; touched = opened, else added', () async {
+  test('v1 → v4 keeps the books; touched = opened, else added', () async {
     await verifier.testWithDataIntegrity(
       oldVersion: 1,
-      newVersion: 3,
+      newVersion: 4,
       createOld: v1.DatabaseAtV1.new,
-      createNew: v3.DatabaseAtV3.new,
+      createNew: v4.DatabaseAtV4.new,
       openTestedDatabase: AppDatabase.new,
       createItems: (batch, old) => batch.insertAll(old.books, [
         _book('Открытая', openedAt: _opened),
@@ -96,6 +97,7 @@ void main() {
         for (final r in rows) {
           expect(r.coverFile, isNull);
           expect(r.finishedAt, isNull);
+          expect(r.statusMark, isNull);
           expect(r.authors, '["Автор"]');
           expect(r.positionWord, 42);
         }
@@ -103,7 +105,7 @@ void main() {
     );
   });
 
-  test('v2 → v3 keeps the books; read to 98% counts as read', () async {
+  test('v2 → v4 keeps the books; read to 98% counts as read', () async {
     v2.BooksCompanion book(String title, int position, int words) =>
         v2.BooksCompanion.insert(
           title: title,
@@ -122,9 +124,9 @@ void main() {
         );
     await verifier.testWithDataIntegrity(
       oldVersion: 2,
-      newVersion: 3,
+      newVersion: 4,
       createOld: v2.DatabaseAtV2.new,
-      createNew: v3.DatabaseAtV3.new,
+      createNew: v4.DatabaseAtV4.new,
       openTestedDatabase: AppDatabase.new,
       createItems: (batch, old) => batch.insertAll(old.books, [
         book('Почти', 97, 100),
@@ -136,7 +138,63 @@ void main() {
         expect([for (final r in rows) r.title], ['Почти', 'Дочитана', 'Пустая']);
         expect([for (final r in rows) r.finishedAt], [null, _opened, null]);
         expect([for (final r in rows) r.coverFile], everyElement('cover.jpg'));
+        expect([for (final r in rows) r.statusMark], everyElement(isNull));
         expect(await db.select(db.collections).get(), isEmpty);
+      },
+    );
+  });
+
+  test('v3 → v4 keeps books, read marks and collections', () async {
+    await verifier.testWithDataIntegrity(
+      oldVersion: 3,
+      newVersion: 4,
+      createOld: v3.DatabaseAtV3.new,
+      createNew: v4.DatabaseAtV4.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, old) {
+        v3.BooksCompanion book(int id, String title, {int? finishedAt}) =>
+            v3.BooksCompanion.insert(
+              id: Value(id),
+              title: title,
+              authors: '["Автор"]',
+              sourceFormat: 'epub',
+              sourceName: '$title.epub',
+              sourceSize: 10,
+              sourceHash: 'hash-$title',
+              parserVersion: 1,
+              wordCount: 100,
+              positionWord: const Value(42),
+              addedAt: _added,
+              openedAt: const Value(_opened),
+              touchedAt: _opened,
+              finishedAt: Value(finishedAt),
+            );
+        batch
+          ..insertAll(old.books, [
+            book(3, 'Читаю'),
+            book(7, 'Прочитана', finishedAt: _opened),
+          ])
+          ..insert(
+            old.collections,
+            v3.CollectionsCompanion.insert(name: 'Фантастика', createdAt: _added),
+          )
+          ..insert(
+            old.bookCollections,
+            v3.BookCollectionsCompanion.insert(
+              bookId: 7,
+              collectionId: 1,
+              addedAt: _added,
+            ),
+          );
+      },
+      validateItems: (db) async {
+        final rows = await db.select(db.books).get();
+        expect([for (final r in rows) r.id], [3, 7]);
+        expect([for (final r in rows) r.finishedAt], [null, _opened]);
+        expect([for (final r in rows) r.positionWord], [42, 42]);
+        expect([for (final r in rows) r.statusMark], [null, null]);
+        final links = await db.select(db.bookCollections).get();
+        expect([for (final l in links) l.bookId], [7]);
       },
     );
   });

@@ -248,6 +248,15 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<StatusMark?, String> statusMark =
+      GeneratedColumn<String>(
+        'status_mark',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<StatusMark?>($BooksTable.$converterstatusMarkn);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     title,
@@ -271,6 +280,7 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
     touchedAt,
     coverFile,
     finishedAt,
+    statusMark,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -536,6 +546,12 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}finished_at'],
       ),
+      statusMark: $BooksTable.$converterstatusMarkn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status_mark'],
+        ),
+      ),
     );
   }
 
@@ -550,6 +566,10 @@ class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
   $convertersourceFormat = const EnumNameConverter<SourceFormat>(
     SourceFormat.values,
   );
+  static JsonTypeConverter2<StatusMark, String, String> $converterstatusMark =
+      const EnumNameConverter<StatusMark>(StatusMark.values);
+  static JsonTypeConverter2<StatusMark?, String?, String?>
+  $converterstatusMarkn = JsonTypeConverter2.asNullable($converterstatusMark);
 }
 
 class BookRow extends DataClass implements Insertable<BookRow> {
@@ -595,6 +615,10 @@ class BookRow extends DataClass implements Insertable<BookRow> {
   /// Cleared only by hand ("reading again"), not by reading from the start
   /// (schema v3, ADR 0005 addendum 2).
   final DateTime? finishedAt;
+
+  /// "Queued" or "abandoned" set by hand; null — neither. Never set together
+  /// with [finishedAt] (schema v4, ADR 0005 addendum 3).
+  final StatusMark? statusMark;
   const BookRow({
     required this.id,
     required this.title,
@@ -618,6 +642,7 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     required this.touchedAt,
     this.coverFile,
     this.finishedAt,
+    this.statusMark,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -666,6 +691,11 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     if (!nullToAbsent || finishedAt != null) {
       map['finished_at'] = Variable<DateTime>(finishedAt);
     }
+    if (!nullToAbsent || statusMark != null) {
+      map['status_mark'] = Variable<String>(
+        $BooksTable.$converterstatusMarkn.toSql(statusMark),
+      );
+    }
     return map;
   }
 
@@ -705,6 +735,9 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       finishedAt: finishedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(finishedAt),
+      statusMark: statusMark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statusMark),
     );
   }
 
@@ -738,6 +771,9 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       touchedAt: serializer.fromJson<DateTime>(json['touchedAt']),
       coverFile: serializer.fromJson<String?>(json['coverFile']),
       finishedAt: serializer.fromJson<DateTime?>(json['finishedAt']),
+      statusMark: $BooksTable.$converterstatusMarkn.fromJson(
+        serializer.fromJson<String?>(json['statusMark']),
+      ),
     );
   }
   @override
@@ -768,6 +804,9 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       'touchedAt': serializer.toJson<DateTime>(touchedAt),
       'coverFile': serializer.toJson<String?>(coverFile),
       'finishedAt': serializer.toJson<DateTime?>(finishedAt),
+      'statusMark': serializer.toJson<String?>(
+        $BooksTable.$converterstatusMarkn.toJson(statusMark),
+      ),
     };
   }
 
@@ -794,6 +833,7 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     DateTime? touchedAt,
     Value<String?> coverFile = const Value.absent(),
     Value<DateTime?> finishedAt = const Value.absent(),
+    Value<StatusMark?> statusMark = const Value.absent(),
   }) => BookRow(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -817,6 +857,7 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     touchedAt: touchedAt ?? this.touchedAt,
     coverFile: coverFile.present ? coverFile.value : this.coverFile,
     finishedAt: finishedAt.present ? finishedAt.value : this.finishedAt,
+    statusMark: statusMark.present ? statusMark.value : this.statusMark,
   );
   BookRow copyWithCompanion(BooksCompanion data) {
     return BookRow(
@@ -866,6 +907,9 @@ class BookRow extends DataClass implements Insertable<BookRow> {
       finishedAt: data.finishedAt.present
           ? data.finishedAt.value
           : this.finishedAt,
+      statusMark: data.statusMark.present
+          ? data.statusMark.value
+          : this.statusMark,
     );
   }
 
@@ -893,7 +937,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
           ..write('openedAt: $openedAt, ')
           ..write('touchedAt: $touchedAt, ')
           ..write('coverFile: $coverFile, ')
-          ..write('finishedAt: $finishedAt')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('statusMark: $statusMark')
           ..write(')'))
         .toString();
   }
@@ -922,6 +967,7 @@ class BookRow extends DataClass implements Insertable<BookRow> {
     touchedAt,
     coverFile,
     finishedAt,
+    statusMark,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -948,7 +994,8 @@ class BookRow extends DataClass implements Insertable<BookRow> {
           other.openedAt == this.openedAt &&
           other.touchedAt == this.touchedAt &&
           other.coverFile == this.coverFile &&
-          other.finishedAt == this.finishedAt);
+          other.finishedAt == this.finishedAt &&
+          other.statusMark == this.statusMark);
 }
 
 class BooksCompanion extends UpdateCompanion<BookRow> {
@@ -974,6 +1021,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
   final Value<DateTime> touchedAt;
   final Value<String?> coverFile;
   final Value<DateTime?> finishedAt;
+  final Value<StatusMark?> statusMark;
   const BooksCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -997,6 +1045,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     this.touchedAt = const Value.absent(),
     this.coverFile = const Value.absent(),
     this.finishedAt = const Value.absent(),
+    this.statusMark = const Value.absent(),
   });
   BooksCompanion.insert({
     this.id = const Value.absent(),
@@ -1021,6 +1070,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     required DateTime touchedAt,
     this.coverFile = const Value.absent(),
     this.finishedAt = const Value.absent(),
+    this.statusMark = const Value.absent(),
   }) : title = Value(title),
        authors = Value(authors),
        sourceFormat = Value(sourceFormat),
@@ -1054,6 +1104,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     Expression<DateTime>? touchedAt,
     Expression<String>? coverFile,
     Expression<DateTime>? finishedAt,
+    Expression<String>? statusMark,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1078,6 +1129,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
       if (touchedAt != null) 'touched_at': touchedAt,
       if (coverFile != null) 'cover_file': coverFile,
       if (finishedAt != null) 'finished_at': finishedAt,
+      if (statusMark != null) 'status_mark': statusMark,
     });
   }
 
@@ -1104,6 +1156,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     Value<DateTime>? touchedAt,
     Value<String?>? coverFile,
     Value<DateTime?>? finishedAt,
+    Value<StatusMark?>? statusMark,
   }) {
     return BooksCompanion(
       id: id ?? this.id,
@@ -1128,6 +1181,7 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
       touchedAt: touchedAt ?? this.touchedAt,
       coverFile: coverFile ?? this.coverFile,
       finishedAt: finishedAt ?? this.finishedAt,
+      statusMark: statusMark ?? this.statusMark,
     );
   }
 
@@ -1204,6 +1258,11 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
     if (finishedAt.present) {
       map['finished_at'] = Variable<DateTime>(finishedAt.value);
     }
+    if (statusMark.present) {
+      map['status_mark'] = Variable<String>(
+        $BooksTable.$converterstatusMarkn.toSql(statusMark.value),
+      );
+    }
     return map;
   }
 
@@ -1231,7 +1290,8 @@ class BooksCompanion extends UpdateCompanion<BookRow> {
           ..write('openedAt: $openedAt, ')
           ..write('touchedAt: $touchedAt, ')
           ..write('coverFile: $coverFile, ')
-          ..write('finishedAt: $finishedAt')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('statusMark: $statusMark')
           ..write(')'))
         .toString();
   }
@@ -2034,6 +2094,7 @@ typedef $$BooksTableCreateCompanionBuilder = BooksCompanion Function({
   required DateTime touchedAt,
   Value<String?> coverFile,
   Value<DateTime?> finishedAt,
+  Value<StatusMark?> statusMark,
 });
 typedef $$BooksTableUpdateCompanionBuilder = BooksCompanion Function({
   Value<int> id,
@@ -2058,6 +2119,7 @@ typedef $$BooksTableUpdateCompanionBuilder = BooksCompanion Function({
   Value<DateTime> touchedAt,
   Value<String?> coverFile,
   Value<DateTime?> finishedAt,
+  Value<StatusMark?> statusMark,
 });
 
 final class $$BooksTableReferences
@@ -2205,6 +2267,12 @@ class $$BooksTableFilterComposer extends Composer<_$AppDatabase, $BooksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<StatusMark?, StatusMark, String>
+  get statusMark => $composableBuilder(
+    column: $table.statusMark,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
   Expression<bool> bookCollectionsRefs(
     Expression<bool> Function($$BookCollectionsTableFilterComposer f) f,
   ) {
@@ -2349,6 +2417,11 @@ class $$BooksTableOrderingComposer
     column: $table.finishedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get statusMark => $composableBuilder(
+    column: $table.statusMark,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BooksTableAnnotationComposer
@@ -2451,6 +2524,12 @@ class $$BooksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<StatusMark?, String> get statusMark =>
+      $composableBuilder(
+        column: $table.statusMark,
+        builder: (column) => column,
+      );
+
   Expression<T> bookCollectionsRefs<T extends Object>(
     Expression<T> Function($$BookCollectionsTableAnnotationComposer a) f,
   ) {
@@ -2527,6 +2606,7 @@ class $$BooksTableTableManager
                 Value<DateTime> touchedAt = const Value.absent(),
                 Value<String?> coverFile = const Value.absent(),
                 Value<DateTime?> finishedAt = const Value.absent(),
+                Value<StatusMark?> statusMark = const Value.absent(),
               }) => BooksCompanion(
                 id: id,
                 title: title,
@@ -2550,6 +2630,7 @@ class $$BooksTableTableManager
                 touchedAt: touchedAt,
                 coverFile: coverFile,
                 finishedAt: finishedAt,
+                statusMark: statusMark,
               ),
           createCompanionCallback:
               ({
@@ -2575,6 +2656,7 @@ class $$BooksTableTableManager
                 required DateTime touchedAt,
                 Value<String?> coverFile = const Value.absent(),
                 Value<DateTime?> finishedAt = const Value.absent(),
+                Value<StatusMark?> statusMark = const Value.absent(),
               }) => BooksCompanion.insert(
                 id: id,
                 title: title,
@@ -2598,6 +2680,7 @@ class $$BooksTableTableManager
                 touchedAt: touchedAt,
                 coverFile: coverFile,
                 finishedAt: finishedAt,
+                statusMark: statusMark,
               ),
           withReferenceMapper: (p0) => p0
               .map(

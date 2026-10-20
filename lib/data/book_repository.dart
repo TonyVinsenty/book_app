@@ -28,9 +28,10 @@ final class BookRepository {
   }
 
   /// The book opened most recently, to reopen on start; null if none was.
+  /// A queued or abandoned book was put aside, so it is skipped.
   Future<BookRow?> lastOpened() =>
       (_db.select(_db.books)
-            ..where((b) => b.openedAt.isNotNull())
+            ..where((b) => b.openedAt.isNotNull() & b.statusMark.isNull())
             ..orderBy([(b) => OrderingTerm.desc(b.openedAt)])
             ..limit(1))
           .getSingleOrNull();
@@ -163,14 +164,34 @@ final class BookRepository {
       _write(id, BooksCompanion(touchedAt: Value(_now())));
 
   /// Marks the book read — at its end or by hand; an earlier mark stays.
+  /// Takes off "queued" / "abandoned": a book has one status.
   Future<void> markFinished(int id) =>
       (_db.update(_db.books)
             ..where((b) => b.id.equals(id) & b.finishedAt.isNull()))
-          .write(BooksCompanion(finishedAt: Value(_now())));
+          .write(
+            BooksCompanion(
+              finishedAt: Value(_now()),
+              statusMark: const Value(null),
+            ),
+          );
 
-  /// "Reading again": the only way the read mark goes away.
+  /// "Reading again": the read mark goes away by hand only, never by
+  /// reading from the start.
   Future<void> markUnfinished(int id) =>
       _write(id, const BooksCompanion(finishedAt: Value(null)));
+
+  /// Sets "queued" or "abandoned" (null — neither); takes off the read mark.
+  Future<void> setStatusMark(int id, StatusMark? mark) => _write(
+    id,
+    BooksCompanion(statusMark: Value(mark), finishedAt: const Value(null)),
+  );
+
+  /// The book is read on: "queued" / "abandoned" go away. Writes nothing when
+  /// there is no mark, so the reader may call it on every move.
+  Future<void> clearStatusMark(int id) =>
+      (_db.update(_db.books)
+            ..where((b) => b.id.equals(id) & b.statusMark.isNotNull()))
+          .write(const BooksCompanion(statusMark: Value(null)));
 
   /// Removes the row (and its places in collections) and all files of the
   /// book.

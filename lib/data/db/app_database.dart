@@ -52,7 +52,14 @@ class Books extends Table {
   /// Cleared only by hand ("reading again"), not by reading from the start
   /// (schema v3, ADR 0005 addendum 2).
   DateTimeColumn get finishedAt => dateTime().nullable()();
+
+  /// "Queued" or "abandoned" set by hand; null — neither. Never set together
+  /// with [finishedAt] (schema v4, ADR 0005 addendum 3).
+  TextColumn get statusMark => textEnum<StatusMark>().nullable()();
 }
+
+/// A status the owner sets by hand; the others follow from the dates.
+enum StatusMark { queued, abandoned }
 
 /// The owner's own collections of books. Names are unique without case —
 /// checked in `CollectionRepository` (SQLite `NOCASE` knows only Latin).
@@ -107,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -121,15 +128,21 @@ class AppDatabase extends _$AppDatabase {
           TableMigration(
             books,
             // The rebuild makes the current table, so later columns too.
-            newColumns: [books.touchedAt, books.coverFile, books.finishedAt],
+            newColumns: [
+              books.touchedAt,
+              books.coverFile,
+              books.finishedAt,
+              books.statusMark,
+            ],
             columnTransformer: {
               books.touchedAt: coalesce([books.openedAt, books.addedAt]),
             },
           ),
         );
         if (lastId != null) await _keepLastBookId(lastId);
-      } else if (from < 3) {
-        await m.addColumn(books, books.finishedAt);
+      } else {
+        if (from < 3) await m.addColumn(books, books.finishedAt);
+        if (from < 4) await m.addColumn(books, books.statusMark);
       }
       if (from < 3) {
         await m.createTable(collections);

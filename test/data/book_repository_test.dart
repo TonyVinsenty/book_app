@@ -303,6 +303,66 @@ void main() {
     expect((await repo.findById(row.id))!.finishedAt, isNull);
   });
 
+  test('status marks and the read mark exclude each other', () async {
+    final row = await add('Книга');
+    Future<(DateTime?, StatusMark?)> marks() async {
+      final r = (await repo.findById(row.id))!;
+      return (r.finishedAt, r.statusMark);
+    }
+
+    await repo.markFinished(row.id);
+    await repo.setStatusMark(row.id, StatusMark.queued);
+    expect(await marks(), (null, StatusMark.queued));
+
+    await repo.setStatusMark(row.id, StatusMark.abandoned);
+    expect(await marks(), (null, StatusMark.abandoned));
+
+    await repo.markFinished(row.id);
+    expect(await marks(), (clock, null));
+
+    await repo.setStatusMark(row.id, null);
+    expect(await marks(), (null, null), reason: '"reading" by hand');
+  });
+
+  test('reading on clears a status mark; nothing to clear is fine', () async {
+    final row = await add('Книга');
+    await repo.clearStatusMark(row.id);
+    expect((await repo.findById(row.id))!.statusMark, isNull);
+
+    await repo.markFinished(row.id);
+    await repo.clearStatusMark(row.id);
+    expect((await repo.findById(row.id))!.finishedAt, clock);
+
+    await repo.setStatusMark(row.id, StatusMark.abandoned);
+    await repo.clearStatusMark(row.id);
+    final r = (await repo.findById(row.id))!;
+    expect((r.finishedAt, r.statusMark), (null, null));
+  });
+
+  test('the last opened book skips queued and abandoned ones', () async {
+    final first = await add('Первая');
+    final second = await add('Вторая');
+    final third = await add('Третья');
+    for (final b in [first, second, third]) {
+      await repo.markOpened(b.id);
+      clock = clock.add(const Duration(minutes: 1));
+    }
+    await repo.setStatusMark(third.id, StatusMark.queued);
+    await repo.setStatusMark(second.id, StatusMark.abandoned);
+    expect((await repo.lastOpened())?.id, first.id);
+
+    await repo.markFinished(third.id);
+    expect(
+      (await repo.lastOpened())?.id,
+      third.id,
+      reason: 'read is not set aside',
+    );
+
+    await repo.setStatusMark(first.id, StatusMark.queued);
+    await repo.setStatusMark(third.id, StatusMark.queued);
+    expect(await repo.lastOpened(), isNull);
+  });
+
   test('lost files: folders of books not in the database go away', () async {
     final keep = await add('Книга');
     final lost = await add('Потерянная');
