@@ -83,6 +83,14 @@ void main() {
     await tester.pump();
   }
 
+  /// Polls (real time, up to ~5 s) until [finder] matches: a fixed 20 ms
+  /// settle is too short on a loaded machine.
+  Future<void> settleUntil(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 250 && finder.evaluate().isEmpty; i++) {
+      await settle(tester);
+    }
+  }
+
   Future<void> pumpLibrary(
     WidgetTester tester, {
     List<String> picked = const [],
@@ -165,7 +173,7 @@ void main() {
     testWidgets('shows progress, then a summary with details', (tester) async {
       await pumpLibrary(tester, picked: ['a.txt', 'dup.txt', 'bad.txt']);
       await tester.tap(find.text('Добавить книгу'));
-      await settle(tester);
+      await settleUntil(tester, find.text('Добавляется 1 из 3: a.txt'));
 
       expect(find.text('Добавляется 1 из 3: a.txt'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
@@ -174,9 +182,11 @@ void main() {
       expect(find.byType(FloatingActionButton), findsNothing);
 
       await release(tester);
+      await settleUntil(tester, find.text('Добавляется 2 из 3: dup.txt'));
       expect(find.text('Добавляется 2 из 3: dup.txt'), findsOneWidget);
       await release(tester);
       await release(tester);
+      await settleUntil(tester, find.text('Подробнее'));
       await tester.pumpAndSettle();
 
       expect(find.byType(LinearProgressIndicator), findsNothing);
@@ -203,6 +213,7 @@ void main() {
       await tester.tap(find.text('Добавить книгу'));
       await settle(tester);
       await release(tester);
+      await settleUntil(tester, find.textContaining('Файл повреждён'));
       await tester.pumpAndSettle();
 
       expect(
