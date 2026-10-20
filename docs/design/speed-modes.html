@@ -1,0 +1,182 @@
+<title>Режимы скорочтения</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Page = intro with 3 questions, then sections А-Г: rows of 340x680 phone frames in app palettes. */
+:root{--pbg:#f3f1ec;--pfg:#2b2a27;--pfg2:#66625a;--pline:#d9d5cb;--pcard:#fff;--pacc:#3e6b52;--pbadge:#e3efe6;
+--serif:'Lora',Georgia,serif;--sans:'Source Sans 3','Segoe UI',system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pbg:#181816;--pfg:#ecebe6;--pfg2:#a8a59b;--pline:#38372f;--pcard:#232320;--pacc:#8fc0a3;--pbadge:#25382c;color-scheme:dark}}
+:root[data-theme="dark"]{--pbg:#181816;--pfg:#ecebe6;--pfg2:#a8a59b;--pline:#38372f;--pcard:#232320;--pacc:#8fc0a3;--pbadge:#25382c;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--pbg);color:var(--pfg);font:16px/1.45 var(--sans);padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:1500px;margin:0 auto}
+h1{font:600 28px/1.2 var(--serif);margin:0 0 8px;text-wrap:balance}
+h2{font:600 22px/1.25 var(--serif);margin:48px 0 4px;text-wrap:balance}
+.sub{color:var(--pfg2);margin:0 0 12px;max-width:72ch}
+.q{background:var(--pcard);border:1px solid var(--pline);border-radius:14px;padding:16px 20px;max-width:80ch}
+.q ol{margin:8px 0 0;padding-left:22px;display:grid;gap:10px}
+.q em{font-style:normal;color:var(--pacc);font-weight:700}
+.rec{display:inline-block;font:700 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--pacc);background:var(--pbadge);border-radius:20px;padding:2px 10px;vertical-align:1px;white-space:nowrap}
+.row{display:flex;flex-wrap:wrap;gap:28px 32px;margin-top:16px;align-items:flex-start}
+.cell{display:flex;flex-direction:column;gap:10px;width:340px;max-width:100%;min-width:0}
+.cap{font:400 14.5px/1.4 var(--sans);color:var(--pfg2)}
+.cap b{color:var(--pfg);font-weight:700;display:block;font-size:15.5px}
+.choose{max-width:80ch;margin:8px 0 0;color:var(--pfg);}
+/* phone */
+.phone{--line:color-mix(in srgb,var(--tx) 14%,transparent);width:340px;height:680px;position:relative;overflow:hidden;border-radius:34px;border:1px solid var(--pline);background:var(--bg);color:var(--tx);font:16px/1.35 var(--sans);box-shadow:0 8px 30px rgba(0,0,0,.12);flex:none}
+.paper.day{--bg:#F6F0E4;--tx:#3A332B;--tx2:#6E6455;--sf:#EBE2D0;--ac:#9A6B43;--orp:#C2492F;--hl:#F3DFA2}
+.paper.night{--bg:#1F1B17;--tx:#E6DCCB;--tx2:#A09484;--sf:#2D2822;--ac:#D0A070;--orp:#FF8A6B;--hl:#5A4A25}
+.sage.day{--bg:#EAF0E6;--tx:#2F3A31;--tx2:#5F6E61;--sf:#DAE5D4;--ac:#4F7A59;--orp:#BF4A38;--hl:#CDE5B0}
+.sage.night{--bg:#182019;--tx:#DDE7DA;--tx2:#8FA091;--sf:#243026;--ac:#8FB597;--orp:#FF8F77;--hl:#3A5236}
+.lavender.day{--bg:#F0ECF6;--tx:#342F42;--tx2:#6B6483;--sf:#E2DAEE;--ac:#7462A6;--orp:#BC4A3C;--hl:#DFD2F4}
+.lavender.night{--bg:#1C1925;--tx:#E4DFF0;--tx2:#9D95B3;--sf:#2A253C;--ac:#A99BD3;--orp:#FF8F7A;--hl:#4A3F6B}
+.mist.day{--bg:#E9EFF4;--tx:#2B3541;--tx2:#5C6978;--sf:#D8E3EC;--ac:#4A7499;--orp:#C4472F;--hl:#FBD9C4}
+.mist.night{--bg:#151C24;--tx:#DCE5EE;--tx2:#8D9BAA;--sf:#222D39;--ac:#86AACB;--orp:#FF9272;--hl:#5A4234}
+.sb{height:40px;display:flex;justify-content:space-between;align-items:center;padding:6px 26px 0;font:600 14px var(--sans)}
+.sb i{width:24px;height:11px;border:1.5px solid var(--tx);border-radius:3px;position:relative}
+.sb i:after{content:"";position:absolute;inset:1.5px 6px 1.5px 1.5px;background:var(--tx);border-radius:1px}
+.scr{position:absolute;inset:40px 0 0;display:flex;flex-direction:column;overflow:hidden}
+/* RSVP stage */
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;padding-bottom:70px}
+.cue{position:relative;padding:22px 0;width:100%;font:500 34px/1.2 var(--serif);white-space:nowrap;text-align:center}
+.cue:before,.cue:after{content:"";position:absolute;left:50%;width:2px;height:14px;margin-left:-1px;background:var(--tx2);border-radius:1px}
+.cue:before{top:0}.cue:after{bottom:0}
+.cue.sm{font-size:27px}
+.cue .o{color:var(--orp);font-weight:700}
+.cue.split{display:flex;justify-content:center}
+.cue.split>span{flex:1 1 0;min-width:0;display:flex}
+.cue.split>span:first-child{justify-content:flex-end}
+.cue.split>b{flex:none;font-weight:700;color:var(--orp)}
+.mini{font:600 12.5px var(--sans);color:var(--tx2);letter-spacing:.02em;text-align:center;padding:0 24px;margin-bottom:-26px}
+.hint{position:absolute;left:0;right:0;bottom:22px;text-align:center;font:600 13px var(--sans);color:var(--tx2)}
+/* pause: text before + panel */
+.before{flex:1;display:flex;align-items:flex-end;padding:0 24px 16px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 45%);mask-image:linear-gradient(to bottom,transparent,#000 45%)}
+.before p{margin:0;font:400 20px/1.62 var(--serif);color:var(--tx2)}
+.before p .hl{background:var(--hl);color:var(--tx);border-radius:6px;padding:2px 4px;margin:0 -4px}
+.before .o{color:var(--orp);font-weight:700}
+.panel{flex:none;background:var(--sf);border-radius:26px 26px 0 0;padding:14px 22px 26px;display:flex;flex-direction:column;gap:12px}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);align-self:center}
+.ctl{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.rb{width:48px;height:48px;border-radius:24px;display:grid;place-items:center;color:var(--tx);flex:none}
+.play{width:64px;height:64px;border-radius:32px;background:var(--ac);color:var(--bg);display:grid;place-items:center;flex:none}
+.step{display:flex;align-items:center;gap:2px;background:var(--bg);border-radius:24px;padding:2px}
+.step b{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;font:600 24px var(--sans);color:var(--tx)}
+.step span{min-width:54px;text-align:center;font:700 17px var(--sans);line-height:1.05}
+.step small{display:block;font:600 11px var(--sans);color:var(--tx2)}
+.seg3{display:flex;background:var(--bg);border-radius:26px;padding:4px}
+.seg3 span{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:22px;font:700 15px var(--sans);color:var(--tx2)}
+.seg3 span.on{background:var(--ac);color:var(--bg)}
+.exit{min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:22px;border:1.5px solid var(--line);font:700 15px var(--sans);color:var(--tx)}
+/* book page */
+.pg{flex:1;padding:14px 22px 0;font:400 17.5px/1.78 var(--serif);color:var(--tx);overflow:hidden}
+.pg .chap{font:600 12.5px var(--sans);color:var(--tx2);letter-spacing:.08em;text-transform:uppercase;padding-bottom:10px;text-align:center}
+.pg .l{white-space:nowrap;display:block}
+.pg .l.in{padding-left:1.4em}
+.pg .l.gap{margin-top:.5em}
+.pg .num{position:absolute;left:0;right:0;bottom:16px;text-align:center;font:600 13px var(--sans);color:var(--tx2)}
+.m .w{background:var(--hl);border-radius:5px;padding:2px 3px;margin:0 -3px}
+.u .w{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:5px;text-decoration-color:var(--ac)}
+.d .t{color:color-mix(in srgb,var(--tx) 46%,var(--bg))}
+.d .w{color:var(--tx)}
+button:focus-visible{outline:3px solid var(--pacc);outline-offset:2px}
+</style>
+<div class="wrap">
+<h1>Режимы скорочтения</h1>
+<p class="sub">Макет шага 10.0: как выглядят фраза и подсветка, и как переключать режимы. Телефоны показывают рабочий вид без кнопок и вид на паузе.</p>
+<div class="q"><b>Что выбрать</b>
+<ol>
+<li><b>Вопрос 1. Фраза.</b> Раздел А. А1 без цветной буквы или А2 с цветной буквой. <em>Рекомендация: А1.</em></li>
+<li><b>Вопрос 2. Подсветка.</b> Раздел Б. Б1 маркер, Б2 подчёркивание, Б3 бледный текст. <em>Рекомендация: Б1.</em></li>
+<li><b>Вопрос 3. Выбор режима.</b> Разделы В и Г. Переключатель на паузе, запуск одним касанием. <em>Рекомендация: так, как показано.</em></li>
+</ol></div>
+
+<h2>А. Фраза в скорочтении</h2>
+<p class="sub">Две-три слова в одной строке по центру. Метки для глаз стоят по центру экрана.</p>
+<div class="row" id="secA"></div>
+<p class="choose"><b>Что выбрать.</b> А1 спокойнее и всегда помещается по центру. В А2 цветная буква задаёт точку взгляда, но фраза «ездит» вправо и влево, а длинная уходит за край экрана.</p>
+
+<h2>Б. Подсветка на странице книги</h2>
+<p class="sub">Тот же текст, что в читалке. Подсветка идёт за словом. Перенесённое слово подсвечено обеими частями.</p>
+<div class="row" id="secB1"></div>
+<p class="choose" id="chB1"></p>
+<div class="row" id="secB2"></div>
+<p class="choose" id="chB2"></p>
+<div class="row" id="secB3"></div>
+<p class="choose" id="chB3"></p>
+
+<h2>В. Панель паузы в подсветке</h2>
+<p class="sub">Появляется по касанию. Старт, назад, скорость, переключатель режимов и выход. Слово остаётся подсвеченным.</p>
+<div class="row" id="secC"></div>
+
+<h2>Г. Переключатель режимов на паузе в скорочтении</h2>
+<p class="sub">Тот же переключатель внутри панели паузы. Слово и фраза переключаются на месте, с текущего слова. «Подсветка» закрывает экран и открывает страницу на этом слове.</p>
+<div class="row" id="secD"></div>
+<p class="choose"><b>Что выбрать.</b> Кнопка скорости сверху запускает последний выбранный режим одним касанием. Переключатель нужен только на паузе, чтобы не мешать чтению.</p>
+</div>
+<script>
+var ICON={
+play:'<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>',
+back:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg>',
+exit:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'};
+function ph(cls,inner){return '<div class="phone '+cls+'"><div class="sb"><span>9:41</span><i></i></div><div class="scr">'+inner+'</div></div>'}
+function cell(cap,phone){return '<div class="cell">'+phone+'<div class="cap">'+cap+'</div></div>'}
+function put(id,html){document.getElementById(id).innerHTML=html}
+function badge(){return ' <span class="rec">рекомендация</span>'}
+function panel(mode,guide){
+ var m=['Слово','Фраза','Подсветка'];
+ return '<div class="panel"><div class="grab"></div><div class="ctl"><span class="rb">'+ICON.back+'</span><span class="play">'+ICON.play+'</span><span class="step"><b>−</b><span>'+(mode==0?300:mode==1?300:250)+'<small>сл/мин</small></span><b>+</b></span></div>'+
+ '<div class="seg3">'+m.map(function(t,i){return '<span'+(i==mode?' class="on"':'')+'>'+t+'</span>'}).join('')+'</div>'+
+ (guide?'<div class="exit">'+ICON.exit+'Выйти из подсветки</div>':'')+'</div>'}
+var PRE='Дождь шёл с самого утра, и к вечеру улица опустела. Анна давно мечтала пожить ';
+/* A */
+function runA(cls,body){return ph(cls,'<div class="stage">'+body+'</div><div class="hint">Нажмите, чтобы остановить</div>')}
+put('secA',
+ cell('<b>А1 · Фраза по центру, без цветной буквы'+badge()+'</b>Глаз охватывает всю группу. Бумага, день.',runA('paper day','<div class="cue">в старом доме</div>'))+
+ cell('<b>А2 · С цветной буквой главного слова</b>Буква стоит в центре, фраза смещается. Ниже длинная фраза: начало уходит за край. Шалфей, день.',
+  runA('sage day','<div class="cue split"><span>в ст</span><b>а</b><span>ром доме</span></div><div class="mini">Длинная фраза в этом виде</div><div class="cue split"><span>на широкой ле</span><b>с</b><span>тнице</span></div>'))+
+ cell('<b>А1 · Длинная фраза почти во всю ширину</b>Шрифт уменьшается, чтобы фраза поместилась. Бумага, ночь.',runA('paper night','<div class="cue sm">на широкой лестнице</div>'))+
+ cell('<b>А1 · Пауза</b>Текст до фразы, сама фраза выделена. Лаванда, день.',ph('lavender day','<div class="before"><p>'+PRE+'<span class="hl">в старом доме</span></p></div>'+panel(1,false)))
+);
+/* B */
+var L=[
+ ['Дождь шёл с самого утра, и к {ве-}','',''],
+ ['{черу} улица опустела. Анна стояла','',''],
+ ['у окна и смотрела, как капли','',''],
+ ['стекают по стеклу.','',''],
+ ['Она давно хотела прочитать эту','in','gap'],
+ ['книгу, но всё откладывала. Те-','',''],
+ ['перь времени было достаточно.','',''],
+ ['Первые страницы шли медленно,','in','gap'],
+ ['потом слова будто сами собой','',''],
+ ['складывались в предложения, и','',''],
+ ['комната растворилась. Остался','',''],
+ ['только ровный голос рассказчика','',''],
+ ['и шелест дождя за окном.','','']
+];
+function page(cls,style){
+ var h=L.map(function(r){var s=r[0].replace(/\{(.+?)\}/g,'</span><span class="w">$1</span><span class="t">');
+  return '<span class="l '+r[1]+' '+r[2]+'"><span class="t">'+s+'</span></span>'}).join('');
+ return ph(cls,'<div class="pg '+style+'"><div class="chap">Глава 3</div>'+h+'<div class="num">48</div></div>');
+}
+var PB={m:'Мягкий маркер',u:'Подчёркивание',d:'Бледный текст'};
+function bcell(code,style,cls,palette,note){return cell('<b>'+code+' · '+PB[style]+(note?badge():'')+'</b>'+palette,page(cls,style))}
+put('secB1',bcell('Б1','m','paper day','Бумага, день.',1)+bcell('Б1','m','sage day','Шалфей, день.')+bcell('Б1','m','paper night','Бумага, ночь.'));
+put('chB1','<b>Что выбрать.</b> Б1 самый заметный и самый мягкий: цвет берётся из палитры, текст остаётся тёмным и читаемым. Слово «вечеру» перенесено, подсвечены обе части.');
+put('secB2',bcell('Б2','u','lavender day','Лаванда, день.')+bcell('Б2','u','mist day','Туман, день.')+bcell('Б2','u','sage night','Шалфей, ночь.'));
+put('chB2','<b>Что выбрать.</b> Б2 самый лёгкий: страница почти не меняется. Но линию труднее заметить краем глаза на быстрой скорости.');
+put('secB3',bcell('Б3','d','paper day','Бумага, день.')+bcell('Б3','d','mist day','Туман, день.')+bcell('Б3','d','lavender night','Лаванда, ночь.'));
+put('chB3','<b>Что выбрать.</b> Б3 выделяет слово контрастом, но вся страница становится бледной, и читать без подсветки неудобно. Контраст бледного текста ниже обычного.');
+/* C */
+function guideP(cls){return ph(cls,'<div class="pg m"><div class="chap">Глава 3</div>'+L.map(function(r){var s=r[0].replace(/\{(.+?)\}/g,'</span><span class="w">$1</span><span class="t">');return '<span class="l '+r[1]+' '+r[2]+'"><span class="t">'+s+'</span></span>'}).slice(0,6).join('')+'</div>'+panel(2,true))}
+put('secC',
+ cell('<b>В1 · Панель паузы подсветки'+badge()+'</b>Старт, назад, скорость − N +, переключатель, выход. Скорость подсветки по умолчанию 250. Бумага, день.',guideP('paper day').replace('300','250'))+
+ cell('<b>В2 · То же ночью</b>Шалфей, ночь.',guideP('sage night'))
+);
+/* D */
+put('secD',
+ cell('<b>Г1 · Режим «Слово» на паузе</b>Выбрано «Слово». Бумага, день.',ph('paper day','<div class="before"><p>'+PRE+'в старом <span class="hl">д<span class="o">о</span>ме</span></p></div>'+panel(0,false)))+
+ cell('<b>Г2 · Режим «Фраза» на паузе</b>Выбрано «Фраза». Шалфей, ночь.',ph('sage night','<div class="before"><p>'+PRE+'<span class="hl">в старом доме</span></p></div>'+panel(1,false)))
+);
+</script>
