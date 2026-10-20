@@ -43,4 +43,10 @@ final class SettingsRepository {
 abstract final class SettingKeys {
   /// Speed reading pace, words per minute.
   static const speedWpm = 'speed.wpm';
+
+  /// Library shelf shown: `all`, `reading`, `finished` or `c:<collection id>`.
+  static const libraryShelf = 'library.shelf';
+
+  /// Library order, a `LibrarySort` name.
+  static const librarySort = 'library.sort';
 }
