@@ -805,8 +805,9 @@ final class _BlockLayout {
   Map<int, (TextPainter, Offset)>? _marks;
 
   Map<int, (TextPainter, Offset)> _findHyphens() {
-    if (hyphens.isEmpty) return const {};
+    // Soft hyphens may come from the book itself, with hyphenation off too.
     final text = painter.plainText;
+    if (hyphens.isEmpty && !text.contains(softHyphen)) return const {};
     final root = painter.text! as TextSpan;
     final lines = painter.computeLineMetrics();
     final marks = <int, (TextPainter, Offset)>{};

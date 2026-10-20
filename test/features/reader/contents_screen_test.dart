@@ -25,7 +25,7 @@ void main() {
     WidgetTester tester,
     List<ContentsLine> lines,
     int? current, {
-    PageNumber Function(int section)? pageOf,
+    List<PageNumber> Function()? chapterStarts,
   }) async {
     final popped = <int?>[];
     await tester.pumpWidget(
@@ -41,7 +41,7 @@ void main() {
                   builder: (_) => ContentsScreen(
                     lines: lines,
                     current: current,
-                    pageOf: pageOf,
+                    chapterStarts: chapterStarts,
                   ),
                 ),
               ),
@@ -96,7 +96,10 @@ void main() {
     await pump(tester, lines(100), 99);
     final last = tester.getBottomLeft(find.text('Глава 100'));
     final screen = tester.getSize(find.byType(ContentsScreen));
-    expect(last.dy, greaterThan(screen.height - ContentsScreen.lineHeight));
+    final row = ContentsScreen.lineHeightOf(
+      tester.element(find.byType(ContentsScreen)),
+    );
+    expect(last.dy, greaterThan(screen.height - row));
   });
 
   testWidgets('page numbers on the right, on the last line of a title', (
@@ -115,7 +118,11 @@ void main() {
       tester,
       long,
       null,
-      pageOf: (s) => (value: [1, 12, 340][s], exact: s < 2),
+      chapterStarts: () => [
+        (value: 1, exact: true),
+        (value: 12, exact: true),
+        (value: 340, exact: false),
+      ],
     );
     final one = find.text('1');
     final twelve = find.text('12');
@@ -134,5 +141,29 @@ void main() {
       tester.getBottomLeft(twelve).dy,
       closeTo(tester.getBottomLeft(title).dy, 2),
     );
+  });
+
+  testWidgets('rows grow with large system text, titles stay inside', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final long = [
+      for (var s = 0; s < 3; s++)
+        (
+          title: 'Очень длинное название главы, которое не помещается $s',
+          level: 0,
+          sectionIndex: s,
+        ),
+    ];
+    await pump(tester, long, null);
+    final row = ContentsScreen.lineHeightOf(
+      tester.element(find.byType(ContentsScreen)),
+    );
+    expect(row, greaterThan(56));
+    final first = tester.getRect(find.textContaining('помещается 0'));
+    final second = tester.getRect(find.textContaining('помещается 1'));
+    expect(first.height, greaterThan(50), reason: 'two lines');
+    expect(first.bottom, lessThanOrEqualTo(second.top));
   });
 }

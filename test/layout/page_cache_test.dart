@@ -90,12 +90,26 @@ void main() {
     expect(cache.load(key, sections: 3, words: 600), isNull, reason: 'book');
   });
 
+  test('pages without words come back too', () {
+    // A separator-only page shares the next page's start; at the book's end
+    // it starts at the word count.
+    final key = keyOf(style);
+    final withEmpty = <List<int>?>[
+      [0, 100, 100],
+      null,
+      [],
+      [400, 600],
+    ];
+    cache.save(key, withEmpty);
+    expect(load(key), withEmpty);
+  });
+
   test('a broken file is ignored and removed', () {
     final key = keyOf(style);
     for (final text in [
       'not json',
       '{"key": "other", "chapters": [[0], null, [], [400]]}',
-      '{"key": "$key", "chapters": [[0, 0], null, [], [400]]}',
+      '{"key": "$key", "chapters": [[5, 3], null, [], [400]]}',
       '{"key": "$key", "chapters": [[0], null, [], [900]]}',
       '{"key": "$key", "chapters": [[0], "x", [], [400]]}',
     ]) {

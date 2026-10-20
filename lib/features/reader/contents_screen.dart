@@ -16,7 +16,7 @@ class ContentsScreen extends StatefulWidget {
     required this.lines,
     required this.current,
     this.fontFamily,
-    this.pageOf,
+    this.chapterStarts,
     this.pageUpdates,
     super.key,
   });
@@ -28,16 +28,22 @@ class ContentsScreen extends StatefulWidget {
 
   final String? fontFamily;
 
-  /// The book page a section starts on (from 1), maybe an estimate while
+  /// The book page each section starts on (from 1), maybe estimates while
   /// the book is being split; no numbers if null.
-  final PageNumber Function(int section)? pageOf;
+  final List<PageNumber> Function()? chapterStarts;
 
-  /// Tells when [pageOf] may give other numbers.
+  /// Tells when [chapterStarts] may give other numbers.
   final Listenable? pageUpdates;
 
   /// Every line is two lines of text tall at most, so the current one can
-  /// be scrolled to before anything is built.
-  static const lineHeight = 56.0;
+  /// be scrolled to before anything is built; taller with large system text.
+  static double lineHeightOf(BuildContext context) {
+    final size = Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16;
+    final text = MediaQuery.textScalerOf(context).scale(size) * _textHeight;
+    return max(56, text * 2 + 8);
+  }
+
+  static const _textHeight = 1.25;
 
   @override
   State<ContentsScreen> createState() => _ContentsScreenState();
@@ -64,7 +70,7 @@ class _ContentsScreenState extends State<ContentsScreen> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          const lineHeight = ContentsScreen.lineHeight;
+          final lineHeight = ContentsScreen.lineHeightOf(context);
           final height = constraints.maxHeight;
           // The current line a quarter of the way down, if the list allows.
           final top = (widget.current ?? 0) * lineHeight - height / 4;
@@ -88,14 +94,14 @@ class _ContentsScreenState extends State<ContentsScreen> {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
     final text = Theme.of(context).textTheme.bodyLarge?.copyWith(
-      height: 1.25,
+      height: ContentsScreen._textHeight,
       fontFamily: widget.fontFamily,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    final pageOf = widget.pageOf;
+    final starts = widget.chapterStarts?.call();
     String? number(int section) {
-      if (pageOf == null) return null;
-      final page = pageOf(section);
+      if (starts == null) return null;
+      final page = starts[section];
       return page.exact ? '${page.value}' : l10n.readerApproxNumber(page.value);
     }
 
@@ -107,7 +113,7 @@ class _ContentsScreenState extends State<ContentsScreen> {
     );
     return ListView.builder(
       controller: _scroll,
-      itemExtent: ContentsScreen.lineHeight,
+      itemExtent: ContentsScreen.lineHeightOf(context),
       itemCount: lines.length,
       itemBuilder: (context, i) {
         final line = lines[i];
@@ -263,7 +269,11 @@ class _DotsPainter extends CustomPainter {
     final dot = Paint()..color = color;
     final y = baseline - radius;
     final end = area.width;
-    for (var x = end - ((end - to) / step).ceil() * step; x >= from; x -= step) {
+    for (
+      var x = end - ((end - to) / step).ceil() * step;
+      x >= from;
+      x -= step
+    ) {
       final dx = textDirection == TextDirection.ltr ? x : area.width - x;
       canvas.drawCircle(Offset(dx, y), radius, dot);
     }

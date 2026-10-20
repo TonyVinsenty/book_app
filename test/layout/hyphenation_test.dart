@@ -28,12 +28,9 @@ void main() {
     );
   });
 
-  test('«ё» breaks like «е», the text is unchanged', () {
-    expect(
-      hyphenate('зелёного цвета').replaceAll('ё', 'е'),
-      hyphenate('зеленого цвета'),
-    );
-    expect(hyphenate('зелёного цвета'), contains('-'));
+  test('words with «ё» use the «ё» patterns, the text is unchanged', () {
+    expect(hyphenate('зелёного цвета'), 'зе-лё-но-го цвета');
+    expect(hyphenate('полёт ещё'), 'по-лёт ещё');
     expect(hyphenate('зелёного').replaceAll('-', ''), 'зелёного');
   });
 

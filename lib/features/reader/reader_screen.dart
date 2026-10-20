@@ -9,6 +9,7 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
+import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -121,7 +122,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// The place before the first slider jump and its page number, offered
   /// back until the page is changed some other way.
-  ({int word, String page})? _returnTo;
+  ({int section, int word, String page})? _returnTo;
 
   /// The table of contents (or the chapters of a book without one).
   late final List<ContentsLine> _contents = contentsOf(
@@ -317,10 +318,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
           lines: _contents,
           current: currentLineOf(_contents, _section),
           fontFamily: _style?.fontFamily,
-          pageOf: (section) {
-            final before = pagination.pagesBefore(section);
-            return (value: before.value + 1, exact: before.exact);
-          },
+          chapterStarts: () => pagination.chapterStarts,
           pageUpdates: pagination,
         ),
       ),
@@ -334,7 +332,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final at = _pagination!.locate(number - 1);
     final returnTo =
         _returnTo ??
-        (word: _word, page: _pageNumbers(AppLocalizations.of(context)).page);
+        (
+          section: _section,
+          word: _word,
+          page: _pageNumbers(AppLocalizations.of(context)).page,
+        );
     final sections = widget.opened.tokens.content.sections.length;
     for (var s = at.section; s < sections; s++) {
       final pages = _layoutOf(s).pages.length;
@@ -352,8 +354,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// Back to the page read before the slider jumps.
   void _returnBack() {
-    final word = _returnTo!.word;
-    final section = widget.opened.tokens[word].sectionIndex;
+    // The section is kept with the word: a page without words has the next
+    // chapter's first word, or none at the book's end.
+    final (:section, :word, page: _) = _returnTo!;
     _show(section, _layoutOf(section).pageOfWord(word));
   }
 
@@ -416,14 +419,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// Shifts the chapter so that the line of [_shiftTo] is in the middle of
-  /// the [height] tall safe area, as the word was in speed reading.
-  void _applyShift(double height) {
+  /// Shifts the chapter so that the line of [_shiftTo] is [centerY] down
+  /// the safe area, where the word was in speed reading.
+  void _applyShift(double centerY) {
     final word = _shiftTo;
     if (word == null) return;
     _shiftTo = null;
     final shifted = _layoutOf(_section)
-        .shifted(word: word, lineCenterY: height / 2 - _margin.top);
+        .shifted(word: word, lineCenterY: centerY - _margin.top);
     _layouts[_section] = shifted;
     _page = shifted.pageOfWord(word);
   }
@@ -514,7 +517,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
               area.height - _margin.vertical - _footerHeight,
             );
             _relayoutIfNeeded(pageSize, style);
-            _applyShift(area.height);
+            // Speed reading shows the word in the middle of a plain safe
+            // area: without the status bar, unlike the page's [insets].
+            final padding = MediaQuery.paddingOf(context);
+            final wordY =
+                padding.top +
+                (constraints.maxHeight - padding.vertical) / 2 -
+                insets.top;
+            _applyShift(wordY);
             final chapter = layout;
             final numbers = _pageNumbers(l10n);
             final pageLabel = l10n.readerPageOfBook(
@@ -725,7 +735,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
             const SizedBox(height: 2),
             Text(
               drag == null
-                  ? '$pageLabel · ${l10n.readerPagesLeftInChapter(pagesLeft)}'
+                  ? l10n.readerPageAndChapterLeft(
+                      pageLabel,
+                      l10n.readerPagesLeftInChapter(pagesLeft),
+                    )
                   : dragLabel(drag),
               style: text.bodySmall?.copyWith(color: colors.textSecondary),
             ),
@@ -754,17 +767,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
               const SizedBox(height: 8),
             Row(
               children: [
-                _FontSizeButton(
-                  label: 'A−',
-                  tooltip: l10n.readerFontSmaller,
+                FontSizeButton(
+                  larger: false,
                   onPressed: fontSize > sizes.first
                       ? () => _changeFontSize(larger: false)
                       : null,
                 ),
                 const SizedBox(width: 8),
-                _FontSizeButton(
-                  label: 'A+',
-                  tooltip: l10n.readerFontLarger,
+                FontSizeButton(
+                  larger: true,
                   onPressed: fontSize < sizes.last
                       ? () => _changeFontSize(larger: true)
                       : null,
@@ -782,27 +793,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
       ),
     );
   }
-}
-
-class _FontSizeButton extends StatelessWidget {
-  const _FontSizeButton({
-    required this.label,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final String label;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
-    child: OutlinedButton(
-      onPressed: onPressed,
-      child: ExcludeSemantics(child: Text(label)),
-    ),
-  );
 }
 
 class _PagePainter extends CustomPainter {

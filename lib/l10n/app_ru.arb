@@ -183,6 +183,26 @@
   "@readerFontLarger": {
     "description": "Reader bottom panel button A+: larger book text"
   },
+  "readerFontSmallerShort": "A−",
+  "@readerFontSmallerShort": {
+    "description": "Label of the A− button (smaller book text); the tooltip is readerFontSmaller"
+  },
+  "readerFontLargerShort": "A+",
+  "@readerFontLargerShort": {
+    "description": "Label of the A+ button (larger book text); the tooltip is readerFontLarger"
+  },
+  "readerPageAndChapterLeft": "{page} · {left}",
+  "@readerPageAndChapterLeft": {
+    "description": "Reader bottom panel: the book page label, then the pages left in the chapter",
+    "placeholders": {
+      "page": {"type": "String"},
+      "left": {"type": "String"}
+    }
+  },
+  "settingsPaletteSample": "Аа",
+  "@settingsPaletteSample": {
+    "description": "Sample letters inside each palette circle in the reading settings"
+  },
   "readerSettings": "Настройки",
   "@readerSettings": {
     "description": "Reader bottom panel button that opens the reading settings"

@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
@@ -99,16 +100,19 @@ final class Hyphenation {
   Hyphenation({required this.russian, required this.english});
 
   /// Reads the bundled patterns (`assets/hyphenation/`, TeX `hyph-utf8`,
-  /// unchanged).
+  /// unchanged). They are parsed in another isolate: tens of milliseconds
+  /// that would hold up the app's start.
   static Future<Hyphenation> load([AssetBundle? bundle]) async {
     final assets = bundle ?? rootBundle;
     final (ru, en) = await (
       assets.loadString('assets/hyphenation/hyph-ru.tex'),
       assets.loadString('assets/hyphenation/hyph-en-us.tex'),
     ).wait;
-    return Hyphenation(
-      russian: Hyphenator.fromTex(ru, leftMin: 2, rightMin: 2),
-      english: Hyphenator.fromTex(en, leftMin: 2, rightMin: 3),
+    return Isolate.run(
+      () => Hyphenation(
+        russian: Hyphenator.fromTex(ru, leftMin: 2, rightMin: 2),
+        english: Hyphenator.fromTex(en, leftMin: 2, rightMin: 3),
+      ),
     );
   }
 
@@ -159,10 +163,7 @@ final class Hyphenation {
         word.substring(1) != lower.substring(1)) {
       return const [];
     }
-    if (_russian.hasMatch(lower)) {
-      // The patterns have no «ё».
-      return russian.breaks(lower.replaceAll('ё', 'е'));
-    }
+    if (_russian.hasMatch(lower)) return russian.breaks(lower);
     if (_english.hasMatch(lower)) return english.breaks(lower);
     return const [];
   }

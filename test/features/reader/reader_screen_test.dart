@@ -554,8 +554,9 @@ void main() {
     await tester.tap(find.byTooltip('Оглавление'));
     await tester.pumpAndSettle();
     final contents = tester.widget<ContentsScreen>(find.byType(ContentsScreen));
-    expect(contents.pageOf!(0), (value: 1, exact: true));
-    expect(contents.pageOf!(2), (value: target - 1, exact: true));
+    final starts = contents.chapterStarts!();
+    expect(starts[0], (value: 1, exact: true));
+    expect(starts[2], (value: target - 1, exact: true));
     expect(find.text('${target - 1}'), findsOneWidget);
     await closeApp(tester);
   });
@@ -615,6 +616,11 @@ void main() {
   testWidgets('a long press reads from the word; leaving lights the last one', (
     tester,
   ) async {
+    // The status bar is hidden: the page keeps its room, speed reading
+    // does not.
+    tester.view.viewPadding = const FakeViewPadding(top: 144);
+    tester.view.padding = FakeViewPadding.zero;
+    addTearDown(tester.view.reset);
     await pumpApp(tester);
     await openBook(tester);
     await tapAt(tester, 0.95);
@@ -703,6 +709,7 @@ void main() {
           ),
         )
         .dy;
+    // Pages start at whole lines: within a line of it.
     expect(
       (pageTop + box.center.dy - wordY).abs(),
       lessThanOrEqualTo(layout.style.bodyLine),

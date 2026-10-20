@@ -9,7 +9,7 @@ import 'package:flutter/painting.dart';
 /// Version of the page split rules: bump it on any change to how pages are
 /// split, to [PageStyle] or to the font files (`tool/fonts`), so old saved
 /// splits are not used (ADR 0003, addendum 2 п. 7).
-const layoutVersion = 2;
+const layoutVersion = 3;
 
 /// Everything the page breaks of a book depend on (ADR 0003, addendum 2
 /// п. 7); colors are not in it.
@@ -101,8 +101,8 @@ final class PageCache {
     }
   }
 
-  /// Null unless the file is for [key] and every chapter's first words go
-  /// up within the book.
+  /// Null unless the file is for [key] and every chapter's first words never
+  /// go down within the book.
   static ChapterPages? _parse(
     Object? json,
     String key,
@@ -121,8 +121,10 @@ final class PageCache {
       if (chapter is! List) return null;
       final pages = <int>[];
       for (final word in chapter) {
-        if (word is! int || word < 0 || word >= words) return null;
-        if (pages.isNotEmpty && word <= pages.last) return null;
+        // A page without words shares the next page's start, or the book's
+        // end for the last pages.
+        if (word is! int || word < 0 || word > words) return null;
+        if (pages.isNotEmpty && word < pages.last) return null;
         pages.add(word);
       }
       result.add(List.unmodifiable(pages));

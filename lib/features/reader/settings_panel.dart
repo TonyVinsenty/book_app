@@ -3,6 +3,7 @@ import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,14 +103,11 @@ class ReadingSettingsPanel extends ConsumerWidget {
                 l10n.settingsSize,
                 Row(
                   children: [
-                    Tooltip(
-                      message: l10n.readerFontSmaller,
-                      child: OutlinedButton(
-                        onPressed: fontSize > sizes.first
-                            ? () => notifier.set(settings.smaller(scale))
-                            : null,
-                        child: const ExcludeSemantics(child: Text('A−')),
-                      ),
+                    FontSizeButton(
+                      larger: false,
+                      onPressed: fontSize > sizes.first
+                          ? () => notifier.set(settings.smaller(scale))
+                          : null,
                     ),
                     Expanded(
                       child: Text(
@@ -118,14 +116,11 @@ class ReadingSettingsPanel extends ConsumerWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
-                    Tooltip(
-                      message: l10n.readerFontLarger,
-                      child: OutlinedButton(
-                        onPressed: fontSize < sizes.last
-                            ? () => notifier.set(settings.larger(scale))
-                            : null,
-                        child: const ExcludeSemantics(child: Text('A+')),
-                      ),
+                    FontSizeButton(
+                      larger: true,
+                      onPressed: fontSize < sizes.last
+                          ? () => notifier.set(settings.larger(scale))
+                          : null,
                     ),
                   ],
                 ),
@@ -190,7 +185,7 @@ class ReadingSettingsPanel extends ConsumerWidget {
                           shape: BoxShape.circle,
                         ),
                         content: Text(
-                          'Аа',
+                          l10n.settingsPaletteSample,
                           style: TextStyle(
                             color: palette.colors(night: night).text,
                           ),

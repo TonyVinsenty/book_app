@@ -480,6 +480,32 @@ void main() {
     layout.dispose();
   });
 
+  test('soft hyphens from the book get a «-» with hyphenation off', () {
+    // Some books carry their own soft hyphens; the engine breaks there too.
+    final text = [
+      for (var i = 0; i < 12; i++)
+        'Сель$softHyphenско$softHyphenхо$softHyphenзяй',
+    ].join(' ');
+    final tokens = tokenize(
+      BookContent(
+        meta: const BookMeta(title: 'Переносы', sourceFormat: SourceFormat.txt),
+        sections: [
+          Section(blocks: [ParagraphBlock(text: text)]),
+        ],
+      ),
+    );
+    final layout = build(tokens, 0, const Size(330, 2000), style());
+    final broken = [
+      for (var w = 0; w < tokens.length; w++)
+        if (layout.wordBoxes(0, w).length == 2) w,
+    ];
+    expect(broken, isNotEmpty, reason: 'some words break');
+    final canvas = _CountingCanvas();
+    layout.paintPage(canvas, 0);
+    expect(canvas.paragraphs, 1 + broken.length, reason: 'a «-» each');
+    layout.dispose();
+  });
+
   // Big real books live outside the repository (ADR 0006): set
   // BOOKAPP_HARD_BOOKS to their folder to check them too.
   final hardBooks = Platform.environment['BOOKAPP_HARD_BOOKS'];

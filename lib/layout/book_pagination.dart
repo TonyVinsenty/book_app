@@ -125,6 +125,21 @@ class BookPagination extends ChangeNotifier {
         .every((p) => p != null),
   );
 
+  /// The book page every section starts on (from 1), at once: a long table
+  /// of contents would add the chapters up again for each line.
+  List<PageNumber> get chapterStarts {
+    final starts = <PageNumber>[];
+    var pages = 0;
+    var exact = true;
+    for (var s = 0; s < _chars.length; s++) {
+      starts.add((value: pages + 1, exact: exact));
+      final known = _firstWords[s];
+      pages += known?.length ?? _estimate(s);
+      exact = exact && known != null;
+    }
+    return starts;
+  }
+
   /// Where book page [index] (from 0, clamped to the book) is: its chapter,
   /// the page in it out of [of] pages (estimated for a chapter not split
   /// yet, so the reader takes the same share of the real ones), and
@@ -223,14 +238,15 @@ class BookPagination extends ChangeNotifier {
 
   /// Not `scheduleTask(…, Priority.idle)`: while an animation runs, it asks
   /// the event loop again at once, without a pause. Here an animation (page
-  /// transition, speed reading) puts the work off until a frame has ended.
+  /// transition, speed reading) puts the work off until a frame has ended,
+  /// then does one portion: speed reading may go on for hours.
   void _scheduleIdle() {
     _timer = Timer(Duration.zero, () {
       if (_disposed) return;
       final binding = SchedulerBinding.instance;
       if (binding.transientCallbackCount > 0) {
         binding.addPostFrameCallback((_) {
-          if (!_disposed) _scheduleIdle();
+          if (!_disposed) _timer = Timer(Duration.zero, _work);
         });
       } else {
         _work();

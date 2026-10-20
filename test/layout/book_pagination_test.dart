@@ -79,6 +79,13 @@ void main() {
     expect(pagination.pagesBefore(1), (value: first, exact: true));
     expect(pagination.pagesBefore(3).exact, isFalse);
     expect(pagination.pageCount.value, closeTo(first * 5, first * 2));
+    // Chapter starts at once: the same numbers, from 1.
+    final starts = pagination.chapterStarts;
+    expect(starts, hasLength(tokens.content.sections.length));
+    for (var s = 0; s < starts.length; s++) {
+      final before = pagination.pagesBefore(s);
+      expect(starts[s], (value: before.value + 1, exact: before.exact));
+    }
   });
 
   test('a book page is found in its chapter, estimated or not', () {
