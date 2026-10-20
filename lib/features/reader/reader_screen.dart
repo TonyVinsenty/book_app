@@ -355,7 +355,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// Pages after this one up to the chapter's end, with the parts of a
   /// long chapter after this one.
-  int _pagesLeftInChapter(ChapterLayout chapter) {
+  PageNumber _pagesLeftInChapter(ChapterLayout chapter) {
     final left = chapter.pages.length - _page - 1;
     final sections = widget.opened.tokens.content.sections;
     var end = _section + 1;
@@ -363,10 +363,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
       end++;
     }
     final pagination = _pagination;
-    if (end == _section + 1 || pagination == null) return left;
-    return left +
-        pagination.pagesBefore(end).value -
-        pagination.pagesBefore(_section + 1).value;
+    if (end == _section + 1 || pagination == null) {
+      return (value: left, exact: true);
+    }
+    final after = pagination.pagesBefore(end);
+    return (
+      value: left + after.value - pagination.pagesBefore(_section + 1).value,
+      exact: after.exact,
+    );
   }
 
   /// Back to the page read before the slider jumps.
@@ -690,7 +694,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     BuildContext context,
     EdgeInsets insets, {
     required String pageLabel,
-    required int pagesLeft,
+    required PageNumber pagesLeft,
     required double fontSize,
   }) {
     final l10n = AppLocalizations.of(context);
@@ -754,7 +758,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
               drag == null
                   ? l10n.readerPageAndChapterLeft(
                       pageLabel,
-                      l10n.readerPagesLeftInChapter(pagesLeft),
+                      pagesLeft.exact
+                          ? l10n.readerPagesLeftInChapter(pagesLeft.value)
+                          : l10n.readerPagesLeftInChapterApprox(
+                              pagesLeft.value,
+                            ),
                     )
                   : dragLabel(drag),
               style: text.bodySmall?.copyWith(color: colors.textSecondary),

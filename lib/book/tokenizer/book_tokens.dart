@@ -23,7 +23,8 @@ final class BookTokens {
          content.sections.length,
        ),
        _sentenceStarts = _buildSentenceStarts(flags),
-       _chapterOf = _buildChapters(content);
+       _chapterOf = _buildChapters(content),
+       _chapterFirstSection = _buildChapterStarts(content);
 
   final BookContent content;
   final Int32List _sections;
@@ -40,6 +41,9 @@ final class BookTokens {
   /// `[s]` = the whole chapter section `s` is part of (an index in the
   /// book as stored, before `splitLongSections`).
   final Int32List _chapterOf;
+
+  /// `[c]` = the first section of chapter `c`.
+  final Int32List _chapterFirstSection;
 
   int get length => _starts.length;
   bool get isEmpty => length == 0;
@@ -89,11 +93,9 @@ final class BookTokens {
 
   /// First word of the whole chapter [sectionIndex] is part of.
   int firstWordOfChapter(int sectionIndex) {
-    var s = sectionIndex.clamp(0, content.sections.length - 1);
-    while (s > 0 && content.sections[s].continued) {
-      s--;
-    }
-    return firstWordOfSection(s);
+    if (_chapterOf.isEmpty) return 0;
+    final s = sectionIndex.clamp(0, _chapterOf.length - 1);
+    return firstWordOfSection(_chapterFirstSection[_chapterOf[s]]);
   }
 
   /// Start of the sentence that contains [wordIndex].
@@ -111,8 +113,9 @@ final class BookTokens {
     return _sentenceStarts.isEmpty ? 0 : _sentenceStarts[lo];
   }
 
-  /// Word at [anchor]: the one containing it, else the next one; clamped to
-  /// the last word. 0 for an empty book.
+  /// Word at [anchor] (section and block as in [content], parts apart):
+  /// the one containing it, else the next one; clamped to the last word. 0
+  /// for an empty book.
   int indexAt(TextAnchor anchor) {
     var lo = 0;
     var hi = length;
@@ -130,11 +133,35 @@ final class BookTokens {
   }
 
   bool _endsBefore(int i, TextAnchor a) {
-    final section = _chapterOf[_sections[i]];
-    if (section != a.sectionIndex) return section < a.sectionIndex;
-    final block = _blockInChapter(i);
-    if (block != a.blockIndex) return block < a.blockIndex;
+    if (_sections[i] != a.sectionIndex) return _sections[i] < a.sectionIndex;
+    if (_blocks[i] != a.blockIndex) return _blocks[i] < a.blockIndex;
     return _ends[i] <= a.charOffset;
+  }
+
+  /// [anchor] saved against a whole chapter, as an anchor in its part.
+  TextAnchor _inPart(TextAnchor anchor) {
+    final chapter = anchor.sectionIndex;
+    if (chapter < 0) return anchor;
+    if (chapter >= _chapterFirstSection.length) {
+      // Past the book: past its last section, as before parts.
+      return TextAnchor(
+        sectionIndex: content.sections.length,
+        blockIndex: 0,
+        charOffset: 0,
+      );
+    }
+    var s = _chapterFirstSection[chapter];
+    final sections = content.sections;
+    while (s + 1 < sections.length &&
+        sections[s + 1].continued &&
+        sections[s + 1].firstBlock <= anchor.blockIndex) {
+      s++;
+    }
+    return TextAnchor(
+      sectionIndex: s,
+      blockIndex: anchor.blockIndex - sections[s].firstBlock,
+      charOffset: anchor.charOffset,
+    );
   }
 
   /// Block of word [i] in its whole chapter.
@@ -164,7 +191,7 @@ final class BookTokens {
     if (i >= 0 && i < length && positionOf(i).anchor == position.anchor) {
       return i;
     }
-    return indexAt(position.anchor);
+    return indexAt(_inPart(position.anchor));
   }
 
   static Int32List _buildSectionFirstWord(Int32List sections, int count) {
@@ -187,6 +214,14 @@ final class BookTokens {
       result[s] = chapter;
     }
     return result;
+  }
+
+  static Int32List _buildChapterStarts(BookContent content) {
+    final starts = <int>[
+      for (final (s, section) in content.sections.indexed)
+        if (!section.continued || s == 0) s,
+    ];
+    return Int32List.fromList(starts);
   }
 
   static Int32List _buildSentenceStarts(Uint8List flags) {

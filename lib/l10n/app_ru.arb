@@ -162,6 +162,11 @@
     "description": "Reader bottom panel: pages left after this one in the chapter",
     "placeholders": {"count": {"type": "int"}}
   },
+  "readerPagesLeftInChapterApprox": "до конца главы ≈ {count} стр.",
+  "@readerPagesLeftInChapterApprox": {
+    "description": "Reader bottom panel: pages left in a long chapter whose later parts are not split into pages yet",
+    "placeholders": {"count": {"type": "int"}}
+  },
   "readerChapterNumber": "Глава {number}",
   "@readerChapterNumber": {
     "description": "Reader bottom panel: a chapter without a title",

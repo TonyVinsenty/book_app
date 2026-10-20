@@ -28,9 +28,12 @@ BookContent splitLongSections(BookContent content) {
         TocEntry(
           title: e.title,
           level: e.level,
-          sectionIndex: e.sectionIndex >= 0 && e.sectionIndex < firstPart.length
+          sectionIndex: e.sectionIndex < 0
+              ? e.sectionIndex
+              : e.sectionIndex < firstPart.length
               ? firstPart[e.sectionIndex]
-              : e.sectionIndex,
+              // Out of the book stays out of it.
+              : e.sectionIndex - firstPart.length + sections.length,
         ),
     ],
     sections: sections,
@@ -53,11 +56,10 @@ List<Section> _partsOf(Section section) {
   var chars = 0;
   for (var b = 0; b < blocks.length; b++) {
     // A heading stays with the text after it.
-    if (chars >= size * (parts.length + 1) &&
-        b > start &&
-        blocks[b - 1] is! HeadingBlock) {
+    if (chars >= size && b > start && blocks[b - 1] is! HeadingBlock) {
       parts.add(_part(section, start, b));
       start = b;
+      chars = 0;
     }
     final block = blocks[b];
     if (block is TextBlock) chars += block.text.length;
@@ -66,8 +68,9 @@ List<Section> _partsOf(Section section) {
   return parts;
 }
 
+/// Every part keeps the chapter's title, for the reader's panel.
 Section _part(Section section, int start, int end) => Section(
-  title: start == 0 ? section.title : null,
+  title: section.title,
   blocks: section.blocks.sublist(start, end),
   continued: start > 0,
   firstBlock: start,

@@ -480,6 +480,31 @@ void main() {
     layout.dispose();
   });
 
+  test('parts of a very long chapter split exactly, words touchable', () {
+    final tokens = tokenize(
+      BookContent(
+        meta: const BookMeta(title: 'Огромная', sourceFormat: SourceFormat.txt),
+        sections: [
+          Section(
+            blocks: [
+              for (var i = 0; i < 260; i++)
+                ParagraphBlock(text: List.filled(80, 'слово$i').join(' ')),
+            ],
+          ),
+          const Section(blocks: [ParagraphBlock(text: 'Вторая глава.')]),
+        ],
+      ),
+    );
+    final sections = tokens.content.sections;
+    expect(sections.length, greaterThan(3), reason: 'split into parts');
+    for (var s = 0; s < sections.length; s++) {
+      final layout = build(tokens, s, const Size(320, 520), style());
+      expectExactSplit(tokens, layout);
+      expectWordsTouchable(layout);
+      layout.dispose();
+    }
+  });
+
   test('soft hyphens from the book get a «-» with hyphenation off', () {
     // Some books carry their own soft hyphens; the engine breaks there too.
     final text = [

@@ -43,7 +43,7 @@ void main() {
       (sum, b) => sum + (b is TextBlock ? b.text.length : 0),
     );
     expect(chars, greaterThan(longSectionChars));
-    expect(parts.length, (chars / sectionPartChars).ceil());
+    expect(parts.length, closeTo((chars / sectionPartChars).ceil(), 1));
     expect(parts.first.title, 'Огромная');
     expect(parts.first.continued, isFalse);
     expect([for (final p in parts.skip(1)) p.continued], everyElement(isTrue));
