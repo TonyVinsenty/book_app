@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/book_repository.dart';
+import 'package:book_app/data/collection_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/db/open_app_database.dart';
@@ -39,6 +40,20 @@ final settingsRepositoryProvider = Provider<SettingsRepository>(
 /// The library list, recently opened first.
 final booksProvider = StreamProvider<List<BookRow>>(
   (ref) => ref.watch(bookRepositoryProvider).watchBooks(),
+);
+
+final collectionRepositoryProvider = Provider<CollectionRepository>(
+  (ref) => CollectionRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// The owner's collections, oldest first.
+final collectionsProvider = StreamProvider<List<CollectionRow>>(
+  (ref) => ref.watch(collectionRepositoryProvider).watchCollections(),
+);
+
+/// Which book is in which collection.
+final collectionLinksProvider = StreamProvider<List<BookCollectionRow>>(
+  (ref) => ref.watch(collectionRepositoryProvider).watchLinks(),
 );
 
 /// A book prepared for the reader screen, by book id. A failure is final

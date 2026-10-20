@@ -162,7 +162,18 @@ final class BookRepository {
   Future<BookRow?> touch(int id) =>
       _write(id, BooksCompanion(touchedAt: Value(_now())));
 
-  /// Removes the row and all files of the book.
+  /// Marks the book read — at its end or by hand; an earlier mark stays.
+  Future<void> markFinished(int id) =>
+      (_db.update(_db.books)
+            ..where((b) => b.id.equals(id) & b.finishedAt.isNull()))
+          .write(BooksCompanion(finishedAt: Value(_now())));
+
+  /// "Reading again": the only way the read mark goes away.
+  Future<void> markUnfinished(int id) =>
+      _write(id, const BooksCompanion(finishedAt: Value(null)));
+
+  /// Removes the row (and its places in collections) and all files of the
+  /// book.
   Future<void> deleteBook(int id) async {
     await (_db.delete(_db.books)..where((b) => b.id.equals(id))).go();
     await _store.deleteBook(id);

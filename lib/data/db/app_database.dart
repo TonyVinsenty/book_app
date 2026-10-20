@@ -47,6 +47,33 @@ class Books extends Table {
   /// Name of the cover picture in the book folder (`cover.jpg`), or null
   /// (schema v2).
   TextColumn get coverFile => text().nullable()();
+
+  /// When the book was read to the end or marked read; null — not read.
+  /// Cleared only by hand ("reading again"), not by reading from the start
+  /// (schema v3, ADR 0005 addendum 2).
+  DateTimeColumn get finishedAt => dateTime().nullable()();
+}
+
+/// The owner's own collections of books. Names are unique without case —
+/// checked in `CollectionRepository` (SQLite `NOCASE` knows only Latin).
+@DataClassName('CollectionRow')
+class Collections extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+/// A book in a collection; goes away with either of them (schema v3).
+@DataClassName('BookCollectionRow')
+class BookCollections extends Table {
+  IntColumn get bookId =>
+      integer().references(Books, #id, onDelete: KeyAction.cascade)();
+  IntColumn get collectionId =>
+      integer().references(Collections, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get addedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {bookId, collectionId};
 }
 
 /// App settings as key → value text; typed access lives in the settings
@@ -75,12 +102,12 @@ class StringListConverter extends TypeConverter<List<String>, String> {
 
 /// App database. The executor is a parameter: a file in the app, memory in
 /// tests (`NativeDatabase.memory()`).
-@DriftDatabase(tables: [Books, AppSettings])
+@DriftDatabase(tables: [Books, AppSettings, Collections, BookCollections])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -93,13 +120,25 @@ class AppDatabase extends _$AppDatabase {
         await m.alterTable(
           TableMigration(
             books,
-            newColumns: [books.touchedAt, books.coverFile],
+            // The rebuild makes the current table, so later columns too.
+            newColumns: [books.touchedAt, books.coverFile, books.finishedAt],
             columnTransformer: {
               books.touchedAt: coalesce([books.openedAt, books.addedAt]),
             },
           ),
         );
         if (lastId != null) await _keepLastBookId(lastId);
+      } else if (from < 3) {
+        await m.addColumn(books, books.finishedAt);
+      }
+      if (from < 3) {
+        await m.createTable(collections);
+        await m.createTable(bookCollections);
+        // Read to 98% before the mark existed: count it as read then.
+        await customStatement(
+          'UPDATE books SET finished_at = touched_at '
+          'WHERE word_count > 0 AND position_word * 100 >= word_count * 98',
+        );
       }
     },
     beforeOpen: (details) async {

@@ -286,4 +286,20 @@ void main() {
     final second = await add('Новая');
     expect(second.id, greaterThan(first.id));
   });
+
+  test('read mark: the first time stays, only by hand it goes', () async {
+    final row = await add('Книга');
+    expect(row.finishedAt, isNull);
+
+    await repo.markFinished(row.id);
+    final finished = clock;
+    clock = clock.add(const Duration(days: 1));
+    await repo.markFinished(row.id);
+    await repo.savePosition(row.id, ReadingPosition.start);
+    await repo.markOpened(row.id);
+    expect((await repo.findById(row.id))!.finishedAt, finished);
+
+    await repo.markUnfinished(row.id);
+    expect((await repo.findById(row.id))!.finishedAt, isNull);
+  });
 }
