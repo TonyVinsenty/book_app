@@ -17,6 +17,7 @@ class ContentsScreen extends StatefulWidget {
     required this.current,
     this.fontFamily,
     this.chapterStarts,
+    this.chapterNumberOf,
     this.pageUpdates,
     super.key,
   });
@@ -31,6 +32,10 @@ class ContentsScreen extends StatefulWidget {
   /// The book page each section starts on (from 1), maybe estimates while
   /// the book is being split; no numbers if null.
   final List<PageNumber> Function()? chapterStarts;
+
+  /// The number of an untitled chapter, for «Глава N» (the section index
+  /// + 1 if null).
+  final int Function(int section)? chapterNumberOf;
 
   /// Tells when [chapterStarts] may give other numbers.
   final Listenable? pageUpdates;
@@ -137,7 +142,10 @@ class _ContentsScreenState extends State<ContentsScreen> {
                 child: _ContentsLineText(
                   title:
                       line.title ??
-                      l10n.readerChapterNumber(line.sectionIndex + 1),
+                      l10n.readerChapterNumber(
+                        widget.chapterNumberOf?.call(line.sectionIndex) ??
+                            line.sectionIndex + 1,
+                      ),
                   number: numbers[i],
                   widestNumber: widest,
                   style: style,

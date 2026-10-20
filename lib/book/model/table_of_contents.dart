@@ -13,7 +13,7 @@ List<ContentsLine> contentsOf(BookContent content) => content.toc.isNotEmpty
       ]
     : [
         for (final (i, s) in content.sections.indexed)
-          (title: s.title, level: 0, sectionIndex: i),
+          if (!s.continued) (title: s.title, level: 0, sectionIndex: i),
       ];
 
 /// The line of the chapter being read: the last one that starts at or

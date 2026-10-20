@@ -172,7 +172,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     final section = widget.opened.tokens.sectionOf(_engine.wordIndex);
     final title =
         widget.opened.tokens.content.sections[section].title ??
-        l10n.speedChapterNumber(section + 1);
+        l10n.speedChapterNumber(widget.opened.tokens.chapterNumberOf(section));
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),

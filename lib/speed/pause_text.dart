@@ -8,7 +8,7 @@ import 'package:book_app/book/tokenizer/token.dart';
 /// with the space or line break before [word]; cut mid-paragraph, it starts
 /// with "…".
 String textBefore(BookTokens tokens, int word, {int maxWords = 60}) {
-  final chapter = tokens.firstWordOfSection(tokens.sectionOf(word));
+  final chapter = tokens.firstWordOfChapter(tokens.sectionOf(word));
   final first = math.max(chapter, word - maxWords);
   final out = StringBuffer();
   if (first < word && tokens.flagsOf(first) & TokenFlags.paragraphStart == 0) {

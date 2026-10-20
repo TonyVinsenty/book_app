@@ -319,6 +319,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
           current: currentLineOf(_contents, _section),
           fontFamily: _style?.fontFamily,
           chapterStarts: () => pagination.chapterStarts,
+          chapterNumberOf: widget.opened.tokens.chapterNumberOf,
           pageUpdates: pagination,
         ),
       ),
@@ -350,6 +351,22 @@ class ReaderViewState extends ConsumerState<ReaderView>
       setState(() => _returnTo = returnTo);
       return;
     }
+  }
+
+  /// Pages after this one up to the chapter's end, with the parts of a
+  /// long chapter after this one.
+  int _pagesLeftInChapter(ChapterLayout chapter) {
+    final left = chapter.pages.length - _page - 1;
+    final sections = widget.opened.tokens.content.sections;
+    var end = _section + 1;
+    while (end < sections.length && sections[end].continued) {
+      end++;
+    }
+    final pagination = _pagination;
+    if (end == _section + 1 || pagination == null) return left;
+    return left +
+        pagination.pagesBefore(end).value -
+        pagination.pagesBefore(_section + 1).value;
   }
 
   /// Back to the page read before the slider jumps.
@@ -593,7 +610,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       context,
                       insets,
                       pageLabel: pageLabel,
-                      pagesLeft: chapter.pages.length - _page - 1,
+                      pagesLeft: _pagesLeftInChapter(chapter),
                       fontSize: fontSize,
                     ),
                   ),
@@ -695,7 +712,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final title =
         line?.title ??
         widget.opened.tokens.content.sections[section].title ??
-        l10n.readerChapterNumber(section + 1);
+        l10n.readerChapterNumber(widget.opened.tokens.chapterNumberOf(section));
     String dragLabel(int page) => l10n.readerPageOfBook(
       _number(l10n, page, exact: pagination.locate(page - 1).exact),
       _number(l10n, last, exact: total.exact),

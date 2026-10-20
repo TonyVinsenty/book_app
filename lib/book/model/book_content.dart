@@ -80,9 +80,15 @@ final class TocEntry {
   };
 }
 
-/// A chapter: FB2 section, EPUB spine file or a TXT chapter.
+/// A chapter: FB2 section, EPUB spine file or a TXT chapter; or a part of
+/// a very long one (`splitLongSections`).
 final class Section {
-  const Section({this.title, required this.blocks});
+  const Section({
+    this.title,
+    required this.blocks,
+    this.continued = false,
+    this.firstBlock = 0,
+  });
 
   factory Section.fromJson(Map<String, Object?> json) => Section(
     title: json['title'] as String?,
@@ -94,6 +100,13 @@ final class Section {
 
   final String? title;
   final List<Block> blocks;
+
+  /// A part after the first of a long chapter: no new chapter starts here.
+  /// Parts are made when a book is opened and never stored.
+  final bool continued;
+
+  /// Index of [blocks]' first block in the whole chapter.
+  final int firstBlock;
 
   Map<String, Object?> toJson() => {
     if (title != null) 'title': title,

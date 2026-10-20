@@ -22,7 +22,8 @@ final class BookTokens {
          sections,
          content.sections.length,
        ),
-       _sentenceStarts = _buildSentenceStarts(flags);
+       _sentenceStarts = _buildSentenceStarts(flags),
+       _chapterOf = _buildChapters(content);
 
   final BookContent content;
   final Int32List _sections;
@@ -35,6 +36,10 @@ final class BookTokens {
   /// `[s]` = first word of section `s` or later; one extra entry = [length].
   final Int32List _sectionFirstWord;
   final Int32List _sentenceStarts;
+
+  /// `[s]` = the whole chapter section `s` is part of (an index in the
+  /// book as stored, before `splitLongSections`).
+  final Int32List _chapterOf;
 
   int get length => _starts.length;
   bool get isEmpty => length == 0;
@@ -77,6 +82,20 @@ final class BookTokens {
   int firstWordOfSection(int sectionIndex) =>
       _sectionFirstWord[sectionIndex.clamp(0, _sectionFirstWord.length - 1)];
 
+  /// Number of the chapter section [sectionIndex] belongs to, from 1: the
+  /// parts of a long chapter share it.
+  int chapterNumberOf(int sectionIndex) =>
+      _chapterOf[sectionIndex.clamp(0, _chapterOf.length - 1)] + 1;
+
+  /// First word of the whole chapter [sectionIndex] is part of.
+  int firstWordOfChapter(int sectionIndex) {
+    var s = sectionIndex.clamp(0, content.sections.length - 1);
+    while (s > 0 && content.sections[s].continued) {
+      s--;
+    }
+    return firstWordOfSection(s);
+  }
+
   /// Start of the sentence that contains [wordIndex].
   int sentenceStartOf(int wordIndex) {
     var lo = 0;
@@ -111,19 +130,26 @@ final class BookTokens {
   }
 
   bool _endsBefore(int i, TextAnchor a) {
-    if (_sections[i] != a.sectionIndex) return _sections[i] < a.sectionIndex;
-    if (_blocks[i] != a.blockIndex) return _blocks[i] < a.blockIndex;
+    final section = _chapterOf[_sections[i]];
+    if (section != a.sectionIndex) return section < a.sectionIndex;
+    final block = _blockInChapter(i);
+    if (block != a.blockIndex) return block < a.blockIndex;
     return _ends[i] <= a.charOffset;
   }
+
+  /// Block of word [i] in its whole chapter.
+  int _blockInChapter(int i) =>
+      content.sections[_sections[i]].firstBlock + _blocks[i];
 
   ReadingPosition positionOf(int wordIndex) {
     if (isEmpty) return ReadingPosition.start;
     final i = wordIndex.clamp(0, length - 1);
     return ReadingPosition(
       wordIndex: i,
+      // Against the whole chapter: anchors do not depend on its parts.
       anchor: TextAnchor(
-        sectionIndex: _sections[i],
-        blockIndex: _blocks[i],
+        sectionIndex: _chapterOf[_sections[i]],
+        blockIndex: _blockInChapter(i),
         charOffset: _wordStart(i),
       ),
     );
@@ -149,6 +175,16 @@ final class BookTokens {
         word++;
       }
       result[s] = word;
+    }
+    return result;
+  }
+
+  static Int32List _buildChapters(BookContent content) {
+    final result = Int32List(content.sections.length);
+    var chapter = -1;
+    for (final (s, section) in content.sections.indexed) {
+      if (!section.continued || chapter < 0) chapter++;
+      result[s] = chapter;
     }
     return result;
   }

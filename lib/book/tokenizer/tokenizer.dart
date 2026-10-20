@@ -6,6 +6,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/section_parts.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/chars.dart';
 import 'package:book_app/book/tokenizer/token.dart';
@@ -15,10 +16,13 @@ import 'package:book_app/book/tokenizer/token.dart';
 /// split into parts.
 const tokenizerVersion = 2;
 
-BookTokens tokenize(BookContent content) {
+/// Long chapters come out in parts (`splitLongSections`): the tokens'
+/// content is then not [content] itself.
+BookTokens tokenize(BookContent book) {
+  final content = splitLongSections(book);
   final out = _Builder();
   for (var s = 0; s < content.sections.length; s++) {
-    var sectionStart = true;
+    var sectionStart = !content.sections[s].continued;
     final blocks = content.sections[s].blocks;
     for (var b = 0; b < blocks.length; b++) {
       final block = blocks[b];
