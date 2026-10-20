@@ -1,6 +1,8 @@
+import 'package:book_app/speed/steps.dart';
 import 'package:book_app/speed/timing.dart';
 
-/// One word at a time (RSVP, ADR 0004). Time comes from outside: the screen
+/// One word or one phrase at a time (RSVP, ADR 0004; [Steps]). Time comes
+/// from outside: the screen
 /// feeds frame time into [advance] (a `Ticker`), tests feed a fake clock.
 /// Elapsed time accumulates across words, so the pace does not drift even
 /// when a word lasts only a few frames.
@@ -11,11 +13,26 @@ final class RsvpEngine {
     required this.timing,
     this.rampWords = 10,
     this.stopBefore,
+    Steps steps = const WordSteps(),
   }) : assert(wordCount > 0),
-       _word = startWord.clamp(0, wordCount - 1);
+       _steps = steps,
+       _word = steps.startOf(startWord.clamp(0, wordCount - 1));
 
   final int wordCount;
   WordTiming timing;
+
+  /// A phrase lasts as long as its words together, so the shown speed stays
+  /// the average one (ADR 0004, addendum for stage 10 п. 4).
+  Steps get steps => _steps;
+  Steps _steps;
+
+  /// Another way to split the words; goes on from the start of the step the
+  /// current word is in, shown in full.
+  set steps(Steps steps) {
+    _steps = steps;
+    _word = steps.startOf(_word);
+    _shown = Duration.zero;
+  }
 
   /// Gentle start: after [play] the speed grows from [rampFrom] of the set
   /// one to full over this many words (ADR 0004 п. 4); 0 turns it off.
@@ -23,7 +40,7 @@ final class RsvpEngine {
   static const rampFrom = 0.6;
 
   /// Words the engine pauses on by itself, before showing them: chapter
-  /// starts (ADR 0004 п. 8).
+  /// starts (ADR 0004 п. 8; a step never crosses them).
   final bool Function(int word)? stopBefore;
 
   int _word;
@@ -37,8 +54,11 @@ final class RsvpEngine {
   /// Words shown since the last [play], for the gentle start.
   int _sincePlay = 0;
 
-  /// The word on screen (`wordIndex`).
+  /// The (first) word on screen (`wordIndex`).
   int get wordIndex => _word;
+
+  /// The word after the step on screen.
+  int get unitEnd => _steps.endOf(_word).clamp(_word + 1, wordCount);
   bool get isPlaying => _playing;
 
   /// The last word has been shown for its full time.
@@ -59,10 +79,10 @@ final class RsvpEngine {
 
   void pause() => _playing = false;
 
-  /// Jumps to [word] (e.g. back by a sentence); it is shown in full, and a
-  /// playing engine starts gently again.
+  /// Jumps to the step of [word] (e.g. back by a sentence); it is shown in
+  /// full, and a playing engine starts gently again.
   void seek(int word) {
-    _word = word.clamp(0, wordCount - 1);
+    _word = _steps.startOf(word.clamp(0, wordCount - 1));
     _finished = false;
     _stopped = false;
     _shown = Duration.zero;
@@ -77,12 +97,13 @@ final class RsvpEngine {
     final before = _word;
     _shown += elapsed;
     while (_playing) {
-      final duration = _durationOf(_word);
+      final end = unitEnd;
+      final duration = _durationOf(_word, end);
       if (_shown < duration) break;
       _shown -= duration;
-      if (_word + 1 < wordCount) {
-        _word++;
-        _sincePlay++;
+      if (end < wordCount) {
+        _sincePlay += end - _word;
+        _word = end;
         if (stopBefore?.call(_word) ?? false) {
           _playing = false;
           _stopped = true;
@@ -95,10 +116,18 @@ final class RsvpEngine {
     return _word != before;
   }
 
-  Duration _durationOf(int word) {
-    final duration = timing.durationOf(word);
-    if (_sincePlay >= rampWords) return duration;
-    final speed = rampFrom + (1 - rampFrom) * _sincePlay / rampWords;
-    return duration * (1 / speed);
+  /// Time of words [start]..[end]; each word of the gentle start is slower.
+  Duration _durationOf(int start, int end) {
+    var total = Duration.zero;
+    for (var word = start; word < end; word++) {
+      final duration = timing.durationOf(word);
+      final shown = _sincePlay + word - start;
+      if (shown >= rampWords) {
+        total += duration;
+      } else {
+        total += duration * (1 / (rampFrom + (1 - rampFrom) * shown / rampWords));
+      }
+    }
+    return total;
   }
 }

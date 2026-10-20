@@ -3,12 +3,13 @@ import 'dart:typed_data';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/chars.dart';
 import 'package:book_app/book/tokenizer/token.dart';
+import 'package:book_app/speed/steps.dart';
 
 /// Splits the words into phrases of 2–3 for the phrase mode (ADR 0004,
 /// addendum for stage 10 п. 3). Greedy, one section at a time, when first
 /// asked; a phrase never crosses a sentence, a clause, a dash, a paragraph
 /// or a section, so a sentence always starts a phrase.
-final class PhraseSteps {
+final class PhraseSteps implements Steps {
   PhraseSteps(this.tokens, {this.maxChars = defaultMaxChars})
     : assert(maxChars > 0);
 
@@ -27,13 +28,13 @@ final class PhraseSteps {
   /// Section → first words of its phrases.
   final Map<int, Int32List> _sections = {};
 
-  /// The first word of the phrase [word] is in.
+  @override
   int startOf(int word) {
     final starts = _startsOf(tokens.sectionOf(word));
     return starts[_indexIn(starts, word)];
   }
 
-  /// The word after the phrase [word] is in.
+  @override
   int endOf(int word) {
     final section = tokens.sectionOf(word);
     final starts = _startsOf(section);

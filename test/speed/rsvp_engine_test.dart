@@ -1,6 +1,11 @@
+import 'package:book_app/book/tokenizer/tokenizer.dart';
+import 'package:book_app/speed/phrases.dart';
 import 'package:book_app/speed/rsvp_engine.dart';
+import 'package:book_app/speed/steps.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../layout/sample_book.dart';
 
 /// Frame times like a `Ticker` gives: [frame] apart, fed to the engine.
 final class FakeClock {
@@ -20,6 +25,19 @@ final class FakeClock {
     }
     return shown;
   }
+}
+
+/// Steps of [size] words: 0–2, 3–5, …
+final class Groups implements Steps {
+  const Groups(this.size);
+
+  final int size;
+
+  @override
+  int startOf(int word) => word - word % size;
+
+  @override
+  int endOf(int word) => startOf(word) + size;
 }
 
 void main() {
@@ -185,5 +203,109 @@ void main() {
     e.play();
     expect(e.isStopped, isFalse);
     expect(clock.run(const Duration(milliseconds: 101)), [4, 5]);
+  });
+
+  group('phrases', () {
+    RsvpEngine phrases({int words = 10, int start = 0, int ramp = 0}) =>
+        RsvpEngine(
+          wordCount: words,
+          startWord: start,
+          timing: const ConstantPace(600),
+          rampWords: ramp,
+          steps: const Groups(3),
+        );
+
+    test('a phrase lasts as long as its words together', () {
+      final e = phrases()..play();
+      expect(e.unitEnd, 3);
+      final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+      expect(clock.run(const Duration(milliseconds: 299)), [0]);
+      expect(clock.run(const Duration(milliseconds: 2)), [0, 3]);
+      expect(e.unitEnd, 6);
+    });
+
+    test('start and seek go to the start of the phrase', () {
+      expect(phrases(start: 4).wordIndex, 3);
+      final e = phrases()..seek(8);
+      expect(e.wordIndex, 6);
+      e.seek(99);
+      expect(e.wordIndex, 9);
+      expect(e.unitEnd, 10, reason: 'the last phrase ends with the book');
+    });
+
+    test('the last phrase is shown, then the end', () {
+      final e = phrases()..play();
+      final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+      expect(clock.run(const Duration(seconds: 1)), [0, 3, 6, 9]);
+      expect(e.isFinished, isTrue);
+    });
+
+    test('gentle start takes as long as for single words', () {
+      Duration rampTime(Steps steps) {
+        final e = RsvpEngine(
+          wordCount: 30,
+          startWord: 0,
+          timing: const ConstantPace(600),
+          steps: steps,
+        )..play();
+        final clock = FakeClock(e, frame: const Duration(microseconds: 100));
+        while (e.wordIndex < 12) {
+          clock.run(const Duration(microseconds: 100));
+        }
+        return clock.now;
+      }
+
+      final words = rampTime(const WordSteps());
+      final groups = rampTime(const Groups(3));
+      expect(
+        (groups - words).inMicroseconds.abs(),
+        lessThan(200),
+        reason: '$words vs $groups',
+      );
+    });
+
+    test('pauses before a chapter start; switching steps keeps the place', () {
+      final e = RsvpEngine(
+        wordCount: 12,
+        startWord: 0,
+        timing: const ConstantPace(600),
+        rampWords: 0,
+        stopBefore: (word) => word == 6,
+        steps: const Groups(3),
+      )..play();
+      final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+      expect(clock.run(const Duration(seconds: 2)), [0, 3, 6]);
+      expect(e.isStopped, isTrue);
+
+      e
+        ..seek(7)
+        ..steps = const WordSteps();
+      expect(e.wordIndex, 6);
+      e.steps = const Groups(4);
+      expect(e.wordIndex, 4);
+    });
+
+    test('a chapter in phrases lasts words / wpm minutes', () {
+      final tokens = tokenize(sampleBook(paragraphs: 60));
+      for (final wpm in [300, 700]) {
+        final e = RsvpEngine(
+          wordCount: tokens.length,
+          startWord: tokens.firstWordOfSection(1),
+          timing: SmartPace(tokens, wpm),
+          rampWords: 0,
+          stopBefore: (word) => word == tokens.firstWordOfSection(2),
+          steps: PhraseSteps(tokens),
+        )..play();
+        final clock = FakeClock(e, frame: const Duration(milliseconds: 1));
+        var shown = 0;
+        while (e.isPlaying) {
+          shown += clock.run(const Duration(milliseconds: 1)).length - 1;
+        }
+        final words = tokens.firstWordOfSection(2) - tokens.firstWordOfSection(1);
+        final expected = words * 60000 / wpm;
+        expect(clock.now.inMilliseconds, closeTo(expected, expected * 0.002 + 2));
+        expect(shown, lessThan(words * 0.7), reason: 'phrases, not words');
+      }
+    });
   });
 }
