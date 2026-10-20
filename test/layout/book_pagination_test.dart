@@ -2,6 +2,7 @@ import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/layout/book_pagination.dart';
 import 'package:book_app/layout/chapter_layout.dart';
+import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,5 +105,66 @@ void main() {
     expect(left, 1);
     expect(queue, isEmpty, reason: 'nothing more is scheduled');
     expect(pagination.isComplete, isFalse);
+  });
+
+  group('saved pages', () {
+    late List<ChapterPages> saved;
+
+    BookPagination resume(ChapterPages? cached) => BookPagination(
+      tokens: tokens,
+      style: style,
+      pageSize: size,
+      schedule: queue.add,
+      cached: cached,
+      save: saved.add,
+    );
+
+    setUp(() => saved = []);
+
+    test('a whole saved book is taken at once, without splitting', () {
+      final cached = [for (var s = 0; s < 5; s++) firstWordsOf(s)];
+      final pagination = resume(cached);
+      expect(pagination.isComplete, isTrue);
+      expect(queue, isEmpty);
+      expect(pagination.pageCount.value, cached.expand((c) => c).length);
+      pagination.dispose();
+      expect(saved, isEmpty, reason: 'nothing new');
+    });
+
+    test('a half-done split goes on and is saved when the book is done', () {
+      final pagination = resume([firstWordsOf(0), firstWordsOf(1)]..length = 5);
+      expect(pagination.pagesBefore(2).exact, isTrue);
+      expect(pagination.isComplete, isFalse);
+      runAll();
+      expect(saved, [
+        [for (var s = 0; s < 5; s++) firstWordsOf(s)],
+      ]);
+      pagination.dispose();
+      expect(saved, hasLength(1));
+    });
+
+    test('a saved chapter that differs is put right by the reader', () {
+      final right = [for (var s = 0; s < 5; s++) firstWordsOf(s)];
+      final wrong = [...right]..[2] = [right[2].first];
+      final pagination = resume(wrong);
+      final count = pagination.pageCount.value;
+      pagination.addChapter(2, right[2]);
+      expect(pagination.chapterPages(2), right[2]);
+      expect(pagination.pageCount.value, count + right[2].length - 1);
+      pagination.flush();
+      expect(saved, [right]);
+    });
+
+    test('a layout left at once is not saved', () {
+      final pagination = resume(null)..addChapter(0, firstWordsOf(0));
+      pagination.dispose();
+      expect(saved, isEmpty);
+    });
+
+    test('a saved split of another book is not used', () {
+      final pagination = resume([firstWordsOf(0)]);
+      expect(pagination.chapterPages(0), isNull);
+      pagination.dispose();
+    });
   });
 }

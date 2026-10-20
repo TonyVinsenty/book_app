@@ -80,7 +80,8 @@ void main() {
         closeStreamsSynchronously: true,
       ),
     );
-    repo = BookRepository(db, ContentStore(Directory('${temp.path}/books')));
+    final store = ContentStore(Directory('${temp.path}/books'));
+    repo = BookRepository(db, store);
     final content = sampleBook(paragraphs: 30);
     final source = File('${temp.path}/book.txt')..writeAsStringSync('книга');
     await tester.runAsync(() async {
@@ -97,6 +98,7 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
+          contentStoreProvider.overrideWithValue(store),
           bookRepositoryProvider.overrideWithValue(repo),
           incomingFilesProvider.overrideWithValue(incoming.stream),
         ],

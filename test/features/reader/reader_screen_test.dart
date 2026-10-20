@@ -33,6 +33,7 @@ void main() {
   // Each test opens its own in-memory database.
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   late Directory temp;
+  late ContentStore store;
   late BookRepository repo;
   late int bookId;
   late AppDatabase db;
@@ -72,7 +73,8 @@ void main() {
         closeStreamsSynchronously: true,
       ),
     );
-    repo = BookRepository(db, ContentStore(Directory('${temp.path}/books')));
+    store = ContentStore(Directory('${temp.path}/books'));
+    repo = BookRepository(db, store);
     final content = sampleBook(paragraphs: 30);
     final source = File('${temp.path}/book.txt')..writeAsStringSync('книга');
     await tester.runAsync(() async {
@@ -91,6 +93,7 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
+          contentStoreProvider.overrideWithValue(store),
           bookRepositoryProvider.overrideWithValue(repo),
           keepScreenOnProvider.overrideWithValue((on) async {
             keepScreenOn.add(on);
@@ -180,6 +183,12 @@ void main() {
     await openBook(tester);
     final page = reader(tester).page;
     expect(page.firstWord, saved, reason: 'opens where reading stopped');
+    expect(
+      reader(tester).pagination.isComplete,
+      isTrue,
+      reason: 'the page count is saved with the book',
+    );
+    expect(store.pagesDir(bookId).listSync(), hasLength(1));
     await closeApp(tester);
   });
 

@@ -13,6 +13,7 @@ import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/book_pagination.dart';
 import 'package:book_app/layout/chapter_layout.dart';
+import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
@@ -94,8 +95,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
   Size? _pageSize;
   PageStyle? _style;
 
-  /// Pages of the whole book for this page size and layout.
+  /// Pages of the whole book for this page size and layout, and their
+  /// saved copies.
   BookPagination? _pagination;
+  late final PageCache _pageCache = PageCache(
+    ref.read(contentStoreProvider).pagesDir(widget.opened.book.id),
+  );
+
+  /// Saves the pages when the app goes to the background (it may be closed
+  /// there without [dispose]).
+  late final AppLifecycleListener _lifecycle;
 
   /// The word whose line goes where speed reading showed it, on the next
   /// build (it knows the screen size then).
@@ -166,6 +175,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_keepScreenOn(true));
     _showStatusBar = ref.read(showStatusBarProvider);
     unawaited(_showStatusBar(false));
+    _lifecycle = AppLifecycleListener(onHide: () => _pagination?.flush());
   }
 
   @override
@@ -173,6 +183,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_keepScreenOn(false));
     unawaited(_showStatusBar(true));
     _lit.dispose();
+    _lifecycle.dispose();
     _clearLayouts();
     _pagination?.dispose();
     super.dispose();
@@ -213,10 +224,22 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _clearLayouts();
     if (pageSize != _pageSize || !(_style?.sameLayoutAs(style) ?? false)) {
       _pagination?.dispose();
-      _pagination = BookPagination(
-        tokens: widget.opened.tokens,
+      final tokens = widget.opened.tokens;
+      final key = layoutKeyOf(
         style: style,
         pageSize: pageSize,
+        parserVersion: widget.opened.book.parserVersion,
+      );
+      _pagination = BookPagination(
+        tokens: tokens,
+        style: style,
+        pageSize: pageSize,
+        cached: _pageCache.load(
+          key,
+          sections: tokens.content.sections.length,
+          words: tokens.length,
+        ),
+        save: (chapters) => _pageCache.save(key, chapters),
       )..addListener(_onPagination);
     }
     _pageSize = pageSize;

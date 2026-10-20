@@ -7,8 +7,9 @@ import 'package:book_app/book/model/book_cover.dart';
 
 /// Files of the books on disk (ADR 0002): `<root>/<bookId>/` holds
 /// `source.<ext>` (a copy of the imported file, for reparsing),
-/// `content.v<N>.json.gz` (the parsed model, N = parser version) and
-/// `cover.<ext>` (the cover picture as it was in the book).
+/// `content.v<N>.json.gz` (the parsed model, N = parser version),
+/// `cover.<ext>` (the cover picture as it was in the book) and `pages/`
+/// (saved page splits, ADR 0003 addendum 2 п. 7).
 final class ContentStore {
   ContentStore(this.root);
 
@@ -28,6 +29,9 @@ final class ContentStore {
     await bookDir(bookId).create(recursive: true);
     return _replace(sourceFile(bookId, format), (tmp) => from.copy(tmp.path));
   }
+
+  Directory pagesDir(int bookId) =>
+      Directory(_join(bookDir(bookId).path, 'pages'));
 
   File coverFile(int bookId, String name) =>
       File(_join(bookDir(bookId).path, name));

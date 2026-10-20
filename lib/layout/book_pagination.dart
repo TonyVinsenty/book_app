@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/layout/chapter_layout.dart';
+import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
@@ -19,6 +20,10 @@ typedef PageNumber = ({int value, bool exact});
 /// chapters are split one after another in short portions while the main
 /// isolate is idle; chapters not split yet are estimated by their length.
 /// Listeners hear of progress now and then and when the book is done.
+///
+/// A split saved before ([cached], п. 7–8) is taken as is and only the
+/// chapters missing from it are split; new results go to [save] now and
+/// then, when the book is done and on [dispose].
 class BookPagination extends ChangeNotifier {
   BookPagination({
     required this._tokens,
@@ -26,6 +31,8 @@ class BookPagination extends ChangeNotifier {
     required this._pageSize,
     this._schedule,
     this.budget = const Duration(milliseconds: 6),
+    ChapterPages? cached,
+    this._save,
   }) : _chars = [
          for (final section in _tokens.content.sections)
            section.blocks.fold(
@@ -35,8 +42,16 @@ class BookPagination extends ChangeNotifier {
        ] {
     _firstWords = List.filled(_chars.length, null);
     _left = _chars.length;
-    if (_left > 0) _scheduleNext();
+    if (cached != null) _restore(cached);
+    if (!isComplete) _scheduleNext();
   }
+
+  /// Saves at most this often while the book is being split.
+  static const saveEvery = Duration(seconds: 5);
+
+  /// A layout left sooner (A+ A+ A+) is not saved unless it is done, so
+  /// passing sizes do not push the useful splits out of the cache.
+  static const keepAfter = Duration(seconds: 2);
 
   final BookTokens _tokens;
   final PageStyle _style;
@@ -64,18 +79,39 @@ class BookPagination extends ChangeNotifier {
   final _sinceNotified = Stopwatch()..start();
   final _total = Stopwatch()..start();
 
+  final void Function(ChapterPages chapters)? _save;
+  final _sinceSaved = Stopwatch()..start();
+
+  /// Chapters split (or corrected) since the last save.
+  bool _unsaved = false;
+
   bool get isComplete => _left == 0;
 
   /// First words of the pages of [section], or null if not split yet.
   List<int>? chapterPages(int section) => _firstWords[section];
 
   /// A chapter the reader has laid out anyway (normal split, this layout):
-  /// it is not split again. Listeners are not told (the reader may be
-  /// building).
+  /// it is not split again, and a saved split that differs is replaced
+  /// (п. 8). Listeners are not told (the reader may be building).
   void addChapter(int section, List<int> pageFirstWords) {
-    if (_firstWords[section] != null) return;
-    _done(section, pageFirstWords);
-    if (_current?.sectionIndex == section) _current = null;
+    final known = _firstWords[section];
+    if (known == null) {
+      _done(section, pageFirstWords);
+      if (_current?.sectionIndex == section) _current = null;
+    } else if (!listEquals(known, pageFirstWords)) {
+      _splitPages += pageFirstWords.length - known.length;
+      _firstWords[section] = pageFirstWords;
+      _unsaved = true;
+    }
+  }
+
+  void _restore(ChapterPages cached) {
+    if (cached.length != _chars.length) return;
+    for (var s = 0; s < cached.length; s++) {
+      if (cached[s] case final pages?) _done(s, pages);
+    }
+    // Nothing new to save yet.
+    _unsaved = false;
   }
 
   /// Pages in the book.
@@ -118,6 +154,7 @@ class BookPagination extends ChangeNotifier {
     _left--;
     _splitChars += _chars[section];
     _splitPages += pageFirstWords.length;
+    _unsaved = true;
   }
 
   void _work() {
@@ -139,7 +176,17 @@ class BookPagination extends ChangeNotifier {
       );
     }
     _notify(force: isComplete);
+    if (isComplete || _sinceSaved.elapsed >= saveEvery) flush();
     if (!isComplete) _scheduleNext();
+  }
+
+  /// Saves the chapters split so far, if any are new.
+  void flush() {
+    final save = _save;
+    if (save == null || !_unsaved) return;
+    _unsaved = false;
+    _sinceSaved.reset();
+    save(List.unmodifiable(_firstWords));
   }
 
   void _scheduleNext() {
@@ -185,9 +232,11 @@ class BookPagination extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Stops the work; a portion already scheduled does nothing.
+  /// Saves (unless left at once) and stops the work; a portion already
+  /// scheduled does nothing.
   @override
   void dispose() {
+    if (isComplete || _total.elapsed >= keepAfter) flush();
     _disposed = true;
     _timer?.cancel();
     super.dispose();
