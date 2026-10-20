@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:book_app/app/theme/app_fonts.dart';
+import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:flutter/foundation.dart';
@@ -38,6 +39,7 @@ final class ReadingSettings {
     this.align = BookAlign.left,
     this.palette = ReadingPalette.paper,
     this.night = NightMode.system,
+    this.texture = PageTexture.none,
   });
 
   /// Reads the stored values ([keys] → text), see [toStored].
@@ -57,6 +59,7 @@ final class ReadingSettings {
       align: byName(BookAlign.values, _align) ?? BookAlign.left,
       palette: byName(ReadingPalette.values, _palette) ?? ReadingPalette.paper,
       night: byName(NightMode.values, _night) ?? NightMode.system,
+      texture: byName(PageTexture.values, _texture) ?? PageTexture.none,
     );
   }
 
@@ -67,6 +70,7 @@ final class ReadingSettings {
   static const _align = 'reading.align';
   static const _palette = 'reading.palette';
   static const _night = 'reading.night';
+  static const _texture = 'reading.texture';
 
   /// Prefix of all the keys.
   static const keyPrefix = 'reading.';
@@ -94,6 +98,9 @@ final class ReadingSettings {
   final BookAlign align;
   final ReadingPalette palette;
   final NightMode night;
+
+  /// Drawn over the page color; does not change the layout.
+  final PageTexture texture;
 
   /// The size to lay out with: the chosen one, or the default scaled like
   /// the system text and put on the nearest step.
@@ -130,6 +137,7 @@ final class ReadingSettings {
     BookAlign? align,
     ReadingPalette? palette,
     NightMode? night,
+    PageTexture? texture,
   }) => ReadingSettings(
     font: font ?? this.font,
     fontSize: fontSize ?? this.fontSize,
@@ -138,6 +146,7 @@ final class ReadingSettings {
     align: align ?? this.align,
     palette: palette ?? this.palette,
     night: night ?? this.night,
+    texture: texture ?? this.texture,
   );
 
   /// Key → text for the settings table; an unset size is left out.
@@ -149,6 +158,7 @@ final class ReadingSettings {
     _align: align.name,
     _palette: palette.name,
     _night: night.name,
+    _texture: texture.name,
   };
 
   @override
@@ -160,11 +170,20 @@ final class ReadingSettings {
       other.margins == margins &&
       other.align == align &&
       other.palette == palette &&
-      other.night == night;
+      other.night == night &&
+      other.texture == texture;
 
   @override
-  int get hashCode =>
-      Object.hash(font, fontSize, lineHeight, margins, align, palette, night);
+  int get hashCode => Object.hash(
+    font,
+    fontSize,
+    lineHeight,
+    margins,
+    align,
+    palette,
+    night,
+    texture,
+  );
 }
 
 /// Current reading settings; [ReadingSettingsNotifier.set] shows a change

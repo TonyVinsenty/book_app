@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
@@ -274,137 +275,141 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
       },
       child: Scaffold(
         backgroundColor: colors.background,
-        body: SafeArea(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggle,
-            onHorizontalDragEnd: _onHorizontalSwipe,
-            onVerticalDragEnd: _onVerticalSwipe,
-            child: Stack(
-              children: [
-                if (_engine.isStopped)
-                  Positioned.fill(child: _chapterStart(context))
-                else
+        body: TexturedPage(
+          child: SafeArea(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _toggle,
+              onHorizontalDragEnd: _onHorizontalSwipe,
+              onVerticalDragEnd: _onVerticalSwipe,
+              child: Stack(
+                children: [
+                  if (_engine.isStopped)
+                    Positioned.fill(child: _chapterStart(context))
+                  else
+                    Positioned.fill(
+                      child: Semantics(
+                        label: token.text,
+                        child: CustomPaint(
+                          painter: RsvpWordPainter(
+                            text: token.text,
+                            orp: token.orp,
+                            style: TextStyle(
+                              fontFamily: BookFont.literata.family,
+                              fontSize: _wordSize,
+                              color: colors.text,
+                            ),
+                            textScaler: MediaQuery.textScalerOf(context),
+                            orpColor: colors.orp,
+                            markColor: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned.fill(
-                    child: Semantics(
-                      label: token.text,
-                      child: CustomPaint(
-                        painter: RsvpWordPainter(
-                          text: token.text,
-                          orp: token.orp,
-                          style: TextStyle(
-                            fontFamily: BookFont.literata.family,
-                            fontSize: _wordSize,
-                            color: colors.text,
-                          ),
-                          textScaler: MediaQuery.textScalerOf(context),
-                          orpColor: colors.orp,
-                          markColor: colors.textSecondary,
+                    // The word itself is announced by the painter above.
+                    child: IgnorePointer(
+                      child: ExcludeSemantics(
+                        child: AnimatedOpacity(
+                          opacity: showText ? 1 : 0,
+                          duration: showText
+                              ? const Duration(milliseconds: 300)
+                              : Duration.zero,
+                          child: showText
+                              ? LayoutBuilder(builder: _pauseText)
+                              : const SizedBox(),
                         ),
                       ),
                     ),
                   ),
-                Positioned.fill(
-                  // The word itself is announced by the painter above.
-                  child: IgnorePointer(
-                    child: ExcludeSemantics(
-                      child: AnimatedOpacity(
-                        opacity: showText ? 1 : 0,
-                        duration: showText
-                            ? const Duration(milliseconds: 300)
-                            : Duration.zero,
-                        child: showText
-                            ? LayoutBuilder(builder: _pauseText)
-                            : const SizedBox(),
+                  if (!paused && _speedHint)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 24,
+                      child: Text(
+                        l10n.speedWordsPerMinute(_wpm),
+                        style: secondary,
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  ),
-                ),
-                if (!paused && _speedHint)
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 24,
-                    child: Text(
-                      l10n.speedWordsPerMinute(_wpm),
-                      style: secondary,
-                      textAlign: TextAlign.center,
+                  if (paused) ...[
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: l10n.speedExit,
+                        onPressed: _exit,
+                      ),
                     ),
-                  ),
-                if (paused) ...[
-                  Positioned(
-                    top: 4,
-                    left: 4,
-                    child: IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: l10n.speedExit,
-                      onPressed: _exit,
-                    ),
-                  ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 24,
-                    child: Column(
-                      children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.undo),
-                          label: Text(l10n.speedBackSentence),
-                          onPressed: _engine.wordIndex > 0 ? _back : null,
-                        ),
-                        const SizedBox(height: 8),
-                        if (_engine.isFinished) ...[
-                          Text(
-                            l10n.speedBookEnd,
-                            style: Theme.of(context).textTheme.titleMedium,
-                            textAlign: TextAlign.center,
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 24,
+                      child: Column(
+                        children: [
+                          TextButton.icon(
+                            icon: const Icon(Icons.undo),
+                            label: Text(l10n.speedBackSentence),
+                            onPressed: _engine.wordIndex > 0 ? _back : null,
                           ),
-                          const SizedBox(height: 12),
-                          FilledButton(
-                            onPressed: _exit,
-                            child: Text(l10n.speedBackToText),
-                          ),
-                        ] else if (!_engine.isStopped)
-                          Text(
-                            _started
-                                ? l10n.speedTapToContinue
-                                : l10n.speedTapToStart,
-                            style: secondary,
-                            textAlign: TextAlign.center,
-                          ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton.outlined(
-                              icon: const Icon(Icons.remove),
-                              tooltip: l10n.speedSlower,
-                              onPressed: _wpm > SpeedLimits.min
-                                  ? () => _changeSpeed(-SpeedLimits.step)
-                                  : null,
+                          const SizedBox(height: 8),
+                          if (_engine.isFinished) ...[
+                            Text(
+                              l10n.speedBookEnd,
+                              style: Theme.of(context).textTheme.titleMedium,
+                              textAlign: TextAlign.center,
                             ),
-                            SizedBox(
-                              width: 120,
-                              child: Text(
-                                l10n.speedWordsPerMinute(_wpm),
-                                style: Theme.of(context).textTheme.titleMedium,
-                                textAlign: TextAlign.center,
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: _exit,
+                              child: Text(l10n.speedBackToText),
+                            ),
+                          ] else if (!_engine.isStopped)
+                            Text(
+                              _started
+                                  ? l10n.speedTapToContinue
+                                  : l10n.speedTapToStart,
+                              style: secondary,
+                              textAlign: TextAlign.center,
+                            ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton.outlined(
+                                icon: const Icon(Icons.remove),
+                                tooltip: l10n.speedSlower,
+                                onPressed: _wpm > SpeedLimits.min
+                                    ? () => _changeSpeed(-SpeedLimits.step)
+                                    : null,
                               ),
-                            ),
-                            IconButton.outlined(
-                              icon: const Icon(Icons.add),
-                              tooltip: l10n.speedFaster,
-                              onPressed: _wpm < SpeedLimits.max
-                                  ? () => _changeSpeed(SpeedLimits.step)
-                                  : null,
-                            ),
-                          ],
-                        ),
-                      ],
+                              SizedBox(
+                                width: 120,
+                                child: Text(
+                                  l10n.speedWordsPerMinute(_wpm),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              IconButton.outlined(
+                                icon: const Icon(Icons.add),
+                                tooltip: l10n.speedFaster,
+                                onPressed: _wpm < SpeedLimits.max
+                                    ? () => _changeSpeed(SpeedLimits.step)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:book_app/app/theme/app_fonts.dart';
+import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
@@ -22,6 +23,7 @@ void main() {
       align: BookAlign.justify,
       palette: ReadingPalette.mist,
       night: NightMode.night,
+      texture: PageTexture.twill,
     );
     expect(ReadingSettings.fromStored(settings.toStored()), settings);
     expect(ReadingSettings.fromStored(defaults.toStored()), defaults);
@@ -39,6 +41,7 @@ void main() {
         'reading.align': 'center',
         'reading.palette': 'neon',
         'reading.night': 'NIGHT',
+        'reading.texture': 'velvet',
       }),
       defaults,
     );

@@ -1,5 +1,6 @@
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -174,8 +175,17 @@ class ReadingSettingsPanel extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     for (final palette in ReadingPalette.values)
-                      _PaletteSwatch(
-                        colors: palette.colors(night: night),
+                      _Swatch(
+                        decoration: BoxDecoration(
+                          color: palette.colors(night: night).background,
+                          shape: BoxShape.circle,
+                        ),
+                        content: Text(
+                          'Аа',
+                          style: TextStyle(
+                            color: palette.colors(night: night).text,
+                          ),
+                        ),
                         label: switch (palette) {
                           ReadingPalette.paper => l10n.palettePaper,
                           ReadingPalette.sage => l10n.paletteSage,
@@ -185,6 +195,32 @@ class ReadingSettingsPanel extends ConsumerWidget {
                         selected: settings.palette == palette,
                         onTap: () =>
                             notifier.set(settings.copyWith(palette: palette)),
+                      ),
+                  ],
+                ),
+              ),
+              section(
+                l10n.settingsTexture,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    for (final texture in PageTexture.values)
+                      _Swatch(
+                        decoration: BoxDecoration(
+                          color: colors.background,
+                          image: texture.decoration(night: night),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        label: switch (texture) {
+                          PageTexture.none => l10n.textureNone,
+                          PageTexture.paper => l10n.texturePaper,
+                          PageTexture.twill => l10n.textureTwill,
+                          PageTexture.scales => l10n.textureScales,
+                          PageTexture.mattress => l10n.textureMattress,
+                        },
+                        selected: settings.texture == texture,
+                        onTap: () =>
+                            notifier.set(settings.copyWith(texture: texture)),
                       ),
                   ],
                 ),
@@ -210,16 +246,20 @@ class ReadingSettingsPanel extends ConsumerWidget {
   }
 }
 
-/// A circle of the palette's page color with «Аа» in its text color.
-class _PaletteSwatch extends StatelessWidget {
-  const _PaletteSwatch({
-    required this.colors,
+/// A sample of a page look (a palette's circle with «Аа», a texture's
+/// square) with its name under it.
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    required this.decoration,
+    this.content,
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final ReadingColors colors;
+  /// The sample; its border shows the selection.
+  final BoxDecoration decoration;
+  final Widget? content;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -243,15 +283,13 @@ class _PaletteSwatch extends StatelessWidget {
                 width: 44,
                 height: 44,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: colors.background,
-                  shape: BoxShape.circle,
+                decoration: decoration.copyWith(
                   border: Border.all(
                     color: selected ? current.accent : current.textSecondary,
                     width: selected ? 3 : 1,
                   ),
                 ),
-                child: Text('Аа', style: TextStyle(color: colors.text)),
+                child: content,
               ),
               const SizedBox(height: 4),
               Text(

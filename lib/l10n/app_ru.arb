@@ -223,6 +223,18 @@
   "@nightDay": {"description": "Always the day colors"},
   "nightNight": "Ночь",
   "@nightNight": {"description": "Always the night colors"},
+  "settingsTexture": "Текстура",
+  "@settingsTexture": {"description": "Reading settings: pattern over the page color"},
+  "textureNone": "Нет",
+  "@textureNone": {"description": "Page texture: plain page color"},
+  "texturePaper": "Бумага",
+  "@texturePaper": {"description": "Page texture: paper grain"},
+  "textureTwill": "Твил",
+  "@textureTwill": {"description": "Page texture: diagonal woven cloth"},
+  "textureScales": "Чешуя",
+  "@textureScales": {"description": "Page texture: fish scales"},
+  "textureMattress": "Матрас",
+  "@textureMattress": {"description": "Page texture: quilted diamonds"},
   "speedExit": "Выйти из скорочтения",
   "@speedExit": {
     "description": "Button that closes speed reading and returns to the page"

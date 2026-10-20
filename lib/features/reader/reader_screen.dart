@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
@@ -47,26 +48,28 @@ class ReaderScreen extends ConsumerWidget {
     final opened = ref.watch(openedBookProvider(bookId));
     return Scaffold(
       backgroundColor: context.readingColors.background,
-      body: switch (opened) {
-        AsyncData(:final value) => ReaderView(opened: value),
-        AsyncError() => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.readerOpenFailed, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.readerBackToLibrary),
-                ),
-              ],
+      body: TexturedPage(
+        child: switch (opened) {
+          AsyncData(:final value) => ReaderView(opened: value),
+          AsyncError() => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.readerOpenFailed, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.readerBackToLibrary),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ),
     );
   }
 }

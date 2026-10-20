@@ -34,6 +34,8 @@ flutter:
 
   assets:
     - assets/fonts/licenses/
+    # Page textures drawn by tool/textures/build_textures.py.
+    - assets/textures/
 
   # Static, subset fonts built by tool/fonts/build_fonts.py (OFL, see
   # assets/fonts/licenses/). Book fonts: regular, italic, bold, bold italic.
