@@ -120,6 +120,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The book has been read on here ([_readOn]).
   bool _readingOn = false;
 
+  /// The last [_saveLastLayout] write: the next one waits for it.
+  Future<void> _layoutSaved = Future.value();
+
   /// The book page (from 1) the slider is being dragged to.
   double? _dragPage;
 
@@ -265,7 +268,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _onPagination() {
     final pagination = _pagination!;
     if (pagination.isComplete) {
-      unawaited(_saveLastLayout(pagination, _pageSize!, _style!));
+      final (pageSize, style) = (_pageSize!, _style!);
+      _layoutSaved = _layoutSaved.then(
+        (_) => _saveLastLayout(pagination, pageSize, style),
+      );
+      unawaited(_layoutSaved);
     }
     if (mounted) setState(() {});
   }
@@ -304,9 +311,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   void _next() {
     final sections = widget.opened.tokens.content.sections.length;
-    if (_page + 1 < layout.pages.length) return _show(_section, _page + 1);
+    if (_page + 1 < layout.pages.length) {
+      return _show(_section, _page + 1, turned: true);
+    }
     for (var s = _section + 1; s < sections; s++) {
-      if (_layoutOf(s).pages.isNotEmpty) return _show(s, 0);
+      if (_layoutOf(s).pages.isNotEmpty) return _show(s, 0, turned: true);
     }
   }
 
@@ -318,7 +327,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
   }
 
-  void _show(int section, int pageIndex, {bool keepReturn = false}) {
+  /// [turned]: reached by turning the page forward, not by a jump.
+  void _show(
+    int section,
+    int pageIndex, {
+    bool keepReturn = false,
+    bool turned = false,
+  }) {
     final shown = _layoutOf(section).pages[pageIndex];
     _readOn();
     _leaveSection(section);
@@ -334,8 +349,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(
       books.savePosition(id, widget.opened.tokens.positionOf(shown.firstWord)),
     );
-    // The last word of the book is on screen: read (ADR 0005, addendum 2).
-    if (shown.endWord >= widget.opened.tokens.length) {
+    // The last word of the book is on screen after a page turn: read (ADR
+    // 0005, addendum 2). A slider or contents jump is only a look.
+    if (turned && shown.endWord >= widget.opened.tokens.length) {
       unawaited(books.markFinished(id));
     }
   }

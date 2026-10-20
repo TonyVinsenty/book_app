@@ -26,6 +26,15 @@ void openBookPage(BuildContext context, int bookId) => unawaited(
 /// A tap on a book (mockup v2 "Страница книги"): cover, status, pages for
 /// the current font, words, how far it is read; "Читать", the status,
 /// collections, deleting.
+/// The reader's saved split for the book page, read from disk once per
+/// look, not on every rebuild; again when the reader has split a book.
+final _cachedPagesProvider = Provider.autoDispose
+    .family<ChapterPages?, ({int bookId, String key, int words})>((ref, at) {
+      ref.watch(lastLayoutProvider);
+      return PageCache(ref.watch(contentStoreProvider).pagesDir(at.bookId))
+          .peek(at.key, words: at.words);
+    });
+
 class BookPageScreen extends ConsumerStatefulWidget {
   const BookPageScreen({super.key, required this.bookId});
 
@@ -177,19 +186,21 @@ class _BookPage extends ConsumerWidget {
           .deflateSize(MediaQuery.sizeOf(context)),
       side: settings.margins.side,
     );
-    final cache = PageCache(ref.watch(contentStoreProvider).pagesDir(book.id));
     return bookPagesOf(
       words: book.wordCount,
       positionWord: book.positionWord,
       style: style,
       pageSize: pageSize,
-      cached: cache.peek(
-        layoutKeyOf(
-          style: style,
-          pageSize: pageSize,
-          parserVersion: book.parserVersion,
-        ),
-        words: book.wordCount,
+      cached: ref.watch(
+        _cachedPagesProvider((
+          bookId: book.id,
+          key: layoutKeyOf(
+            style: style,
+            pageSize: pageSize,
+            parserVersion: book.parserVersion,
+          ),
+          words: book.wordCount,
+        )),
       ),
       last: last,
     );

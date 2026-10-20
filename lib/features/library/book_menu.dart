@@ -47,6 +47,8 @@ Future<void> chooseBookStatus(
   BookRow book,
 ) async {
   final l10n = AppLocalizations.of(context);
+  // Read now: the caller may be gone when the sheet closes.
+  final books = ref.read(bookRepositoryProvider);
   final current = statusOf(book);
   final options = [
     if (book.openedAt != null) BookStatus.reading,
@@ -94,7 +96,6 @@ Future<void> chooseBookStatus(
     ),
   );
   if (chosen == null || chosen == current) return;
-  final books = ref.read(bookRepositoryProvider);
   await switch (chosen) {
     // Takes off both "queued"/"abandoned" and the read mark.
     BookStatus.reading => books.setStatusMark(book.id, null),
@@ -196,10 +197,7 @@ class _BookCollections extends ConsumerWidget {
                   context,
                   title: l10n.collectionNew,
                   action: l10n.create,
-                  save: (name) async {
-                    final created = await repository.create(name);
-                    await repository.addBook(created.id, bookId);
-                  },
+                  save: (name) => repository.create(name, bookIds: {bookId}),
                 ),
               ),
             ),

@@ -894,6 +894,17 @@ void main() {
     await openBook(tester);
     final words = reader(tester).widget.opened.tokens.length;
 
+    // A slider jump to the end is only a look.
+    final pages = reader(tester).pagination.pageCount.value;
+    await tapAt(tester, 0.5);
+    tester.widget<Slider>(find.byType(Slider)).onChangeEnd!(pages.toDouble());
+    await tester.pumpAndSettle();
+    expect(reader(tester).page.endWord, words);
+    expect(await finishedAt(tester), isNull);
+    await tester.tap(find.textContaining('Вернуться'));
+    await tester.pumpAndSettle();
+    await tapAt(tester, 0.5);
+
     for (var i = 0; i < 200 && reader(tester).page.endWord < words; i++) {
       expect(await finishedAt(tester), isNull, reason: 'page $i');
       await tapAt(tester, 0.95);

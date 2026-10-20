@@ -63,15 +63,25 @@ class CollectionPickScreen extends ConsumerStatefulWidget {
 }
 
 class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
-  late final Set<int> _picked = {
-    ...widget.initial,
-    if (widget.collectionId case final id?)
-      for (final l
-          in ref.read(collectionLinksProvider).value ??
-              const <BookCollectionRow>[])
-        if (l.collectionId == id) l.bookId,
-  };
+  /// Filled once the collection's books are known: checking from an empty
+  /// set would take them out of it at "Готово".
+  Set<int>? _checked;
   var _saving = false;
+
+  Set<int> get _picked => _checked!;
+
+  Set<int>? _seed() {
+    final id = widget.collectionId;
+    if (id == null) return {...widget.initial};
+    final links = ref.watch(collectionLinksProvider).value;
+    return links == null
+        ? null
+        : {
+            ...widget.initial,
+            for (final l in links)
+              if (l.collectionId == id) l.bookId,
+          };
+  }
 
   void _toggle(int bookId) => setState(
     () =>
@@ -81,6 +91,21 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
   Future<void> _done(LibraryView view) async {
     if (_saving) return;
     setState(() => _saving = true);
+    try {
+      await _save(view);
+    } on Object {
+      if (!mounted) rethrow;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).collectionSaveFailed),
+        ),
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _save(LibraryView view) async {
     // A book may have been deleted meanwhile.
     final ids = {
       for (final b in view.books)
@@ -138,6 +163,7 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final view = ref.watch(collectionViewProvider(const LibraryFilter())).value;
+    _checked ??= _seed();
     final id = widget.collectionId;
     final name = id == null
         ? widget.name ?? l10n.collectionNew
@@ -145,7 +171,7 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: view == null || name == null
+        child: view == null || name == null || _checked == null
             ? const SizedBox.shrink()
             : Column(
                 children: [
@@ -172,7 +198,7 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
                 ],
               ),
       ),
-      bottomNavigationBar: view == null || name == null
+      bottomNavigationBar: view == null || name == null || _checked == null
           ? null
           : SafeArea(
               child: Padding(

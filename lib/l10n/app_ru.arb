@@ -539,6 +539,10 @@
   "@collectionPickHint": {"description": "Under the collection name while checking books for it", "placeholders": {"count": {"type": "int"}}},
   "collectionPickDone": "Готово ({count})",
   "@collectionPickDone": {"description": "Saves the checked books into the collection", "placeholders": {"count": {"type": "int"}}},
+  "collectionSaveFailed": "Не удалось сохранить подборку",
+  "@collectionSaveFailed": {
+    "description": "Snack bar: the collection checks could not be saved"
+  },
   "collectionCreated": "Подборка «{name}» создана",
   "@collectionCreated": {"description": "Message after a new collection is saved", "placeholders": {"name": {"type": "String"}}},
   "collectionAddBooks": "Добавить книги",

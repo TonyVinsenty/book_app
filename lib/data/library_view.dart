@@ -536,7 +536,7 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>(
 /// A collection screen: its books with [LibraryFilter.status] (chosen on
 /// that screen, not stored).
 final collectionViewProvider =
-    Provider.family<AsyncValue<LibraryView>, LibraryFilter>(
+    Provider.autoDispose.family<AsyncValue<LibraryView>, LibraryFilter>(
       (ref, filter) => _viewOf(ref, AsyncData(filter)),
     );
 
