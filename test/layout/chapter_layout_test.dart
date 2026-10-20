@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:ui' show Paragraph;
 
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/layout/chapter_layout.dart';
+import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +17,18 @@ const _sizes = [Size(320, 520), Size(200, 260), Size(700, 380)];
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  late Hyphenation hyphenation;
+
+  setUpAll(() async => hyphenation = await Hyphenation.load());
+
+  PageStyle hyphenated(PageStyle base) => PageStyle(
+    fontFamily: base.fontFamily,
+    fontSize: base.fontSize,
+    lineHeight: base.lineHeight,
+    color: base.color,
+    align: base.align,
+    hyphenation: hyphenation,
+  );
 
   PageStyle style({double fontSize = 18}) => PageStyle(
     fontFamily: 'Literata',
@@ -173,6 +187,7 @@ void main() {
   test('settings mixes split exactly', () {
     for (final mix in mixes) {
       expectBookSplits(sampleBook(), pageStyle: mix);
+      expectBookSplits(sampleBook(), pageStyle: hyphenated(mix));
     }
   });
 
@@ -199,6 +214,7 @@ void main() {
       with_(size: 19),
       with_(height: 1.6),
       with_(align: TextAlign.justify),
+      hyphenated(base),
     ]) {
       expect(other.sameLayoutAs(base), isFalse);
     }
@@ -407,6 +423,63 @@ void main() {
     }
   });
 
+  test('test books split exactly with hyphens', () {
+    final files = [
+      ...Directory('test/fixtures/fb2').listSync(),
+      ...Directory('test/fixtures/txt').listSync(),
+      File('test/fixtures/epub/epub3_ru.epub'),
+      File('test/fixtures/epub/epub2_gutenberg.epub'),
+    ].whereType<File>().where((f) => !f.path.endsWith('.json'));
+    for (final file in files) {
+      final name = file.uri.pathSegments.last;
+      expectBookSplits(
+        parseBook(file.readAsBytesSync(), fileName: name).content,
+        sizes: const [Size(200, 260), Size(320, 520)],
+        pageStyle: hyphenated(mixes.first),
+      );
+    }
+  });
+
+  test('a word broken at a line end: two boxes, one word, a drawn «-»', () {
+    const text =
+        'Сельскохозяйственный рыцарь подъезжал к замку, '
+        'перепрыгивая через препятствия и размахивая неимоверно '
+        'тяжёлым мечом.';
+    final tokens = tokenize(
+      const BookContent(
+        meta: BookMeta(title: 'Переносы', sourceFormat: SourceFormat.txt),
+        sections: [
+          Section(blocks: [ParagraphBlock(text: text)]),
+        ],
+      ),
+    );
+    const size = Size(500, 2000);
+    final plain = build(tokens, 0, size, style());
+    final layout = build(tokens, 0, size, hyphenated(style()));
+    expectExactSplit(tokens, layout);
+    expectWordsTouchable(layout);
+    final broken = [
+      for (var w = 0; w < tokens.length; w++)
+        if (layout.wordBoxes(0, w).length == 2) w,
+    ];
+    expect(broken, isNotEmpty, reason: 'some words break');
+    for (var w = 0; w < tokens.length; w++) {
+      expect(plain.wordBoxes(0, w), hasLength(1), reason: 'whole words');
+    }
+    expect(layout.pageText(0), text, reason: 'no hyphens in the text');
+
+    int paragraphsPainted(ChapterLayout l) {
+      final canvas = _CountingCanvas();
+      l.paintPage(canvas, 0);
+      return canvas.paragraphs;
+    }
+
+    expect(paragraphsPainted(plain), 1);
+    expect(paragraphsPainted(layout), 1 + broken.length, reason: 'a «-» each');
+    plain.dispose();
+    layout.dispose();
+  });
+
   // Big real books live outside the repository (ADR 0006): set
   // BOOKAPP_HARD_BOOKS to their folder to check them too.
   final hardBooks = Platform.environment['BOOKAPP_HARD_BOOKS'];
@@ -424,4 +497,15 @@ void main() {
     skip: hardBooks == null ? 'BOOKAPP_HARD_BOOKS is not set' : false,
     timeout: const Timeout(Duration(minutes: 5)),
   );
+}
+
+/// Counts the text painted on it; other calls do nothing.
+final class _CountingCanvas implements Canvas {
+  int paragraphs = 0;
+
+  @override
+  void drawParagraph(Paragraph paragraph, Offset offset) => paragraphs++;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

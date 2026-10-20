@@ -7,6 +7,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/db/open_app_database.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/layout/hyphenation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:path_provider/path_provider.dart';
@@ -62,3 +63,6 @@ Future<List<Override>> openStorageOverrides() async {
     contentStoreProvider.overrideWithValue(store),
   ];
 }
+
+/// Hyphenation patterns, loaded in `main()`; null (tests) — no hyphens.
+final hyphenationProvider = Provider<Hyphenation?>((ref) => null);

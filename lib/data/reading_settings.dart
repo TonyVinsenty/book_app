@@ -40,6 +40,7 @@ final class ReadingSettings {
     this.palette = ReadingPalette.paper,
     this.night = NightMode.system,
     this.texture = PageTexture.none,
+    this.hyphenate = true,
   });
 
   /// Reads the stored values ([keys] → text), see [toStored].
@@ -60,6 +61,7 @@ final class ReadingSettings {
       palette: byName(ReadingPalette.values, _palette) ?? ReadingPalette.paper,
       night: byName(NightMode.values, _night) ?? NightMode.system,
       texture: byName(PageTexture.values, _texture) ?? PageTexture.none,
+      hyphenate: stored[_hyphenate] != 'false',
     );
   }
 
@@ -71,6 +73,7 @@ final class ReadingSettings {
   static const _palette = 'reading.palette';
   static const _night = 'reading.night';
   static const _texture = 'reading.texture';
+  static const _hyphenate = 'reading.hyphenate';
 
   /// Prefix of all the keys.
   static const keyPrefix = 'reading.';
@@ -101,6 +104,9 @@ final class ReadingSettings {
 
   /// Drawn over the page color; does not change the layout.
   final PageTexture texture;
+
+  /// Words of paragraphs break at line ends with «-».
+  final bool hyphenate;
 
   /// The size to lay out with: the chosen one, or the default scaled like
   /// the system text and put on the nearest step.
@@ -138,6 +144,7 @@ final class ReadingSettings {
     ReadingPalette? palette,
     NightMode? night,
     PageTexture? texture,
+    bool? hyphenate,
   }) => ReadingSettings(
     font: font ?? this.font,
     fontSize: fontSize ?? this.fontSize,
@@ -147,6 +154,7 @@ final class ReadingSettings {
     palette: palette ?? this.palette,
     night: night ?? this.night,
     texture: texture ?? this.texture,
+    hyphenate: hyphenate ?? this.hyphenate,
   );
 
   /// Key → text for the settings table; an unset size is left out.
@@ -159,6 +167,7 @@ final class ReadingSettings {
     _palette: palette.name,
     _night: night.name,
     _texture: texture.name,
+    _hyphenate: '$hyphenate',
   };
 
   @override
@@ -171,7 +180,8 @@ final class ReadingSettings {
       other.align == align &&
       other.palette == palette &&
       other.night == night &&
-      other.texture == texture;
+      other.texture == texture &&
+      other.hyphenate == hyphenate;
 
   @override
   int get hashCode => Object.hash(
@@ -183,6 +193,7 @@ final class ReadingSettings {
     palette,
     night,
     texture,
+    hyphenate,
   );
 }
 

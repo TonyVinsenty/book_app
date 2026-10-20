@@ -483,6 +483,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         BookAlign.left => TextAlign.left,
         BookAlign.justify => TextAlign.justify,
       },
+      hyphenation: settings.hyphenate ? ref.watch(hyphenationProvider) : null,
     );
     final side = settings.margins.side;
     _margin = EdgeInsets.fromLTRB(side, 20, side, 0);

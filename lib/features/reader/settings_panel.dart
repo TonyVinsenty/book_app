@@ -170,6 +170,15 @@ class ReadingSettingsPanel extends ConsumerWidget {
                 ),
               ),
               section(
+                l10n.settingsHyphenation,
+                choices(
+                  const [false, true],
+                  settings.hyphenate,
+                  (on) => on ? l10n.hyphenationOn : l10n.hyphenationOff,
+                  (on) => settings.copyWith(hyphenate: on),
+                ),
+              ),
+              section(
                 l10n.settingsPalette,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,

@@ -24,6 +24,7 @@ void main() {
       palette: ReadingPalette.mist,
       night: NightMode.night,
       texture: PageTexture.twill,
+      hyphenate: false,
     );
     expect(ReadingSettings.fromStored(settings.toStored()), settings);
     expect(ReadingSettings.fromStored(defaults.toStored()), defaults);
@@ -42,6 +43,7 @@ void main() {
         'reading.palette': 'neon',
         'reading.night': 'NIGHT',
         'reading.texture': 'velvet',
+        'reading.hyphenate': 'maybe',
       }),
       defaults,
     );

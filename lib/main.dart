@@ -2,6 +2,7 @@ import 'package:book_app/app/app.dart';
 import 'package:book_app/app/font_licenses.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
-  final container = ProviderContainer(overrides: await openStorageOverrides());
+  final (storage, hyphenation) = await (
+    openStorageOverrides(),
+    Hyphenation.load(),
+  ).wait;
+  final container = ProviderContainer(
+    overrides: [...storage, hyphenationProvider.overrideWithValue(hyphenation)],
+  );
   // Listen before asking, so files that come meanwhile wait in the stream.
   container.read(incomingFilesProvider);
   final incoming = await container.read(hasInitialFilesProvider)();

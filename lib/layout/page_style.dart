@@ -1,4 +1,5 @@
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/layout/hyphenation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
@@ -13,6 +14,7 @@ final class PageStyle {
     required this.color,
     this.textScaler = TextScaler.noScaling,
     this.align = TextAlign.left,
+    this.hyphenation,
   });
 
   final String fontFamily;
@@ -25,6 +27,9 @@ final class PageStyle {
 
   /// Alignment of ordinary paragraphs: left or justify.
   final TextAlign align;
+
+  /// Breaks words of paragraphs at line ends; null — whole words only.
+  final Hyphenation? hyphenation;
 
   /// Height of one body line on the page.
   double get bodyLine => textScaler.scale(fontSize) * lineHeight;
@@ -69,13 +74,21 @@ final class PageStyle {
       other.fontSize == fontSize &&
       other.lineHeight == lineHeight &&
       other.textScaler == textScaler &&
-      other.align == align;
+      other.align == align &&
+      identical(other.hyphenation, hyphenation);
 
   @override
   bool operator ==(Object other) =>
       other is PageStyle && sameLayoutAs(other) && other.color == color;
 
   @override
-  int get hashCode =>
-      Object.hash(fontFamily, fontSize, lineHeight, color, textScaler, align);
+  int get hashCode => Object.hash(
+    fontFamily,
+    fontSize,
+    lineHeight,
+    color,
+    textScaler,
+    align,
+    hyphenation,
+  );
 }

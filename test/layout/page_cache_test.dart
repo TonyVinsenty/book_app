@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:flutter/painting.dart';
@@ -36,9 +37,7 @@ void main() {
   test('the key changes with every layout setting, not with the color', () {
     final key = keyOf(style);
     final others = {
-      keyOf(
-        const PageStyle(fontFamily: 'Lora', color: Color(0xFF000000)),
-      ),
+      keyOf(const PageStyle(fontFamily: 'Lora', color: Color(0xFF000000))),
       keyOf(
         const PageStyle(
           fontFamily: 'Literata',
@@ -63,8 +62,18 @@ void main() {
       keyOf(style, const Size(300, 520)),
       keyOf(style, const Size(320, 500)),
       keyOf(style, size, 2),
+      keyOf(
+        PageStyle(
+          fontFamily: 'Literata',
+          color: const Color(0xFF000000),
+          hyphenation: Hyphenation(
+            russian: Hyphenator.fromTex('', leftMin: 2, rightMin: 2),
+            english: Hyphenator.fromTex('', leftMin: 2, rightMin: 3),
+          ),
+        ),
+      ),
     };
-    expect(others, hasLength(7));
+    expect(others, hasLength(8));
     expect(others, isNot(contains(key)));
     expect(
       keyOf(const PageStyle(fontFamily: 'Literata', color: Color(0xFFFFFFFF))),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
+import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:flutter/painting.dart';
 
@@ -275,7 +276,9 @@ final class ChapterLayout {
         line++;
       }
       final caret = layout.painter.getPositionForOffset(local).offset;
-      final char = (caret - block.prefix).clamp(0, block.textLength);
+      final char = layout.hyphens
+          .toText(caret - block.prefix)
+          .clamp(0, block.textLength);
       // The caret is between letters: the word holding it or the one ending
       // right before it; take the nearer one on the touched line.
       final next = _tokens.indexAt(
@@ -342,8 +345,8 @@ final class ChapterLayout {
     return layout.painter
         .getBoxesForSelection(
           TextSelection(
-            baseOffset: token.charStart + prefix,
-            extentOffset: token.charEnd + prefix,
+            baseOffset: layout.hyphens.toPainter(token.charStart) + prefix,
+            extentOffset: layout.hyphens.toPainter(token.charEnd) + prefix,
           ),
         )
         .map((box) => box.toRect());
@@ -355,17 +358,27 @@ final class ChapterLayout {
       final block = layout.metrics;
       final top = block.tops[slice.firstLine];
       final height = block.tops[slice.endLine] - top;
+      final shift = Offset(block.dx, slice.top - top);
+      // Only lines of other pages are cut off: hyphens hang in the margin.
       canvas
         ..save()
-        ..clipRect(Rect.fromLTWH(0, slice.top, pageSize.width, height));
-      layout.painter.paint(canvas, Offset(block.dx, slice.top - top));
+        ..clipRect(
+          Rect.fromLTRB(
+            -pageSize.width,
+            slice.top,
+            pageSize.width * 2,
+            slice.top + height,
+          ),
+        );
+      layout.painter.paint(canvas, shift);
+      layout.paintHyphens(canvas, shift, slice.firstLine, slice.endLine);
       canvas.restore();
     }
   }
 
   void dispose() {
     for (final block in _blocks) {
-      block?.painter.dispose();
+      block?.dispose();
     }
   }
 
@@ -491,7 +504,7 @@ final class ChapterPaginator {
     while (_metrics.length < _source.length) {
       final b = _metrics.length;
       final layout = _BlockLayout.of(_source[b], _style, _width);
-      layout?.painter.dispose();
+      layout?.dispose();
       final block = layout?.metrics;
       _metrics.add(block);
       if (block != null) _splitter.add(b, block, 0, block.lineCount);
@@ -593,6 +606,7 @@ const _indent = '  ';
 final class _BlockLayout {
   _BlockLayout(
     this.painter, {
+    this.hyphens = _SoftHyphens.none,
     required int prefix,
     required int textLength,
     required double dx,
@@ -603,6 +617,7 @@ final class _BlockLayout {
     double keepWithNext = 0,
   }) : metrics = _BlockMetrics(
          painter,
+         hyphens: hyphens,
          prefix: prefix,
          textLength: textLength,
          dx: dx,
@@ -651,6 +666,14 @@ final class _BlockLayout {
           },
           indent: kind == ParagraphStyle.normal ? _indent : '',
           strut: kind == ParagraphStyle.normal ? style.bodyStrut : null,
+          // Not verses and centred lines.
+          hyphenate: switch (kind) {
+            ParagraphStyle.normal ||
+            ParagraphStyle.note ||
+            ParagraphStyle.quote ||
+            ParagraphStyle.epigraph => true,
+            ParagraphStyle.poem || ParagraphStyle.subtitle => false,
+          },
           spaceBefore: spaced ? line / 2 : 0,
           spaceAfter: spaced ? line / 2 : 0,
           style: style,
@@ -686,14 +709,19 @@ final class _BlockLayout {
     TextAlign align = TextAlign.left,
     String indent = '',
     StrutStyle? strut,
+    bool hyphenate = false,
     double spaceBefore = 0,
     double spaceAfter = 0,
     bool keepTogether = false,
     double keepWithNext = 0,
   }) {
     final lineWidth = math.max(width - inset, 1.0);
+    final hyphenation = hyphenate ? style.hyphenation : null;
+    final hyphens = hyphenation == null
+        ? _SoftHyphens.none
+        : _SoftHyphens.of(hyphenation.breaksOf(block.text));
     final painter = TextPainter(
-      text: _span(block, textStyle, indent),
+      text: _span(block, textStyle, indent, hyphens),
       textAlign: align,
       textDirection: TextDirection.ltr,
       textScaler: style.textScaler,
@@ -701,6 +729,7 @@ final class _BlockLayout {
     )..layout(minWidth: lineWidth, maxWidth: lineWidth);
     return _BlockLayout(
       painter,
+      hyphens: hyphens,
       prefix: indent.length,
       textLength: block.text.length,
       dx: inset,
@@ -713,14 +742,19 @@ final class _BlockLayout {
   }
 
   /// The block text after [prefix], italic and bold where its spans say.
-  static TextSpan _span(TextBlock block, TextStyle style, String prefix) {
-    final text = block.text;
+  static TextSpan _span(
+    TextBlock block,
+    TextStyle style,
+    String prefix,
+    _SoftHyphens hyphens,
+  ) {
+    final text = hyphens.insertInto(block.text);
     final marks = [
       for (final s in block.spans)
         if (s.kind != SpanKind.noteRef)
           (
-            math.min(s.start, text.length),
-            math.min(s.end, text.length),
+            hyphens.toPainter(math.min(s.start, block.text.length)),
+            hyphens.toPainter(math.min(s.end, block.text.length)),
             s.kind,
           ),
     ];
@@ -763,7 +797,123 @@ final class _BlockLayout {
   }
 
   final TextPainter painter;
+  final _SoftHyphens hyphens;
   final _BlockMetrics metrics;
+
+  /// Lines that end at a soft hyphen: line → its «-» and where it goes.
+  Map<int, (TextPainter, Offset)> get _hyphenMarks => _marks ??= _findHyphens();
+  Map<int, (TextPainter, Offset)>? _marks;
+
+  Map<int, (TextPainter, Offset)> _findHyphens() {
+    if (hyphens.isEmpty) return const {};
+    final text = painter.plainText;
+    final root = painter.text! as TextSpan;
+    final lines = painter.computeLineMetrics();
+    final marks = <int, (TextPainter, Offset)>{};
+    for (var i = 0; i + 1 < metrics.lineCount && i < lines.length; i++) {
+      final at =
+          metrics.prefix + hyphens.toPainter(metrics.lineStarts[i + 1]) - 1;
+      if (at < 0 || at >= text.length || text[at] != softHyphen) continue;
+      final leaf = root.getSpanForPosition(TextPosition(offset: at));
+      final mark = TextPainter(
+        text: TextSpan(
+          text: '-',
+          style: root.style?.merge(leaf is TextSpan ? leaf.style : null),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: painter.textScaler,
+      )..layout();
+      final x = painter
+          .getOffsetForCaret(TextPosition(offset: at), Rect.zero)
+          .dx;
+      final baseline = mark.computeDistanceToActualBaseline(
+        TextBaseline.alphabetic,
+      );
+      marks[i] = (mark, Offset(x, lines[i].baseline - baseline));
+    }
+    return marks;
+  }
+
+  /// Draws «-» at the end of lines `[firstLine, endLine)` broken at a soft
+  /// hyphen (the text engine breaks there but does not draw it).
+  void paintHyphens(Canvas canvas, Offset shift, int firstLine, int endLine) {
+    for (final MapEntry(key: line, value: (mark, at)) in _hyphenMarks.entries) {
+      if (line >= firstLine && line < endLine) mark.paint(canvas, shift + at);
+    }
+  }
+
+  void dispose() {
+    painter.dispose();
+    for (final (mark, _) in _marks?.values ?? const <(TextPainter, Offset)>[]) {
+      mark.dispose();
+    }
+  }
+}
+
+/// Soft hyphens put into a block's text for the layout only (ROADMAP
+/// 8.8б): words, touches and speed reading keep the block text offsets.
+final class _SoftHyphens {
+  const _SoftHyphens._(this._at);
+
+  /// Hyphens before the block text offsets [breaks] (ascending).
+  factory _SoftHyphens.of(List<int> breaks) => breaks.isEmpty
+      ? none
+      : _SoftHyphens._([for (var k = 0; k < breaks.length; k++) breaks[k] + k]);
+
+  static const none = _SoftHyphens._([]);
+
+  /// Offsets of the hyphens in the laid-out text (without the prefix).
+  final List<int> _at;
+
+  bool get isEmpty => _at.isEmpty;
+
+  String insertInto(String text) {
+    if (_at.isEmpty) return text;
+    final out = StringBuffer();
+    var from = 0;
+    for (var k = 0; k < _at.length; k++) {
+      final before = _at[k] - k;
+      out
+        ..write(text.substring(from, before))
+        ..write(softHyphen);
+      from = before;
+    }
+    out.write(text.substring(from));
+    return out.toString();
+  }
+
+  /// Laid-out offset of the block text [offset] (after a hyphen before it).
+  int toPainter(int offset) {
+    if (_at.isEmpty) return offset;
+    // Hyphens k with `_at[k] - k <= offset` come before it.
+    var lo = 0;
+    var hi = _at.length;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (_at[mid] - mid <= offset) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return offset + lo;
+  }
+
+  /// Block text offset of the laid-out [offset].
+  int toText(int offset) {
+    if (_at.isEmpty) return offset;
+    var lo = 0;
+    var hi = _at.length;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (_at[mid] < offset) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return offset - lo;
+  }
 }
 
 /// Where a laid-out block's lines are: all the page split needs, without
@@ -771,6 +921,7 @@ final class _BlockLayout {
 final class _BlockMetrics {
   _BlockMetrics(
     TextPainter painter, {
+    required _SoftHyphens hyphens,
     required this.prefix,
     required this.textLength,
     required this.dx,
@@ -792,7 +943,9 @@ final class _BlockMetrics {
       final middle = (tops[i] + metrics[i].baseline) / 2;
       // Left of the text, so it hits the line start in any alignment.
       final offset = painter.getPositionForOffset(Offset(-1, middle)).offset;
-      lineStarts[i] = (offset - prefix).clamp(lineStarts[i - 1], textLength);
+      lineStarts[i] = hyphens
+          .toText(offset - prefix)
+          .clamp(lineStarts[i - 1], textLength);
     }
   }
 

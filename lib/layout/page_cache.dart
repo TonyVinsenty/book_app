@@ -9,7 +9,7 @@ import 'package:flutter/painting.dart';
 /// Version of the page split rules: bump it on any change to how pages are
 /// split, to [PageStyle] or to the font files (`tool/fonts`), so old saved
 /// splits are not used (ADR 0003, addendum 2 п. 7).
-const layoutVersion = 1;
+const layoutVersion = 2;
 
 /// Everything the page breaks of a book depend on (ADR 0003, addendum 2
 /// п. 7); colors are not in it.
@@ -25,6 +25,7 @@ String layoutKeyOf({
   style.textScaler.scale(style.fontSize),
   style.lineHeight,
   style.align.name,
+  if (style.hyphenation != null) 'hyphens',
   '${pageSize.width.toStringAsFixed(1)}x${pageSize.height.toStringAsFixed(1)}',
 ].join('|');
 
