@@ -116,7 +116,7 @@ class AppDatabase extends _$AppDatabase {
         // A rebuilt table: SQLite can't add a NOT NULL column without a
         // default. The rebuild forgets ids of deleted books; they must not
         // come back.
-        final lastId = await _lastBookId();
+        final lastId = await lastBookId();
         await m.alterTable(
           TableMigration(
             books,
@@ -147,7 +147,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   /// The AUTOINCREMENT counter of `books`: the biggest id ever given.
-  Future<int?> _lastBookId() async {
+  Future<int?> lastBookId() async {
     final row = await customSelect(
       "SELECT seq FROM sqlite_sequence WHERE name = 'books'",
     ).getSingleOrNull();
@@ -155,7 +155,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> _keepLastBookId(int id) async {
-    final current = await _lastBookId();
+    final current = await lastBookId();
     if (current == null) {
       await customStatement(
         "INSERT INTO sqlite_sequence (name, seq) VALUES ('books', ?)",

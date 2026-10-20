@@ -102,6 +102,23 @@ final class ContentStore {
     if (dir.existsSync()) await dir.delete(recursive: true);
   }
 
+  /// Removes book folders with ids up to [lastId] that are not in [bookIds]
+  /// — left by a crash between the two steps of deleting a book. Newer ids
+  /// may be books being added right now.
+  Future<void> deleteOtherBooks(Set<int> bookIds, {required int lastId}) async {
+    if (!root.existsSync()) return;
+    await for (final entity in root.list()) {
+      final name = entity.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+      final id = int.tryParse(name);
+      if (entity is Directory &&
+          id != null &&
+          id <= lastId &&
+          !bookIds.contains(id)) {
+        await entity.delete(recursive: true);
+      }
+    }
+  }
+
   /// Writes through a temporary file and renames it, so a crash never leaves
   /// a half-written file under the real name.
   static Future<File> _replace(

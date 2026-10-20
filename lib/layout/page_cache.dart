@@ -74,9 +74,12 @@ final class PageCache {
 
   /// Writes the split for [key] and removes all but the [keep] last used.
   /// Through a temporary file, so a half-written file never has the name.
+  /// Nothing when the book folder is gone: a deleted book must not come
+  /// back as a folder.
   void save(String key, ChapterPages chapters) {
     try {
-      dir.createSync(recursive: true);
+      if (!dir.parent.existsSync()) return;
+      dir.createSync();
       final target = fileOf(key);
       File('${target.path}.tmp')
         ..writeAsStringSync(jsonEncode({'key': key, 'chapters': chapters}))

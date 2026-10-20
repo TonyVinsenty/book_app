@@ -179,6 +179,22 @@ final class BookRepository {
     await _store.deleteBook(id);
   }
 
+  /// Removes files of books that are not in the database (a crash while
+  /// deleting); best effort, at app start.
+  Future<void> removeLostFiles() async {
+    final (ids, lastId) = await _db.transaction(
+      () async => (
+        {for (final r in await _db.select(_db.books).get()) r.id},
+        await _db.lastBookId() ?? 0,
+      ),
+    );
+    try {
+      await _store.deleteOtherBooks(ids, lastId: lastId);
+    } on FileSystemException {
+      // Tried again on the next start.
+    }
+  }
+
   Future<BookRow?> _write(int id, BooksCompanion changes) async =>
       (await (_db.update(
         _db.books,

@@ -302,4 +302,38 @@ void main() {
     await repo.markUnfinished(row.id);
     expect((await repo.findById(row.id))!.finishedAt, isNull);
   });
+
+  test('lost files: folders of books not in the database go away', () async {
+    final keep = await add('Книга');
+    final lost = await add('Потерянная');
+    // A crash between the row and the folder.
+    await (db.delete(db.books)..where((b) => b.id.equals(lost.id))).go();
+    final newer = store.bookDir(lost.id + 1)..createSync(recursive: true);
+    final other = Directory('${store.root.path}/tmp')..createSync();
+
+    await repo.removeLostFiles();
+
+    expect(store.bookDir(keep.id).existsSync(), isTrue);
+    expect(store.bookDir(lost.id).existsSync(), isFalse);
+    expect(newer.existsSync(), isTrue, reason: 'may be added right now');
+    expect(other.existsSync(), isTrue);
+  });
+
+  test('lost files: no folder at all is fine', () async {
+    await repo.removeLostFiles();
+    expect(store.root.existsSync(), isFalse);
+  });
+
+  test('after deleting the last opened book the one before is last', () async {
+    final first = await add('Первая');
+    final second = await add('Вторая');
+    await repo.markOpened(first.id);
+    clock = clock.add(const Duration(minutes: 1));
+    await repo.markOpened(second.id);
+
+    await repo.deleteBook(second.id);
+    expect((await repo.lastOpened())?.id, first.id);
+    await repo.deleteBook(first.id);
+    expect(await repo.lastOpened(), isNull);
+  });
 }

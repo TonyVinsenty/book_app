@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:book_app/app/app.dart';
 import 'package:book_app/app/font_licenses.dart';
 import 'package:book_app/data/providers.dart';
@@ -33,4 +35,5 @@ Future<void> main() async {
       child: BookApp(reopenBookId: last?.id),
     ),
   );
+  unawaited(container.read(bookRepositoryProvider).removeLostFiles());
 }

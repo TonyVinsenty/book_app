@@ -82,6 +82,12 @@ void main() {
     expect(keyOf(style, const Size(320.04, 520)), key, reason: 'rounded');
   });
 
+  test('a deleted book folder is not made again', () {
+    final gone = PageCache(Directory('${temp.path}/deleted/pages'));
+    gone.save(keyOf(style), chapters);
+    expect(Directory('${temp.path}/deleted').existsSync(), isFalse);
+  });
+
   test('a saved split comes back for its key only', () {
     final key = keyOf(style);
     cache.save(key, chapters);
