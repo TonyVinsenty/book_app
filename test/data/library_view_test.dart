@@ -187,9 +187,9 @@ void main() {
     test('by author: surname, then name; no author last', () {
       expect(groups(LibrarySort.author), [
         ('Достоевский Ф. М.', true, '7'),
-        ('Алексей Толстой', true, '5'),
-        ('Лев Толстой', true, '2 1 3 4'),
-        ('Lewis Carroll', true, '8'),
+        ('Толстой А.', true, '5'),
+        ('Толстой Л.', true, '2 1 3 4'),
+        ('Carroll L.', true, '8'),
         (null, true, '9 6'),
       ]);
     });
@@ -218,7 +218,53 @@ void main() {
         sortBooks(tie, LibrarySort.author),
         LibrarySort.author,
       );
-      expect(g.single.author, 'Лев Толстой');
+      expect(g.single.author, 'Толстой Л.');
+    });
+
+    test('headers are "Фамилия И. О."', () {
+      const cases = {
+        'Лев Николаевич Толстой': 'Толстой Л. Н.',
+        'Л. Н. Толстой': 'Толстой Л. Н.',
+        'Толстой, Лев Николаевич': 'Толстой Л. Н.',
+        'Толстой Л. Н.': 'Толстой Л. Н.',
+        '  Артур Конан Дойл ': 'Дойл А. К.',
+        'Lewis Carroll': 'Carroll L.',
+        'Гомер': 'Гомер',
+        'А. Б.': 'А. Б.',
+        'эдгар по': 'по Э.',
+      };
+      for (final MapEntry(:key, :value) in cases.entries) {
+        expect(authorHeaderOf(key), value, reason: key);
+      }
+    });
+
+    test('the view gives the books of every collection, sorted', () {
+      final v = libraryViewOf(
+        books: books,
+        collections: [
+          CollectionRow(id: 1, name: 'А', createdAt: DateTime(2026)),
+          CollectionRow(id: 2, name: 'Б', createdAt: DateTime(2026)),
+        ],
+        links: [
+          for (final id in [4, 2, 9])
+            BookCollectionRow(
+              bookId: id,
+              collectionId: 1,
+              addedAt: DateTime(2026),
+            ),
+          // A link of a deleted book is skipped.
+          BookCollectionRow(
+            bookId: 99,
+            collectionId: 2,
+            addedAt: DateTime(2026),
+          ),
+        ],
+        filter: const LibraryFilter(status: BookStatus.finished),
+        sort: LibrarySort.title,
+      );
+      expect(v.books, isEmpty);
+      expect(v.collectionBooks.keys, [1]);
+      expect(_ids(v.collectionBooks[1]!), [2, 9, 4]);
     });
 
     test('the view gives the groups of the shown books', () {
@@ -530,12 +576,22 @@ void main() {
     await chooseFilter(settings, filter);
     await chooseSort(settings, LibrarySort.title);
     final chosen = await next();
-    expect(chosen.filter, filter);
+    // The library tab shows the whole library: a collection has its screen.
+    expect(chosen.filter, const LibraryFilter(status: BookStatus.queued));
     expect(chosen.sort, LibrarySort.title);
 
     await chooseFilter(settings, filter.withStatus(null));
-    expect((await next()).filter, LibraryFilter(collectionId: c.id));
+    expect((await next()).filter, LibraryFilter.all);
     expect(await settings.get(SettingKeys.libraryStatus), isNull);
+
+    final inCollection = container.listen(
+      collectionViewProvider(filter),
+      (_, _) {},
+    );
+    addTearDown(inCollection.close);
+    await pumpEventQueue();
+    expect(inCollection.read().requireValue.filter, filter);
+    expect(inCollection.read().requireValue.sort, LibrarySort.title);
   });
 
   test('provider: the old shelf is moved to the filter once', () async {

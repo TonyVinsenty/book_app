@@ -210,8 +210,7 @@ AuthorKey? authorKeyOf(List<String> authors) {
     // With only initials ("А. Б.") the surname is the whole name.
     given = first.split(RegExp(r'\s+'))..remove(surname);
   }
-  final letter =
-      RegExp(r'\p{L}', unicode: true).firstMatch(given.join(' '))?[0] ?? '';
+  final letter = _letter.firstMatch(given.join(' '))?[0] ?? '';
   return (surname: SortKey(surname), initial: SortKey(letter));
 }
 
@@ -222,8 +221,8 @@ final class BookGroup {
   const BookGroup.author(String this.author, this.books) : hasHeader = true;
   const BookGroup.noAuthor(this.books) : author = null, hasHeader = true;
 
-  /// The most frequent spelling of the author in the group; null for
-  /// [BookGroup.all] and "Без автора".
+  /// The most frequent spelling of the author in the group as "Фамилия
+  /// И. О." ([authorHeaderOf]); null for [BookGroup.all] and "Без автора".
   final String? author;
   final bool hasHeader;
   final List<BookRow> books;
@@ -242,7 +241,7 @@ List<BookGroup> groupBooks(List<BookRow> sorted, LibrarySort sort) {
     groups.add(
       key == null
           ? BookGroup.noAuthor(books)
-          : BookGroup.author(_mostFrequentAuthor(books), books),
+          : BookGroup.author(authorHeaderOf(_mostFrequentAuthor(books)), books),
     );
   }
 
@@ -271,6 +270,27 @@ String _mostFrequentAuthor(List<BookRow> books) {
   return best;
 }
 
+/// "Фамилия И. О.": "Лев Николаевич Толстой", "Л. Н. Толстой" and "Толстой,
+/// Лев Николаевич" all give "Толстой Л. Н."; a name of initials only stays.
+String authorHeaderOf(String name) {
+  final full = name.trim();
+  final surname = surnameOf([full]);
+  if (surname == null || surname == full) return full;
+  final comma = full.indexOf(',');
+  final List<String> given;
+  if (comma > 0) {
+    given = full.substring(comma + 1).trim().split(RegExp(r'\s+'));
+  } else {
+    given = full.split(RegExp(r'\s+'));
+    given.removeAt(given.lastIndexOf(surname));
+  }
+  final initials = [
+    for (final w in given)
+      if (_letter.firstMatch(w)?[0] case final l?) '${l.toUpperCase()}.',
+  ];
+  return initials.isEmpty ? surname : '$surname ${initials.join(' ')}';
+}
+
 /// Surname of the first author: the part before a comma ("Толстой, Лев"),
 /// else the last word that is not an initial ("Л. Н. Толстой",
 /// "Толстой Л. Н."); null when there is no author.
@@ -288,6 +308,7 @@ String? surnameOf(List<String> authors) {
 }
 
 final _initial = RegExp(r'^\p{L}{1,2}\.$', unicode: true);
+final _letter = RegExp(r'\p{L}', unicode: true);
 
 /// A string compared the Russian way: no case, «ё» = «е», leading quotes
 /// and marks skipped, Cyrillic before Latin, numbers by value ("2" < "10").
@@ -377,6 +398,7 @@ final class LibraryView {
     required this.continueBook,
     required this.libraryIsEmpty,
     this.statusCounts = const {},
+    this.collectionBooks = const {},
   });
 
   /// The chosen filter; a deleted collection falls back to all books.
@@ -404,6 +426,10 @@ final class LibraryView {
   /// Books of each status in the chosen collection (or the library),
   /// whatever the chosen status.
   final Map<BookStatus, int> statusCounts;
+
+  /// Books of every collection (by id) in [sort] order, whatever the
+  /// filter; a collection without books is missing.
+  final Map<int, List<BookRow>> collectionBooks;
 }
 
 LibraryView libraryViewOf({
@@ -421,6 +447,13 @@ LibraryView libraryViewOf({
       : filter.withCollection(null);
   final names = {for (final c in collections) c.id: SortKey(c.name)};
   final shownBooks = filterBooks(books, shown, sort, links);
+  final byId = {for (final b in books) b.id: b};
+  final inCollections = <int, List<BookRow>>{};
+  for (final l in links) {
+    if (byId[l.bookId] case final book?) {
+      (inCollections[l.collectionId] ??= []).add(book);
+    }
+  }
   BookRow? last;
   for (final b in books) {
     final opened = b.openedAt;
@@ -441,6 +474,10 @@ LibraryView libraryViewOf({
     continueBook: last,
     libraryIsEmpty: books.isEmpty,
     statusCounts: statusCounts(books, shown.collectionId, links),
+    collectionBooks: {
+      for (final MapEntry(:key, :value) in inCollections.entries)
+        key: sortBooks(value, sort),
+    },
   );
 }
 
@@ -486,12 +523,28 @@ Future<void> chooseSort(SettingsRepository settings, LibrarySort sort) =>
 Future<void> chooseLayout(SettingsRepository settings, LibraryLayout layout) =>
     settings.set(SettingKeys.libraryLayout, layout.name);
 
-/// Everything the library screen shows; loading until every part came once.
-final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
+/// The library tab: the whole library with the stored status. The stored
+/// collection is not used there: a collection opens on its own screen
+/// ([collectionViewProvider]).
+final libraryViewProvider = Provider<AsyncValue<LibraryView>>(
+  (ref) => _viewOf(
+    ref,
+    ref.watch(libraryFilterProvider).whenData((f) => f.withCollection(null)),
+  ),
+);
+
+/// A collection screen: its books with [LibraryFilter.status] (chosen on
+/// that screen, not stored).
+final collectionViewProvider =
+    Provider.family<AsyncValue<LibraryView>, LibraryFilter>(
+      (ref, filter) => _viewOf(ref, AsyncData(filter)),
+    );
+
+/// Loading until every part came once.
+AsyncValue<LibraryView> _viewOf(Ref ref, AsyncValue<LibraryFilter> filter) {
   final books = ref.watch(booksProvider);
   final collections = ref.watch(collectionsProvider);
   final links = ref.watch(collectionLinksProvider);
-  final filter = ref.watch(libraryFilterProvider);
   final sort = ref.watch(librarySortProvider);
   final layout = ref.watch(libraryLayoutProvider);
   for (final part in [books, collections, links, filter, sort, layout]) {
@@ -510,4 +563,4 @@ final libraryViewProvider = Provider<AsyncValue<LibraryView>>((ref) {
       layout: layout.requireValue,
     ),
   );
-});
+}

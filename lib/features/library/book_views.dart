@@ -1,68 +1,80 @@
 import 'dart:io';
 
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/data/db/app_database.dart';
+import 'package:book_app/data/library_view.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 
-/// How far a book is read, as the library shows it.
+/// The status of a book and how far it is read, as the library shows it.
 final class ReadMark {
-  const ReadMark({required this.percent, required this.finished});
+  const ReadMark({required this.status, this.percent = 0});
 
-  /// Null for a book never opened.
-  final int? percent;
+  ReadMark.of(BookRow book)
+    : status = statusOf(book),
+      percent = percentRead(book) ?? 0;
 
-  /// Read to the end (or marked so): shown instead of the percent.
-  final bool finished;
-
-  bool get isEmpty => !finished && percent == null;
+  final BookStatus status;
+  final int percent;
 }
 
-/// "42 %" with a short bar, or "✓ Прочитано"; nothing for an unopened book.
-class ReadMarkLine extends StatelessWidget {
-  const ReadMarkLine({super.key, required this.mark, this.barWidth = 64});
+/// "• Новая", "Читаю · 42 %", "На очереди", "Брошена" or "✓ Прочитано":
+/// always words, not only a color.
+class BookStatusLabel extends StatelessWidget {
+  const BookStatusLabel({super.key, required this.mark});
+
+  static const fontSize = 12.5;
+  static const lineHeight = 1.3;
 
   final ReadMark mark;
-
-  /// Null: the bar takes the free width.
-  final double? barWidth;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
-    final style = Theme.of(context).textTheme.labelMedium;
-    if (mark.finished) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check, size: 16, color: colors.accent),
-          const SizedBox(width: 4),
-          Text(
-            l10n.libraryFinished,
-            style: style?.copyWith(
-              color: colors.accent,
-              fontWeight: FontWeight.w700,
+    final on =
+        mark.status == BookStatus.reading || mark.status == BookStatus.finished;
+    final color = on ? colors.accent : colors.textSecondary;
+    final (Widget? sign, String text) = switch (mark.status) {
+      BookStatus.notStarted => (
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: colors.orp, shape: BoxShape.circle),
+        ),
+        l10n.statusNew,
+      ),
+      BookStatus.reading => (null, l10n.statusReading(mark.percent)),
+      BookStatus.queued => (
+        Icon(Icons.schedule, size: 14, color: color),
+        l10n.statusQueued,
+      ),
+      BookStatus.abandoned => (
+        Icon(Icons.pause_circle_outline, size: 14, color: color),
+        l10n.statusAbandoned,
+      ),
+      BookStatus.finished => (
+        Icon(Icons.check, size: 14, color: color),
+        l10n.statusFinished,
+      ),
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (sign != null) ...[sign, const SizedBox(width: 5)],
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: fontSize,
+              height: lineHeight,
+              fontWeight: on ? FontWeight.w700 : FontWeight.w600,
+              color: color,
             ),
           ),
-        ],
-      );
-    }
-    final percent = mark.percent;
-    if (percent == null) return const SizedBox.shrink();
-    final bar = _Bar(share: percent / 100);
-    return Row(
-      mainAxisSize: barWidth == null ? MainAxisSize.max : MainAxisSize.min,
-      children: [
-        if (barWidth == null) Expanded(child: bar),
-        if (barWidth == null) const SizedBox(width: 10),
-        Text(
-          l10n.libraryPercent(percent),
-          style: style?.copyWith(color: colors.textSecondary),
         ),
-        if (barWidth case final width?) ...[
-          const SizedBox(width: 8),
-          SizedBox(width: width, child: bar),
-        ],
       ],
     );
   }
@@ -178,8 +190,8 @@ class BookCover extends StatelessWidget {
   }
 }
 
-/// One book of the list: cover, title (up to two lines), authors, how far
-/// it is read. Every row is at least as tall as the cover.
+/// One book of the list: cover, title (up to two lines), authors, the
+/// status. Every row is at least as tall as the cover.
 class BookTile extends StatelessWidget {
   const BookTile({
     super.key,
@@ -251,10 +263,19 @@ class BookTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                  if (!mark.isEmpty) ...[
-                    const SizedBox(height: 4),
-                    ReadMarkLine(mark: mark),
-                  ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Flexible(child: BookStatusLabel(mark: mark)),
+                      if (mark.status == BookStatus.reading) ...[
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 56,
+                          child: _Bar(share: mark.percent / 100),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -265,8 +286,8 @@ class BookTile extends StatelessWidget {
   }
 }
 
-/// One book of the grid: a cover with the percent or the "read" mark on
-/// it, two lines of title and one of authors.
+/// One book of the grid: a cover (with a progress bar while reading), two
+/// lines of title, one of authors and the status.
 class BookGridTile extends StatelessWidget {
   const BookGridTile({
     super.key,
@@ -292,6 +313,8 @@ class BookGridTile extends StatelessWidget {
       _gap +
       scaler.scale(_titleSize) * _titleHeight * 2 +
       scaler.scale(_authorSize) * _authorHeight +
+      2 +
+      scaler.scale(BookStatusLabel.fontSize) * BookStatusLabel.lineHeight +
       4;
 
   final VoidCallback onTap;
@@ -306,9 +329,7 @@ class BookGridTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
-    final percent = mark.percent;
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -326,63 +347,19 @@ class BookGridTile extends StatelessWidget {
                 height: width * 1.5,
                 titleFont: titleFont,
                 badges: [
-                  if (mark.finished)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Semantics(
-                        label: l10n.libraryFinished,
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: colors.accent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.check,
-                            size: 15,
-                            color: colors.background,
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (percent != null && percent > 0) ...[
-                    Positioned(
-                      right: 6,
-                      bottom: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colors.background,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          l10n.libraryPercent(percent),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: colors.text,
-                          ),
-                        ),
-                      ),
-                    ),
+                  if (mark.status == BookStatus.reading)
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
                       height: 4,
                       child: LinearProgressIndicator(
-                        value: percent / 100,
+                        value: mark.percent / 100,
                         minHeight: 4,
                         color: colors.accent,
                         backgroundColor: const Color(0x40000000),
                       ),
                     ),
-                  ],
                 ],
               ),
               const SizedBox(height: _gap),
@@ -409,6 +386,8 @@ class BookGridTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+              const SizedBox(height: 2),
+              BookStatusLabel(mark: mark),
             ],
           );
         },
@@ -426,7 +405,7 @@ class ContinueCard extends StatelessWidget {
     required this.coverFile,
     required this.title,
     required this.authors,
-    required this.mark,
+    required this.percent,
     this.titleFont,
   });
 
@@ -440,7 +419,7 @@ class ContinueCard extends StatelessWidget {
   final File? coverFile;
   final String title;
   final String authors;
-  final ReadMark mark;
+  final int percent;
   final String? titleFont;
 
   @override
@@ -511,11 +490,18 @@ class ContinueCard extends StatelessWidget {
                         ],
                         const Spacer(),
                         const SizedBox(height: 8),
-                        ReadMarkLine(
-                          mark: mark.isEmpty
-                              ? const ReadMark(percent: 0, finished: false)
-                              : mark,
-                          barWidth: null,
+                        Row(
+                          children: [
+                            Expanded(child: _Bar(share: percent / 100)),
+                            const SizedBox(width: 10),
+                            Text(
+                              l10n.libraryPercent(percent),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: colors.accent,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -6,13 +6,17 @@ import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
+import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
+import 'package:book_app/features/library/collection_screen.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
-import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
+import 'package:drift/drift.dart'
+    show DatabaseConnection, Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -118,7 +122,7 @@ void main() {
     for (
       var i = 0;
       i < 50 &&
-          find.byType(ChoiceChip).evaluate().isEmpty &&
+          find.byType(ShelfBar).evaluate().isEmpty &&
           find.text('Здесь появятся ваши книги').evaluate().isEmpty;
       i++
     ) {
@@ -218,100 +222,153 @@ void main() {
     });
   });
 
-  testWidgets('rows show the percent, the read mark or nothing', (
-    tester,
-  ) async {
-    await pumpLibrary(tester, books: shelfBooks);
+  /// Room for every book of a test.
+  void tall(WidgetTester tester) {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+  }
 
-    expect(find.text('3 книги'), findsOneWidget);
-    expect(titles(tester, BookTile), [
-      'Анна Каренина',
-      'Шинель',
-      'Война и мир',
-    ]);
-    Finder inRow(String title, Finder what) => find.descendant(
-      of: find.ancestor(of: find.text(title), matching: find.byType(BookTile)),
-      matching: what,
+  Finder inRow(String title, Finder what) => find.descendant(
+    of: find.ancestor(
+      of: find.text(title),
+      matching: find.byWidgetPredicate(
+        (w) => w is BookTile || w is BookGridTile,
+      ),
+    ),
+    matching: what,
+  );
+
+  /// Opens the status sheet and picks [name] in it.
+  Future<void> chooseStatus(WidgetTester tester, String name) async {
+    await tester.tap(
+      find
+          .descendant(of: find.byType(ShelfBar), matching: find.byType(InkWell))
+          .first,
     );
-    expect(inRow('Анна Каренина', find.text('42 %')), findsOneWidget);
-    expect(inRow('Шинель', find.text('Прочитано')), findsOneWidget);
-    expect(inRow('Война и мир', find.byType(ReadMarkLine)), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.text('Статус книги'), findsOneWidget);
+    final item = find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text(name),
+    );
+    // The sheet scrolls on a low screen.
+    await tester.ensureVisible(item);
+    await tester.pumpAndSettle();
+    await tester.tap(item);
+    await settle(tester);
+    await tester.pumpAndSettle();
+  }
 
-    // "Продолжить" is the book opened last of those not read to the end.
+  testWidgets('rows show the status of every book', (tester) async {
+    tall(tester);
+    await pumpLibrary(
+      tester,
+      books: [
+        ...shelfBooks,
+        _book(
+          4,
+          title: 'Бесы',
+          opened: 1,
+          added: 4,
+        ).copyWith(statusMark: const Value(StatusMark.queued)),
+        _book(
+          5,
+          title: 'Идиот',
+          opened: 2,
+          added: 5,
+        ).copyWith(statusMark: const Value(StatusMark.abandoned)),
+      ],
+    );
+
+    expect(find.text('Все · 5'), findsOneWidget);
+    expect(inRow('Анна Каренина', find.text('Читаю · 42 %')), findsOneWidget);
+    expect(inRow('Шинель', find.text('Прочитано')), findsOneWidget);
+    expect(inRow('Война и мир', find.text('Новая')), findsOneWidget);
+    expect(inRow('Бесы', find.text('На очереди')), findsOneWidget);
+    expect(inRow('Идиот', find.text('Брошена')), findsOneWidget);
+
+    // "Продолжить" is the book opened last of those being read.
     final card = find.byType(ContinueCard);
     expect(card, findsOneWidget);
     expect(
       find.descendant(of: card, matching: find.text('Анна Каренина')),
       findsOneWidget,
     );
+    expect(
+      find.descendant(of: card, matching: find.text('42 %')),
+      findsOneWidget,
+    );
     expect(find.text('ПРОДОЛЖИТЬ'), findsOneWidget);
   });
 
-  testWidgets('a shelf filters the books and is remembered', (tester) async {
-    await pumpLibrary(
-      tester,
-      books: shelfBooks,
-      collections: [CollectionRow(id: 7, name: 'Классика', createdAt: _day)],
-      links: [BookCollectionRow(bookId: 1, collectionId: 7, addedAt: _day)],
-    );
-
-    // The shelf buttons stay put: "Продолжить" is on every shelf.
-    Offset chips() => tester.getTopLeft(find.byType(ChoiceChip).first);
-    final place = chips();
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Читаю'));
-    await settle(tester);
-    expect(titles(tester, BookTile), ['Анна Каренина']);
-    expect(await stored(tester, SettingKeys.libraryStatus), 'reading');
-    expect(find.byType(ContinueCard), findsOneWidget);
-    expect(chips(), place);
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Прочитано'));
-    await settle(tester);
-    expect(titles(tester, BookTile), ['Шинель']);
-    expect(find.byType(ContinueCard), findsOneWidget);
-    expect(chips(), place);
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Классика'));
-    await settle(tester);
-    expect(titles(tester, BookTile), ['Война и мир']);
-    expect(find.text('1 книга'), findsOneWidget);
-    expect(await stored(tester, SettingKeys.libraryCollection), '7');
-    expect(await stored(tester, SettingKeys.libraryStatus), isNull);
-    expect(find.byType(ContinueCard), findsOneWidget);
-    expect(chips(), place);
-  });
-
-  testWidgets('empty shelves explain themselves', (tester) async {
-    await pumpLibrary(
-      tester,
-      books: [_book(1, title: 'Война и мир')],
-      collections: [CollectionRow(id: 7, name: 'Классика', createdAt: _day)],
-    );
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Читаю'));
-    await settle(tester);
-    expect(find.text('Сейчас вы ничего не читаете'), findsOneWidget);
-    expect(find.text('0 книг'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Прочитано'));
-    await settle(tester);
-    expect(find.text('Прочитанных книг нет'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Классика'));
-    await settle(tester);
-    expect(find.text('В подборке пока пусто'), findsOneWidget);
-    expect(find.byType(BookTile), findsNothing);
-  });
-
-  testWidgets('the order menu sorts every shelf and is remembered', (
+  testWidgets('the status filter shows counts and is remembered', (
     tester,
   ) async {
     await pumpLibrary(tester, books: shelfBooks);
 
-    await tester.tap(find.text('Недавние'));
+    await chooseStatus(tester, 'Читаю');
+    expect(titles(tester, BookTile), ['Анна Каренина']);
+    expect(find.text('Читаю · 1'), findsOneWidget);
+    expect(await stored(tester, SettingKeys.libraryStatus), 'reading');
+    // Hidden over a chosen status.
+    expect(find.byType(ContinueCard), findsNothing);
+
+    await tester.tap(find.text('Читаю · 1'));
+    await tester.pumpAndSettle();
+    Finder count(String name, String n) => find.descendant(
+      of: find.ancestor(
+        of: find.text(name),
+        matching: find.byType(RadioListTile<int>),
+      ),
+      matching: find.text(n),
+    );
+    expect(count('Все', '3'), findsOneWidget);
+    expect(count('Новые', '1'), findsOneWidget);
+    expect(count('Прочитано', '1'), findsOneWidget);
+    expect(count('Брошены', '0'), findsOneWidget);
+    final finished = find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text('Прочитано'),
+    );
+    await tester.ensureVisible(finished);
+    await tester.pumpAndSettle();
+    await tester.tap(finished);
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(titles(tester, BookTile), ['Шинель']);
+
+    await chooseStatus(tester, 'Все');
+    expect(titles(tester, BookTile), hasLength(3));
+    expect(find.byType(ContinueCard), findsOneWidget);
+    expect(await stored(tester, SettingKeys.libraryStatus), isNull);
+  });
+
+  testWidgets('empty statuses explain themselves', (tester) async {
+    await pumpLibrary(tester, books: [_book(1, title: 'Война и мир')]);
+
+    for (final (status, text) in [
+      ('Читаю', 'Сейчас вы ничего не читаете'),
+      ('На очереди', 'Очередь пуста'),
+      ('Брошены', 'Брошенных книг нет'),
+      ('Прочитано', 'Прочитанных книг нет'),
+    ]) {
+      await chooseStatus(tester, status);
+      expect(find.text(text), findsOneWidget, reason: status);
+      expect(find.text('$status · 0'), findsOneWidget);
+      expect(find.byType(BookTile), findsNothing);
+    }
+  });
+
+  testWidgets('the order menu sorts the books and is remembered', (
+    tester,
+  ) async {
+    await pumpLibrary(tester, books: shelfBooks);
+
+    await tester.tap(find.byTooltip('Сортировка: Недавние'));
     await tester.pumpAndSettle();
     expect(find.text('Сортировка'), findsOneWidget);
+    expect(find.text('Группы по фамилии автора'), findsOneWidget);
     await tester.tap(find.text('Название'));
     await settle(tester);
     await tester.pumpAndSettle();
@@ -323,6 +380,29 @@ void main() {
       'Шинель',
     ]);
     expect(await stored(tester, SettingKeys.librarySort), 'title');
+  });
+
+  testWidgets('by author: groups with headers, no "Продолжить"', (
+    tester,
+  ) async {
+    tall(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.librarySort, 'author'),
+    );
+    await pumpLibrary(tester, books: shelfBooks);
+
+    expect(find.byType(ContinueCard), findsNothing);
+    expect(find.text('Толстой Л. Н.'), findsOneWidget);
+    expect(find.text('Без автора'), findsOneWidget);
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top('Толстой Л. Н.'), lessThan(top('Анна Каренина')));
+    expect(top('Война и мир'), lessThan(top('Без автора')));
+    expect(top('Без автора'), lessThan(top('Шинель')));
+
+    await tester.tap(find.byTooltip('Показать обложками'));
+    await settle(tester);
+    expect(find.text('Толстой Л. Н.'), findsOneWidget);
+    expect(find.byType(BookGridTile), findsNWidgets(3));
   });
 
   testWidgets('the grid button shows covers three in a row', (tester) async {
@@ -341,13 +421,12 @@ void main() {
     final first = tester.getTopLeft(find.byType(BookGridTile).at(0));
     final third = tester.getTopLeft(find.byType(BookGridTile).at(2));
     expect(third.dy, first.dy, reason: 'one row');
+    expect(inRow('Анна Каренина', find.text('Читаю · 42 %')), findsOneWidget);
     expect(
-      find.descendant(
-        of: find.byType(BookGridTile),
-        matching: find.text('42 %'),
-      ),
+      inRow('Анна Каренина', find.byType(LinearProgressIndicator)),
       findsOneWidget,
     );
+    expect(inRow('Шинель', find.byType(LinearProgressIndicator)), findsNothing);
     expect(await stored(tester, SettingKeys.libraryLayout), 'grid');
 
     await tester.tap(find.byTooltip('Показать списком'));
@@ -355,7 +434,9 @@ void main() {
     expect(find.byType(BookTile), findsNWidgets(3));
   });
 
-  testWidgets('a large system text size fits the grid', (tester) async {
+  testWidgets('a large system text size fits the grid and the list', (
+    tester,
+  ) async {
     tester.platformDispatcher.textScaleFactorTestValue = 1.6;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.runAsync(
@@ -369,12 +450,132 @@ void main() {
             i,
             title: 'Очень длинное название книги номер $i',
             authors: ['Фёдор Михайлович Достоевский'],
+            opened: i.isEven ? i : null,
+            position: 50,
           ),
       ],
     );
 
     expect(find.byType(BookGridTile), findsWidgets);
     expect(tester.takeException(), isNull, reason: 'no overflow');
+
+    await chooseStatus(tester, 'На очереди');
+    expect(tester.takeException(), isNull, reason: 'no overflow');
+    await chooseStatus(tester, 'Все');
+    await tester.tap(find.byTooltip('Показать списком'));
+    await settle(tester);
+    expect(find.byType(BookTile), findsWidgets);
+    expect(tester.takeException(), isNull, reason: 'no overflow');
+  });
+
+  group('collections tab', () {
+    final collections = [
+      for (final (i, name) in [
+        'Русская классика',
+        'Школьная программа (9 класс)',
+        'Люблю перечитывать',
+        'Для поездок и долгих перелётов на выходные и в отпуск',
+        'Нон-фикшн',
+        'Детям на ночь',
+        'Подарки',
+      ].indexed)
+        CollectionRow(id: i + 1, name: name, createdAt: _day),
+    ];
+
+    Future<void> openTab(WidgetTester tester) async {
+      await tester.tap(find.text('Подборки'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('lists collections with covers and counts', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpLibrary(
+        tester,
+        books: shelfBooks,
+        collections: collections,
+        links: [
+          for (final b in shelfBooks)
+            BookCollectionRow(bookId: b.id, collectionId: 1, addedAt: _day),
+          BookCollectionRow(bookId: 1, collectionId: 4, addedAt: _day),
+        ],
+      );
+      await openTab(tester);
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.text('Создать подборку'), findsOneWidget);
+      final first = find.widgetWithText(CollectionCard, 'Русская классика');
+      expect(
+        find.descendant(of: first, matching: find.text('3 книги')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: first, matching: find.byType(BookCover)),
+        findsNWidgets(3),
+      );
+      expect(tester.takeException(), isNull, reason: 'no overflow');
+      // Seven collections: no hint, every one can be scrolled to.
+      expect(find.textContaining('Одну книгу можно'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text('Школьная программа (9 класс)'),
+        200,
+      );
+      expect(tester.takeException(), isNull, reason: 'no overflow');
+    });
+
+    testWidgets('a collection opens with its books and its own status', (
+      tester,
+    ) async {
+      await pumpLibrary(
+        tester,
+        books: shelfBooks,
+        collections: [CollectionRow(id: 7, name: 'Классика', createdAt: _day)],
+        links: [
+          BookCollectionRow(bookId: 1, collectionId: 7, addedAt: _day),
+          BookCollectionRow(bookId: 3, collectionId: 7, addedAt: _day),
+        ],
+      );
+      await openTab(tester);
+      expect(find.textContaining('Одну книгу можно'), findsOneWidget);
+      await tester.tap(find.text('Классика'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CollectionScreen), findsOneWidget);
+      expect(find.text('2 книги'), findsOneWidget);
+      expect(titles(tester, BookTile), ['Шинель', 'Война и мир']);
+      await chooseStatus(tester, 'Прочитано');
+      expect(titles(tester, BookTile), ['Шинель']);
+      // Not stored: the library keeps its own status.
+      expect(await stored(tester, SettingKeys.libraryStatus), isNull);
+      await chooseStatus(tester, 'Читаю');
+      expect(find.text('Сейчас вы ничего не читаете'), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(CollectionCard), findsOneWidget);
+    });
+
+    testWidgets('"Создать подборку" names one and opens it', (tester) async {
+      await tester.runAsync(() async {
+        for (final b in shelfBooks) {
+          await db.into(db.books).insert(b);
+        }
+      });
+      await pumpLibrary(tester, live: true);
+      await openTab(tester);
+      expect(find.text('Подборок пока нет'), findsOneWidget);
+
+      await tester.tap(find.text('Создать подборку'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Для отпуска');
+      await tester.tap(find.text('Создать'));
+      await settle(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CollectionScreen), findsOneWidget);
+      expect(find.text('Для отпуска'), findsOneWidget);
+      expect(find.text('В подборке пока пусто'), findsOneWidget);
+    });
   });
 
   group('book menu', () {
@@ -428,28 +629,47 @@ void main() {
 
     Finder tile(String title) => find.widgetWithText(BookTile, title);
 
-    testWidgets('marks a book read and reading again', (tester) async {
+    /// A status in the book's status sheet.
+    Future<void> pick(WidgetTester tester, String status) async {
+      await tester.tap(find.widgetWithText(RadioListTile<BookStatus>, status));
+      await settle(tester);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('changes the status of a book', (tester) async {
       await pumpLive(tester);
 
       await longPress(tester, tile('Война и мир'));
       expect(find.text('В подборку…'), findsOneWidget);
-      expect(find.text('Читаю снова'), findsNothing);
       // Only inside a collection.
       expect(find.text('Убрать из подборки'), findsNothing);
-      await choose(tester, 'Отметить прочитанной');
-      expect((await row(tester, 1))!.finishedAt, isNotNull);
+      await choose(tester, 'Статус: Новая');
+      expect(find.text('Статус книги'), findsOneWidget);
+      // A book never opened becomes "Читаю" by opening it.
       expect(
-        find.descendant(
-          of: tile('Война и мир'),
-          matching: find.text('Прочитано'),
-        ),
-        findsOneWidget,
+        find.widgetWithText(RadioListTile<BookStatus>, 'Читаю'),
+        findsNothing,
       );
+      await pick(tester, 'Прочитано');
+      expect((await row(tester, 1))!.finishedAt, isNotNull);
+      expect(inRow('Война и мир', find.text('Прочитано')), findsOneWidget);
 
       await longPress(tester, tile('Шинель'));
-      expect(find.text('Отметить прочитанной'), findsNothing);
-      await choose(tester, 'Читаю снова');
+      await choose(tester, 'Статус: Прочитано');
+      await pick(tester, 'Читаю');
       expect((await row(tester, 3))!.finishedAt, isNull);
+      expect(inRow('Шинель', find.text('Читаю · 100 %')), findsOneWidget);
+
+      await longPress(tester, tile('Анна Каренина'));
+      await choose(tester, 'Статус: Читаю');
+      await pick(tester, 'На очереди');
+      expect((await row(tester, 2))!.statusMark, StatusMark.queued);
+      expect(inRow('Анна Каренина', find.text('На очереди')), findsOneWidget);
+
+      await longPress(tester, tile('Анна Каренина'));
+      await choose(tester, 'Статус: На очереди');
+      await pick(tester, 'Брошена');
+      expect((await row(tester, 2))!.statusMark, StatusMark.abandoned);
     });
 
     testWidgets('deletes a book only after confirmation', (tester) async {
@@ -508,13 +728,9 @@ void main() {
 
     testWidgets('inside a collection takes the book out of it', (tester) async {
       await pumpLive(tester);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Классика'));
-      await settle(tester);
-
-      // "Продолжить" holds a book from outside the collection.
-      await longPress(tester, find.byType(ContinueCard));
-      expect(find.text('Убрать из подборки'), findsNothing);
-      await tester.tapAt(const Offset(10, 10));
+      await tester.tap(find.text('Подборки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Классика'));
       await tester.pumpAndSettle();
 
       await longPress(tester, tile('Война и мир'));
@@ -522,6 +738,24 @@ void main() {
       expect(await collectionsOf(tester, 1), isEmpty);
       expect(await row(tester, 1), isNotNull);
       expect(find.text('В подборке пока пусто'), findsOneWidget);
+      expect(find.text('0 книг'), findsOneWidget);
+    });
+
+    testWidgets('a deleted collection closes its screen', (tester) async {
+      await pumpLive(tester);
+      await tester.tap(find.text('Подборки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Классика'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CollectionScreen), findsOneWidget);
+
+      await tester.runAsync(
+        () => (db.delete(db.collections)..where((c) => c.id.equals(7))).go(),
+      );
+      await settle(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(CollectionScreen), findsNothing);
+      expect(find.text('Подборок пока нет'), findsOneWidget);
     });
 
     testWidgets('a long press on a grid cover opens the menu', (tester) async {
@@ -531,7 +765,7 @@ void main() {
       await pumpLive(tester);
 
       await longPress(tester, find.widgetWithText(BookGridTile, 'Шинель'));
-      expect(find.text('Читаю снова'), findsOneWidget);
+      expect(find.text('Статус: Прочитано'), findsOneWidget);
       expect(find.text('Удалить книгу'), findsOneWidget);
     });
   });

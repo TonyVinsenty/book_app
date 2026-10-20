@@ -135,7 +135,10 @@ void main() {
       ]),
       validateItems: (db) async {
         final rows = await db.select(db.books).get();
-        expect([for (final r in rows) r.title], ['Почти', 'Дочитана', 'Пустая']);
+        expect(
+          [for (final r in rows) r.title],
+          ['Почти', 'Дочитана', 'Пустая'],
+        );
         expect([for (final r in rows) r.finishedAt], [null, _opened, null]);
         expect([for (final r in rows) r.coverFile], everyElement('cover.jpg'));
         expect([for (final r in rows) r.statusMark], everyElement(isNull));
@@ -176,7 +179,10 @@ void main() {
           ])
           ..insert(
             old.collections,
-            v3.CollectionsCompanion.insert(name: 'Фантастика', createdAt: _added),
+            v3.CollectionsCompanion.insert(
+              name: 'Фантастика',
+              createdAt: _added,
+            ),
           )
           ..insert(
             old.bookCollections,

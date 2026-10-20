@@ -11,11 +11,11 @@ import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum _BookAction { collections, markFinished, readAgain, uncollect, delete }
+enum _BookAction { collections, status, uncollect, delete }
 
 /// What a long press on a book offers (mockup "Действия с книгой"):
-/// collections, the read mark, taking it out of the shown collection,
-/// deleting it.
+/// collections, the status, taking it out of the shown collection, deleting
+/// it.
 Future<void> showBookMenu(
   BuildContext context,
   WidgetRef ref, {
@@ -41,7 +41,7 @@ Future<void> showBookMenu(
     showDragHandle: true,
     builder: (context) => _BookMenu(
       header: header,
-      finished: book.finishedAt != null,
+      status: statusOf(book),
       inCollection: inCollection,
     ),
   );
@@ -54,10 +54,8 @@ Future<void> showBookMenu(
         isScrollControlled: true,
         builder: (_) => _BookCollections(bookId: book.id, header: header),
       );
-    case _BookAction.markFinished:
-      await books.markFinished(book.id);
-    case _BookAction.readAgain:
-      await books.markUnfinished(book.id);
+    case _BookAction.status:
+      await chooseBookStatus(context, ref, book);
     case _BookAction.uncollect:
       await collections.removeBook(collectionId!, book.id);
     case _BookAction.delete:
@@ -66,6 +64,82 @@ Future<void> showBookMenu(
       }
   }
 }
+
+/// "Статус книги": Читаю, На очереди, Брошена, Прочитано (ADR 0005
+/// addendum 3). "Новая" is not chosen by hand, and a book never opened
+/// becomes "Читаю" by opening it.
+Future<void> chooseBookStatus(
+  BuildContext context,
+  WidgetRef ref,
+  BookRow book,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final current = statusOf(book);
+  final options = [
+    if (book.openedAt != null) BookStatus.reading,
+    BookStatus.queued,
+    BookStatus.abandoned,
+    BookStatus.finished,
+  ];
+  final chosen = await showModalBottomSheet<BookStatus>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        child: RadioGroup<BookStatus>(
+          groupValue: current,
+          onChanged: (status) => Navigator.of(context).pop(status),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  l10n.libraryStatusFilter,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              for (final status in options)
+                RadioListTile<BookStatus>(
+                  value: status,
+                  controlAffinity: ListTileControlAffinity.trailing,
+                  title: Text(statusName(l10n, status)),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Text(
+                  l10n.statusNewHint,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: context.readingColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  if (chosen == null || chosen == current) return;
+  final books = ref.read(bookRepositoryProvider);
+  await switch (chosen) {
+    // Takes off both "queued"/"abandoned" and the read mark.
+    BookStatus.reading => books.setStatusMark(book.id, null),
+    BookStatus.queued => books.setStatusMark(book.id, StatusMark.queued),
+    BookStatus.abandoned => books.setStatusMark(book.id, StatusMark.abandoned),
+    BookStatus.finished => books.markFinished(book.id),
+    BookStatus.notStarted => Future<void>.value(),
+  };
+}
+
+/// The status of one book: "Новая", "Читаю", "На очереди", …
+String statusName(AppLocalizations l10n, BookStatus status) => switch (status) {
+  BookStatus.notStarted => l10n.statusNew,
+  BookStatus.reading => l10n.statusReadingShort,
+  BookStatus.queued => l10n.statusQueued,
+  BookStatus.abandoned => l10n.statusAbandoned,
+  BookStatus.finished => l10n.statusFinished,
+};
 
 Future<bool> _confirmDelete(BuildContext context, String title) async {
   final l10n = AppLocalizations.of(context);
@@ -95,12 +169,12 @@ Future<bool> _confirmDelete(BuildContext context, String title) async {
 class _BookMenu extends StatelessWidget {
   const _BookMenu({
     required this.header,
-    required this.finished,
+    required this.status,
     required this.inCollection,
   });
 
   final Widget header;
-  final bool finished;
+  final BookStatus status;
   final bool inCollection;
 
   @override
@@ -125,14 +199,11 @@ class _BookMenu extends StatelessWidget {
               l10n.bookMenuToCollection,
               _BookAction.collections,
             ),
-            if (finished)
-              item(Icons.replay, l10n.bookMenuReadAgain, _BookAction.readAgain)
-            else
-              item(
-                Icons.check_circle_outline,
-                l10n.bookMenuMarkFinished,
-                _BookAction.markFinished,
-              ),
+            item(
+              Icons.bookmark_outline,
+              l10n.bookMenuStatus(statusName(l10n, status)),
+              _BookAction.status,
+            ),
             if (inCollection)
               item(
                 Icons.remove_circle_outline,

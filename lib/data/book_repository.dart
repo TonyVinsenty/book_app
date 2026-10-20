@@ -166,14 +166,14 @@ final class BookRepository {
   /// Marks the book read — at its end or by hand; an earlier mark stays.
   /// Takes off "queued" / "abandoned": a book has one status.
   Future<void> markFinished(int id) =>
-      (_db.update(_db.books)
-            ..where((b) => b.id.equals(id) & b.finishedAt.isNull()))
-          .write(
-            BooksCompanion(
-              finishedAt: Value(_now()),
-              statusMark: const Value(null),
-            ),
-          );
+      (_db.update(
+        _db.books,
+      )..where((b) => b.id.equals(id) & b.finishedAt.isNull())).write(
+        BooksCompanion(
+          finishedAt: Value(_now()),
+          statusMark: const Value(null),
+        ),
+      );
 
   /// "Reading again": the read mark goes away by hand only, never by
   /// reading from the start.
