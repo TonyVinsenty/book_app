@@ -11,55 +11,6 @@ import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum _BookAction { collections, status, uncollect, delete }
-
-/// What a long press on a book offers (mockup "Действия с книгой"):
-/// collections, the status, taking it out of the shown collection, deleting
-/// it.
-Future<void> showBookMenu(
-  BuildContext context,
-  WidgetRef ref, {
-  required BookRow book,
-  required int? collectionId,
-  String? titleFont,
-}) async {
-  final books = ref.read(bookRepositoryProvider);
-  final collections = ref.read(collectionRepositoryProvider);
-  final header = _BookHeader(
-    book: book,
-    coverFile: books.coverFile(book),
-    titleFont: titleFont,
-  );
-  // "Продолжить" shows on every shelf, its book may be in another one.
-  final inCollection =
-      collectionId != null &&
-      (ref.read(collectionLinksProvider).value ?? const []).any(
-        (l) => l.collectionId == collectionId && l.bookId == book.id,
-      );
-  final action = await showModalBottomSheet<_BookAction>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => _BookMenu(
-      header: header,
-      status: statusOf(book),
-      inCollection: inCollection,
-    ),
-  );
-  if (action == null || !context.mounted) return;
-  switch (action) {
-    case _BookAction.collections:
-      await _showCollections(context, book.id, header);
-    case _BookAction.status:
-      await chooseBookStatus(context, ref, book);
-    case _BookAction.uncollect:
-      await collections.removeBook(collectionId!, book.id);
-    case _BookAction.delete:
-      if (await confirmBookDelete(context, book.title)) {
-        await books.deleteBook(book.id);
-      }
-  }
-}
-
 /// "В подборку…" for [book], from its page.
 Future<void> showBookCollections(
   BuildContext context,
@@ -187,63 +138,6 @@ Future<bool> confirmBookDelete(BuildContext context, String title) async {
     ),
   );
   return yes ?? false;
-}
-
-class _BookMenu extends StatelessWidget {
-  const _BookMenu({
-    required this.header,
-    required this.status,
-    required this.inCollection,
-  });
-
-  final Widget header;
-  final BookStatus status;
-  final bool inCollection;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final danger = Theme.of(context).colorScheme.error;
-    Widget item(IconData icon, String text, _BookAction action, {Color? c}) =>
-        ListTile(
-          leading: Icon(icon, color: c),
-          title: Text(text, style: TextStyle(color: c)),
-          onTap: () => Navigator.of(context).pop(action),
-        );
-    return SafeArea(
-      // Scrolls on a low screen (landscape, large text).
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            header,
-            item(
-              Icons.collections_bookmark_outlined,
-              l10n.bookMenuToCollection,
-              _BookAction.collections,
-            ),
-            item(
-              Icons.bookmark_outline,
-              l10n.bookMenuStatus(statusName(l10n, status)),
-              _BookAction.status,
-            ),
-            if (inCollection)
-              item(
-                Icons.remove_circle_outline,
-                l10n.bookMenuRemoveFromCollection,
-                _BookAction.uncollect,
-              ),
-            item(
-              Icons.delete_outline,
-              l10n.bookMenuDelete,
-              _BookAction.delete,
-              c: danger,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// "В подборку…": a checkmark for every collection, one tap puts the book

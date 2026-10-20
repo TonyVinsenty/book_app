@@ -8,7 +8,7 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
-import 'package:book_app/features/library/collection_name_dialog.dart';
+import 'package:book_app/features/library/collection_pick_screen.dart';
 import 'package:book_app/features/library/collection_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
@@ -231,8 +231,7 @@ class _BooksTab extends ConsumerWidget {
           SliverToBoxAdapter(
             child: ContinueCard(
               onTap: () => openBook(context, last.id),
-              onLongPress: () =>
-                  showShelfMenu(context, ref, last, view, titleFont),
+              onLongPress: () => pickForNewCollection(context, last.id),
               coverFile: repository.coverFile(last),
               title: last.title,
               authors: last.authors.join(', '),
@@ -257,7 +256,10 @@ class _BooksTab extends ConsumerWidget {
             child: EmptyShelf(status: view.filter.status),
           )
         else ...[
-          BookShelf(view: view),
+          BookShelf(
+            view: view,
+            onLongPress: (book) => pickForNewCollection(context, book.id),
+          ),
           // Room for the button over the last book.
           const SliverToBoxAdapter(child: SizedBox(height: 88)),
         ],
@@ -277,17 +279,7 @@ class _CollectionsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
-    Future<void> create() async {
-      final created = await askCollectionName(
-        context,
-        title: l10n.collectionNew,
-        action: l10n.create,
-        save: ref.read(collectionRepositoryProvider).create,
-      );
-      if (created != null && context.mounted) {
-        openCollection(context, created.id);
-      }
-    }
+    Future<void> create() => createCollection(context, ref);
 
     if (view.collections.isEmpty) {
       return EmptyMessage(

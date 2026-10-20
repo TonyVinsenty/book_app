@@ -66,6 +66,33 @@ void main() {
     expect(await names(), ['Классика']);
   });
 
+  test('creates a collection with its books at once', () async {
+    final a = await book('А');
+    final b = await book('Б');
+
+    final c = await repo.create('Классика', bookIds: {a, b});
+    expect(await links(), {(c.id, a), (c.id, b)});
+
+    await expectLater(
+      repo.create('классика', bookIds: {a}),
+      nameError(CollectionNameError.taken),
+    );
+    expect(await names(), ['Классика']);
+    expect(await links(), {(c.id, a), (c.id, b)});
+  });
+
+  test('checkName trims and writes nothing', () async {
+    final a = await repo.create('Классика');
+
+    expect(await repo.checkName(' Сказки '), 'Сказки');
+    expect(await repo.checkName('классика', except: a.id), 'классика');
+    await expectLater(
+      repo.checkName('КЛАССИКА'),
+      nameError(CollectionNameError.taken),
+    );
+    expect(await names(), ['Классика']);
+  });
+
   test('renames; its own name in other case is fine', () async {
     final a = await repo.create('Классика');
     await repo.create('Сказки');

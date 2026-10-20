@@ -203,6 +203,7 @@ class BookTile extends StatelessWidget {
     required this.authors,
     required this.mark,
     this.titleFont,
+    this.picked,
   });
 
   static const coverWidth = 52.0;
@@ -220,67 +221,77 @@ class BookTile extends StatelessWidget {
   final ReadMark mark;
   final String? titleFont;
 
+  /// Not null while books are checked for a collection: a mark on the right.
+  final bool? picked;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.readingColors;
-    return InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            BookCover(
-              file: coverFile,
-              title: title,
-              width: coverWidth,
-              height: coverHeight,
-              titleFont: titleFont,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontFamily: titleFont,
-                      fontWeight: FontWeight.w600,
-                      height: 1.25,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (authors.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+    return PickSemantics(
+      picked: picked,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              BookCover(
+                file: coverFile,
+                title: title,
+                width: coverWidth,
+                height: coverHeight,
+                titleFont: titleFont,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      authors,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontFamily: titleFont,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Flexible(child: BookStatusLabel(mark: mark)),
-                      if (mark.status == BookStatus.reading) ...[
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 56,
-                          child: ReadBar(share: mark.percent / 100),
+                    if (authors.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        authors,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.textSecondary,
                         ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Flexible(child: BookStatusLabel(mark: mark)),
+                        if (mark.status == BookStatus.reading) ...[
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 56,
+                            child: ReadBar(share: mark.percent / 100),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              if (picked case final picked?) ...[
+                const SizedBox(width: 12),
+                PickMark(picked: picked),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -299,6 +310,7 @@ class BookGridTile extends StatelessWidget {
     required this.authors,
     required this.mark,
     this.titleFont,
+    this.picked,
   });
 
   static const _titleSize = 14.0;
@@ -328,71 +340,133 @@ class BookGridTile extends StatelessWidget {
   final ReadMark mark;
   final String? titleFont;
 
+  /// Not null while books are checked for a collection: a mark on the
+  /// cover, a frame around a checked one.
+  final bool? picked;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.readingColors;
-    return InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(6),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              BookCover(
-                file: coverFile,
-                title: title,
-                width: width,
-                height: width * 1.5,
-                titleFont: titleFont,
-                badges: [
-                  if (mark.status == BookStatus.reading)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 4,
-                      child: LinearProgressIndicator(
-                        value: mark.percent / 100,
-                        minHeight: 4,
-                        color: colors.accent,
-                        backgroundColor: const Color(0x40000000),
+    return PickSemantics(
+      picked: picked,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(6),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                BookCover(
+                  file: coverFile,
+                  title: title,
+                  width: width,
+                  height: width * 1.5,
+                  titleFont: titleFont,
+                  badges: [
+                    if (mark.status == BookStatus.reading)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 4,
+                        child: LinearProgressIndicator(
+                          value: mark.percent / 100,
+                          minHeight: 4,
+                          color: colors.accent,
+                          backgroundColor: const Color(0x40000000),
+                        ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: _gap),
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: titleFont,
-                  fontSize: _titleSize,
-                  height: _titleHeight,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text,
+                    if (picked == true)
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: colors.accent, width: 3),
+                          ),
+                        ),
+                      ),
+                    if (picked case final picked?)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: PickMark(picked: picked, onCover: true),
+                      ),
+                  ],
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (authors.isNotEmpty)
+                const SizedBox(height: _gap),
                 Text(
-                  authors,
+                  title,
                   style: TextStyle(
-                    fontSize: _authorSize,
-                    height: _authorHeight,
-                    color: colors.textSecondary,
+                    fontFamily: titleFont,
+                    fontSize: _titleSize,
+                    height: _titleHeight,
+                    fontWeight: FontWeight.w600,
+                    color: colors.text,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              const SizedBox(height: 2),
-              BookStatusLabel(mark: mark),
-            ],
-          );
-        },
+                if (authors.isNotEmpty)
+                  Text(
+                    authors,
+                    style: TextStyle(
+                      fontSize: _authorSize,
+                      height: _authorHeight,
+                      color: colors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                const SizedBox(height: 2),
+                BookStatusLabel(mark: mark),
+              ],
+            );
+          },
+        ),
       ),
+    );
+  }
+}
+
+/// A book checked or not for a collection; read out as a checkbox.
+class PickSemantics extends StatelessWidget {
+  const PickSemantics({super.key, required this.picked, required this.child});
+
+  final bool? picked;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      picked == null ? child : Semantics(checked: picked, child: child);
+}
+
+/// The round check of a book being put in a collection.
+class PickMark extends StatelessWidget {
+  const PickMark({super.key, required this.picked, this.onCover = false});
+
+  final bool picked;
+
+  /// Over a cover: on a light disc, so it shows on any picture.
+  final bool onCover;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.readingColors;
+    final icon = Icon(
+      picked ? Icons.check_circle : Icons.radio_button_unchecked,
+      size: 28,
+      color: picked ? colors.accent : colors.textSecondary,
+    );
+    if (!onCover) return icon;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.background,
+        shape: BoxShape.circle,
+      ),
+      child: icon,
     );
   }
 }

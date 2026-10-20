@@ -172,14 +172,6 @@
   "@collectionCreate": {"description": "Button on the collections tab"},
   "collectionsHint": "Одну книгу можно положить в несколько подборок. Статус книги от этого не меняется.",
   "@collectionsHint": {"description": "Hint under a few collections"},
-  "bookMenuToCollection": "В подборку…",
-  "@bookMenuToCollection": {
-    "description": "Book menu (long press in the library): choose collections for the book"
-  },
-  "bookMenuRemoveFromCollection": "Убрать из подборки",
-  "@bookMenuRemoveFromCollection": {
-    "description": "Book menu inside a collection: take the book out of it (the book stays in the library)"
-  },
   "bookMenuDelete": "Удалить книгу",
   "@bookMenuDelete": {
     "description": "Book menu: delete the book from the library"
@@ -542,5 +534,25 @@
   "sizeKb": "{size} КБ",
   "@sizeKb": {"description": "File size in kilobytes", "placeholders": {"size": {"type": "String"}}},
   "sizeMb": "{size} МБ",
-  "@sizeMb": {"description": "File size in megabytes", "placeholders": {"size": {"type": "String"}}}
+  "@sizeMb": {"description": "File size in megabytes", "placeholders": {"size": {"type": "String"}}},
+  "collectionPickHint": "Отметьте книги · выбрано {count}",
+  "@collectionPickHint": {"description": "Under the collection name while checking books for it", "placeholders": {"count": {"type": "int"}}},
+  "collectionPickDone": "Готово ({count})",
+  "@collectionPickDone": {"description": "Saves the checked books into the collection", "placeholders": {"count": {"type": "int"}}},
+  "collectionCreated": "Подборка «{name}» создана",
+  "@collectionCreated": {"description": "Message after a new collection is saved", "placeholders": {"name": {"type": "String"}}},
+  "collectionAddBooks": "Добавить книги",
+  "@collectionAddBooks": {"description": "Collection screen: check books to add or take out"},
+  "collectionRename": "Переименовать",
+  "@collectionRename": {"description": "Collection menu and the rename dialog"},
+  "collectionDelete": "Удалить подборку",
+  "@collectionDelete": {"description": "Collection menu: delete the collection"},
+  "collectionDeleteTitle": "Удалить подборку «{name}»?",
+  "@collectionDeleteTitle": {"description": "Confirm deleting a collection", "placeholders": {"name": {"type": "String"}}},
+  "collectionDeleteBody": "Книги останутся в библиотеке.",
+  "@collectionDeleteBody": {"description": "Confirm deleting a collection: the books stay"},
+  "save": "Сохранить",
+  "@save": {"description": "Save button"},
+  "moreActions": "Ещё",
+  "@moreActions": {"description": "Tooltip of the three-dots menu button"}
 }

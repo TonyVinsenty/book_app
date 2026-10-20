@@ -6,9 +6,9 @@ import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
-import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_screen.dart';
@@ -554,33 +554,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(CollectionCard), findsOneWidget);
     });
-
-    testWidgets('"Создать подборку" names one and opens it', (tester) async {
-      await tester.runAsync(() async {
-        for (final b in shelfBooks) {
-          await db.into(db.books).insert(b);
-        }
-      });
-      await pumpLibrary(tester, live: true);
-      await openTab(tester);
-      expect(find.text('Подборок пока нет'), findsOneWidget);
-
-      await tester.tap(find.text('Создать подборку'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Для отпуска');
-      await tester.tap(find.text('Создать'));
-      await settle(tester);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(CollectionScreen), findsOneWidget);
-      expect(find.text('Для отпуска'), findsOneWidget);
-      expect(find.text('В подборке пока пусто'), findsOneWidget);
-    });
   });
 
-  group('book menu', () {
+  group('checking books for a collection', () {
     /// [shelfBooks] and the collection "Классика" with "Война и мир" in the
-    /// database, so menu actions show on the screen.
+    /// database, so changes show on the screen.
     Future<void> pumpLive(WidgetTester tester) async {
       await tester.runAsync(() async {
         for (final b in shelfBooks) {
@@ -598,155 +576,196 @@ void main() {
       await pumpLibrary(tester, live: true);
     }
 
-    Future<BookRow?> row(WidgetTester tester, int id) => tester
-        .runAsync(
-          () => (db.select(
-            db.books,
-          )..where((b) => b.id.equals(id))).getSingleOrNull(),
-        )
-        .then((r) => r);
-
-    Future<Set<int>> collectionsOf(WidgetTester tester, int bookId) => tester
+    Future<Map<String, Set<int>>> saved(WidgetTester tester) => tester
         .runAsync(() async {
           final links = await db.select(db.bookCollections).get();
           return {
-            for (final l in links)
-              if (l.bookId == bookId) l.collectionId,
+            for (final c in await db.select(db.collections).get())
+              c.name: {
+                for (final l in links)
+                  if (l.collectionId == c.id) l.bookId,
+              },
           };
         })
         .then((r) => r!);
 
-    Future<void> longPress(WidgetTester tester, Finder target) async {
-      await tester.longPress(target);
-      await tester.pumpAndSettle();
-    }
-
-    Future<void> choose(WidgetTester tester, String item) async {
-      await tester.tap(find.text(item));
+    Future<void> tap(WidgetTester tester, Finder target) async {
+      await tester.tap(target);
       await settle(tester);
       await tester.pumpAndSettle();
     }
 
     Finder tile(String title) => find.widgetWithText(BookTile, title);
 
-    /// A status in the book's status sheet.
-    Future<void> pick(WidgetTester tester, String status) async {
-      await tester.tap(find.widgetWithText(RadioListTile<BookStatus>, status));
-      await settle(tester);
-      await tester.pumpAndSettle();
+    bool? picked(WidgetTester tester, String title) =>
+        tester.widget<BookTile>(tile(title)).picked;
+
+    Future<void> openClassics(WidgetTester tester) async {
+      await tap(tester, find.text('Подборки'));
+      await tap(tester, find.text('Классика'));
     }
 
-    testWidgets('changes the status of a book', (tester) async {
+    testWidgets('"Создать подборку": a name, checks, then "Готово"', (
+      tester,
+    ) async {
       await pumpLive(tester);
+      await tap(tester, find.text('Подборки'));
 
-      await longPress(tester, tile('Война и мир'));
-      expect(find.text('В подборку…'), findsOneWidget);
-      // Only inside a collection.
-      expect(find.text('Убрать из подборки'), findsNothing);
-      await choose(tester, 'Статус: Новая');
-      expect(find.text('Статус книги'), findsOneWidget);
-      // A book never opened becomes "Читаю" by opening it.
-      expect(
-        find.widgetWithText(RadioListTile<BookStatus>, 'Читаю'),
-        findsNothing,
-      );
-      await pick(tester, 'Прочитано');
-      expect((await row(tester, 1))!.finishedAt, isNotNull);
-      expect(inRow('Война и мир', find.text('Прочитано')), findsOneWidget);
-
-      await longPress(tester, tile('Шинель'));
-      await choose(tester, 'Статус: Прочитано');
-      await pick(tester, 'Читаю');
-      expect((await row(tester, 3))!.finishedAt, isNull);
-      expect(inRow('Шинель', find.text('Читаю · 100 %')), findsOneWidget);
-
-      await longPress(tester, tile('Анна Каренина'));
-      await choose(tester, 'Статус: Читаю');
-      await pick(tester, 'На очереди');
-      expect((await row(tester, 2))!.statusMark, StatusMark.queued);
-      expect(inRow('Анна Каренина', find.text('На очереди')), findsOneWidget);
-
-      await longPress(tester, tile('Анна Каренина'));
-      await choose(tester, 'Статус: На очереди');
-      await pick(tester, 'Брошена');
-      expect((await row(tester, 2))!.statusMark, StatusMark.abandoned);
-    });
-
-    testWidgets('deletes a book only after confirmation', (tester) async {
-      await pumpLive(tester);
-
-      await longPress(tester, tile('Война и мир'));
-      await choose(tester, 'Удалить книгу');
-      expect(find.text('Удалить «Война и мир»?'), findsOneWidget);
-      await choose(tester, 'Отмена');
-      expect(await row(tester, 1), isNotNull);
-
-      await longPress(tester, tile('Война и мир'));
-      await choose(tester, 'Удалить книгу');
-      await choose(tester, 'Удалить');
-      expect(await row(tester, 1), isNull);
-      expect(await collectionsOf(tester, 1), isEmpty);
-      expect(titles(tester, BookTile), isNot(contains('Война и мир')));
-    });
-
-    testWidgets('puts a book in collections, a new one too', (tester) async {
-      await pumpLive(tester);
-
-      await longPress(tester, tile('Шинель'));
-      await choose(tester, 'В подборку…');
-      expect(find.text('0 книг'), findsNothing);
-      expect(find.text('1 книга'), findsOneWidget);
-      await tester.tap(find.widgetWithText(CheckboxListTile, 'Классика'));
-      await settle(tester);
-      expect(await collectionsOf(tester, 3), {7});
-      expect(find.text('2 книги'), findsOneWidget);
-
-      await choose(tester, 'Новая подборка');
-      await choose(tester, 'Создать');
+      await tap(tester, find.text('Создать подборку'));
+      await tap(tester, find.text('Создать'));
       expect(find.text('Введите название'), findsOneWidget);
       await tester.enterText(find.byType(TextField), ' классика ');
-      await choose(tester, 'Создать');
+      await tap(tester, find.text('Создать'));
       expect(find.text('Подборка с таким названием уже есть'), findsOneWidget);
-      await tester.enterText(find.byType(TextField), 'Сказки');
-      await choose(tester, 'Создать');
-      expect(find.byType(TextField), findsNothing);
-      final ids = await collectionsOf(tester, 3);
-      expect(ids, hasLength(2));
-      expect(
-        tester
-            .widget<CheckboxListTile>(
-              find.widgetWithText(CheckboxListTile, 'Сказки'),
-            )
-            .value,
-        isTrue,
-      );
+      await tester.enterText(find.byType(TextField), 'Для отпуска');
+      await tap(tester, find.text('Создать'));
 
-      await tester.tap(find.widgetWithText(CheckboxListTile, 'Классика'));
-      await settle(tester);
-      expect(await collectionsOf(tester, 3), ids.difference({7}));
+      expect(find.text('Отметьте книги · выбрано 0'), findsOneWidget);
+      expect(picked(tester, 'Война и мир'), isFalse);
+      await tap(tester, tile('Шинель'));
+      await tap(tester, tile('Анна Каренина'));
+      await tap(tester, tile('Война и мир'));
+      await tap(tester, tile('Война и мир'));
+      expect(find.text('Отметьте книги · выбрано 2'), findsOneWidget);
+      expect(picked(tester, 'Шинель'), isTrue);
+      expect(find.byType(BookPageScreen), findsNothing);
+      // Nothing is written before "Готово".
+      expect((await saved(tester)).keys, ['Классика']);
+
+      await tap(tester, find.text('Готово (2)'));
+      expect(find.byType(CollectionScreen), findsOneWidget);
+      expect(find.text('Подборка «Для отпуска» создана'), findsOneWidget);
+      expect(titles(tester, BookTile), ['Анна Каренина', 'Шинель']);
+      expect((await saved(tester))['Для отпуска'], {2, 3});
+
+      // Back to the collections, not to the checks.
+      await tap(tester, find.byType(BackButton));
+      expect(find.byType(CollectionCard), findsNWidgets(2));
     });
 
-    testWidgets('inside a collection takes the book out of it', (tester) async {
+    testWidgets('closing the checks writes nothing', (tester) async {
       await pumpLive(tester);
-      await tester.tap(find.text('Подборки'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Классика'));
-      await tester.pumpAndSettle();
+      await tap(tester, find.text('Подборки'));
+      await tap(tester, find.text('Создать подборку'));
+      await tester.enterText(find.byType(TextField), 'Для отпуска');
+      await tap(tester, find.text('Создать'));
+      await tap(tester, tile('Шинель'));
 
-      await longPress(tester, tile('Война и мир'));
-      await choose(tester, 'Убрать из подборки');
-      expect(await collectionsOf(tester, 1), isEmpty);
-      expect(await row(tester, 1), isNotNull);
-      expect(find.text('В подборке пока пусто'), findsOneWidget);
-      expect(find.text('0 книг'), findsOneWidget);
+      await tap(tester, find.byType(CloseButton));
+      expect(find.byType(CollectionCard), findsOneWidget);
+      expect(await saved(tester), {
+        'Классика': {1},
+      });
+    });
+
+    testWidgets('a long press starts a new collection with the book', (
+      tester,
+    ) async {
+      await pumpLive(tester);
+
+      await tester.longPress(tile('Шинель'));
+      await tester.pumpAndSettle();
+      expect(find.text('Новая подборка'), findsOneWidget);
+      expect(find.text('Отметьте книги · выбрано 1'), findsOneWidget);
+      expect(picked(tester, 'Шинель'), isTrue);
+
+      await tap(tester, find.text('Готово (1)'));
+      // The name is asked now; cancelling it keeps the checks.
+      await tap(tester, find.text('Отмена'));
+      expect(find.text('Готово (1)'), findsOneWidget);
+      await tap(tester, find.text('Готово (1)'));
+      await tester.enterText(find.byType(TextField), 'Сказки');
+      await tap(tester, find.text('Создать'));
+
+      expect(find.byType(CollectionScreen), findsOneWidget);
+      expect(titles(tester, BookTile), ['Шинель']);
+      expect((await saved(tester))['Сказки'], {3});
+    });
+
+    testWidgets('a long press on a grid cover checks it', (tester) async {
+      await tester.runAsync(
+        () => SettingsRepository(db).set(SettingKeys.libraryLayout, 'grid'),
+      );
+      await pumpLive(tester);
+
+      await tester.longPress(find.widgetWithText(BookGridTile, 'Шинель'));
+      await tester.pumpAndSettle();
+      final tiles = {
+        for (final e in find.byType(BookGridTile).evaluate())
+          (e.widget as BookGridTile).title: (e.widget as BookGridTile).picked,
+      };
+      expect(tiles, {
+        'Шинель': true,
+        'Анна Каренина': false,
+        'Война и мир': false,
+      });
+    });
+
+    testWidgets('"Добавить книги" adds and takes out books', (tester) async {
+      await pumpLive(tester);
+      await openClassics(tester);
+
+      await tap(tester, find.text('Добавить книги'));
+      expect(find.text('Классика'), findsOneWidget);
+      expect(find.text('Отметьте книги · выбрано 1'), findsOneWidget);
+      expect(picked(tester, 'Война и мир'), isTrue);
+      await tap(tester, tile('Война и мир'));
+      await tap(tester, tile('Шинель'));
+      await tap(tester, find.text('Готово (1)'));
+
+      expect(find.byType(CollectionScreen), findsOneWidget);
+      expect(titles(tester, BookTile), ['Шинель']);
+      expect(await saved(tester), {
+        'Классика': {3},
+      });
+
+      // A long press there opens the same checks.
+      await tester.longPress(tile('Шинель'));
+      await tester.pumpAndSettle();
+      expect(find.text('Отметьте книги · выбрано 1'), findsOneWidget);
+    });
+
+    testWidgets('renames a collection', (tester) async {
+      await pumpLive(tester);
+      await openClassics(tester);
+
+      await tap(tester, find.byTooltip('Ещё'));
+      await tap(tester, find.text('Переименовать'));
+      expect(find.widgetWithText(TextField, 'Классика'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'Русская классика');
+      await tap(tester, find.text('Сохранить'));
+
+      expect(find.text('Русская классика'), findsOneWidget);
+      expect(await saved(tester), {
+        'Русская классика': {1},
+      });
+    });
+
+    testWidgets('deletes a collection after confirmation, books stay', (
+      tester,
+    ) async {
+      await pumpLive(tester);
+      await openClassics(tester);
+
+      await tap(tester, find.byTooltip('Ещё'));
+      await tap(tester, find.text('Удалить подборку'));
+      expect(find.text('Удалить подборку «Классика»?'), findsOneWidget);
+      await tap(tester, find.text('Отмена'));
+      expect(await saved(tester), hasLength(1));
+
+      await tap(tester, find.byTooltip('Ещё'));
+      await tap(tester, find.text('Удалить подборку'));
+      await tap(tester, find.text('Удалить'));
+      expect(find.byType(CollectionScreen), findsNothing);
+      expect(find.text('Подборок пока нет'), findsOneWidget);
+      expect(await saved(tester), isEmpty);
+      final books = await tester.runAsync(() => db.select(db.books).get());
+      expect(books, hasLength(3));
     });
 
     testWidgets('a deleted collection closes its screen', (tester) async {
       await pumpLive(tester);
-      await tester.tap(find.text('Подборки'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Классика'));
-      await tester.pumpAndSettle();
+      await openClassics(tester);
       expect(find.byType(CollectionScreen), findsOneWidget);
 
       await tester.runAsync(
@@ -756,17 +775,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(CollectionScreen), findsNothing);
       expect(find.text('Подборок пока нет'), findsOneWidget);
-    });
-
-    testWidgets('a long press on a grid cover opens the menu', (tester) async {
-      await tester.runAsync(
-        () => SettingsRepository(db).set(SettingKeys.libraryLayout, 'grid'),
-      );
-      await pumpLive(tester);
-
-      await longPress(tester, find.widgetWithText(BookGridTile, 'Шинель'));
-      expect(find.text('Статус: Прочитано'), findsOneWidget);
-      expect(find.text('Удалить книгу'), findsOneWidget);
     });
   });
 }

@@ -31,19 +31,23 @@ final class CollectionRepository {
   Stream<List<BookCollectionRow>> watchLinks() =>
       _db.select(_db.bookCollections).watch();
 
-  /// A new collection; throws [CollectionNameException].
-  Future<CollectionRow> create(String name) => _db.transaction(() async {
-    final clean = await _checkName(name);
-    return _db
-        .into(_db.collections)
-        .insertReturning(
-          CollectionsCompanion.insert(name: clean, createdAt: _now()),
-        );
-  });
+  /// A new collection with [bookIds] in it, written at once; throws
+  /// [CollectionNameException].
+  Future<CollectionRow> create(String name, {Set<int> bookIds = const {}}) =>
+      _db.transaction(() async {
+        final clean = await checkName(name);
+        final created = await _db
+            .into(_db.collections)
+            .insertReturning(
+              CollectionsCompanion.insert(name: clean, createdAt: _now()),
+            );
+        await _putBooks(created.id, bookIds);
+        return created;
+      });
 
   /// Throws [CollectionNameException]; the same name in other case is fine.
   Future<void> rename(int id, String name) => _db.transaction(() async {
-    final clean = await _checkName(name, except: id);
+    final clean = await checkName(name, except: id);
     await (_db.update(_db.collections)..where((c) => c.id.equals(id))).write(
       CollectionsCompanion(name: Value(clean)),
     );
@@ -80,13 +84,19 @@ final class CollectionRepository {
                 l.collectionId.equals(collectionId) & l.bookId.isNotIn(bookIds),
           ))
           .go();
-      for (final id in bookIds) {
-        await addBook(collectionId, id);
-      }
+      await _putBooks(collectionId, bookIds);
     },
   );
 
-  Future<String> _checkName(String name, {int? except}) async {
+  Future<void> _putBooks(int collectionId, Set<int> bookIds) async {
+    for (final id in bookIds) {
+      await addBook(collectionId, id);
+    }
+  }
+
+  /// The trimmed name, or throws [CollectionNameException]; [except] is the
+  /// collection being renamed.
+  Future<String> checkName(String name, {int? except}) async {
     final clean = name.trim();
     if (clean.isEmpty) {
       throw const CollectionNameException(CollectionNameError.empty);

@@ -7,6 +7,8 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
+import 'package:book_app/features/library/collection_name_dialog.dart';
+import 'package:book_app/features/library/collection_pick_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +40,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final view = ref
         .watch(
           collectionViewProvider(
@@ -58,12 +61,26 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
             : Column(
                 children: [
                   _Header(
-                    name: collection.name,
+                    collection: collection,
                     count: view.collectionBooks[collection.id]?.length ?? 0,
                   ),
                   Expanded(
                     child: CustomScrollView(
                       slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                              onPressed: () =>
+                                  pickForCollection(context, collection.id),
+                              icon: const Icon(Icons.add),
+                              label: Text(l10n.collectionAddBooks),
+                            ),
+                          ),
+                        ),
                         SliverToBoxAdapter(
                           child: ShelfBar(
                             view: view,
@@ -76,7 +93,11 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                             child: EmptyShelf(status: view.filter.status),
                           )
                         else ...[
-                          BookShelf(view: view),
+                          BookShelf(
+                            view: view,
+                            onLongPress: (_) =>
+                                pickForCollection(context, collection.id),
+                          ),
                           const SliverToBoxAdapter(child: SizedBox(height: 24)),
                         ],
                       ],
@@ -98,12 +119,53 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
   }
 }
 
-/// Back, the name (up to two lines) and the number of books.
-class _Header extends ConsumerWidget {
-  const _Header({required this.name, required this.count});
+enum _CollectionAction { rename, delete }
 
-  final String name;
+/// Back, the name (up to two lines), the number of books and the menu.
+class _Header extends ConsumerWidget {
+  const _Header({required this.collection, required this.count});
+
+  final CollectionRow collection;
   final int count;
+
+  Future<void> _act(
+    BuildContext context,
+    WidgetRef ref,
+    _CollectionAction action,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final repository = ref.read(collectionRepositoryProvider);
+    switch (action) {
+      case _CollectionAction.rename:
+        await askCollectionName<void>(
+          context,
+          title: l10n.collectionRename,
+          action: l10n.save,
+          initial: collection.name,
+          save: (name) => repository.rename(collection.id, name),
+        );
+      case _CollectionAction.delete:
+        final sure = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(l10n.collectionDeleteTitle(collection.name)),
+            content: Text(l10n.collectionDeleteBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l10n.delete),
+              ),
+            ],
+          ),
+        );
+        // The screen closes by itself when the collection is gone.
+        if (sure ?? false) await repository.delete(collection.id);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,7 +175,7 @@ class _Header extends ConsumerWidget {
       readingSettingsProvider.select((s) => s.font.family),
     );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
       child: Row(
         children: [
           const BackButton(),
@@ -123,7 +185,7 @@ class _Header extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  collection.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -141,6 +203,20 @@ class _Header extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+          PopupMenuButton<_CollectionAction>(
+            tooltip: l10n.moreActions,
+            onSelected: (action) => unawaited(_act(context, ref, action)),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _CollectionAction.rename,
+                child: Text(l10n.collectionRename),
+              ),
+              PopupMenuItem(
+                value: _CollectionAction.delete,
+                child: Text(l10n.collectionDelete),
+              ),
+            ],
           ),
         ],
       ),

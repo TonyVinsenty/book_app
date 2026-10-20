@@ -5,7 +5,6 @@ import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
-import 'package:book_app/features/library/book_menu.dart';
 import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
@@ -16,9 +15,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// The books of [view] as one sliver: a list or a grid, under author headers
 /// when sorted by author (mockup `docs/design/library-v2.html`).
 class BookShelf extends ConsumerWidget {
-  const BookShelf({super.key, required this.view});
+  const BookShelf({
+    super.key,
+    required this.view,
+    this.onLongPress,
+    this.picked,
+    this.onPick,
+  });
 
   final LibraryView view;
+
+  /// Starts checking books for a collection with this one checked.
+  final ValueChanged<BookRow>? onLongPress;
+
+  /// Not null while books are checked for a collection: a tap calls [onPick]
+  /// instead of opening the book page.
+  final Set<int>? picked;
+  final ValueChanged<int>? onPick;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,12 +53,12 @@ class BookShelf extends ConsumerWidget {
           switch (view.layout) {
             LibraryLayout.list => _BookList(
               books: group.books,
-              view: view,
+              shelf: this,
               titleFont: titleFont,
             ),
             LibraryLayout.grid => _BookGrid(
               books: group.books,
-              view: view,
+              shelf: this,
               titleFont: titleFont,
             ),
           },
@@ -55,15 +68,25 @@ class BookShelf extends ConsumerWidget {
   }
 }
 
+/// What a tap and a long press on [book] do on [shelf].
+extension on BookShelf {
+  VoidCallback tapOf(BuildContext context, BookRow book) => picked == null
+      ? () => openBookPage(context, book.id)
+      : () => onPick?.call(book.id);
+
+  VoidCallback? longPressOf(BookRow book) =>
+      picked == null && onLongPress != null ? () => onLongPress!(book) : null;
+}
+
 class _BookList extends ConsumerWidget {
   const _BookList({
     required this.books,
-    required this.view,
+    required this.shelf,
     required this.titleFont,
   });
 
   final List<BookRow> books;
-  final LibraryView view;
+  final BookShelf shelf;
   final String titleFont;
 
   @override
@@ -75,13 +98,14 @@ class _BookList extends ConsumerWidget {
         final book = books[i];
         return BookTile(
           key: ValueKey(book.id),
-          onTap: () => openBookPage(context, book.id),
-          onLongPress: () => showShelfMenu(context, ref, book, view, titleFont),
+          onTap: shelf.tapOf(context, book),
+          onLongPress: shelf.longPressOf(book),
           coverFile: repository.coverFile(book),
           title: book.title,
           authors: book.authors.join(', '),
           mark: ReadMark.of(book),
           titleFont: titleFont,
+          picked: shelf.picked?.contains(book.id),
         );
       },
     );
@@ -92,7 +116,7 @@ class _BookList extends ConsumerWidget {
 class _BookGrid extends ConsumerWidget {
   const _BookGrid({
     required this.books,
-    required this.view,
+    required this.shelf,
     required this.titleFont,
   });
 
@@ -102,7 +126,7 @@ class _BookGrid extends ConsumerWidget {
   static const _gapY = 18.0;
 
   final List<BookRow> books;
-  final LibraryView view;
+  final BookShelf shelf;
   final String titleFont;
 
   @override
@@ -127,14 +151,14 @@ class _BookGrid extends ConsumerWidget {
               final book = books[i];
               return BookGridTile(
                 key: ValueKey(book.id),
-                onTap: () => openBookPage(context, book.id),
-                onLongPress: () =>
-                    showShelfMenu(context, ref, book, view, titleFont),
+                onTap: shelf.tapOf(context, book),
+                onLongPress: shelf.longPressOf(book),
                 coverFile: repository.coverFile(book),
                 title: book.title,
                 authors: book.authors.join(', '),
                 mark: ReadMark.of(book),
                 titleFont: titleFont,
+                picked: shelf.picked?.contains(book.id),
               );
             },
           );
@@ -512,23 +536,6 @@ class EmptyMessage extends StatelessWidget {
     );
   }
 }
-
-/// The book menu; inside a collection it can take the book out of it.
-void showShelfMenu(
-  BuildContext context,
-  WidgetRef ref,
-  BookRow book,
-  LibraryView view,
-  String titleFont,
-) => unawaited(
-  showBookMenu(
-    context,
-    ref,
-    book: book,
-    collectionId: view.filter.collectionId,
-    titleFont: titleFont,
-  ),
-);
 
 void openBook(BuildContext context, int bookId) => unawaited(
   Navigator.of(
