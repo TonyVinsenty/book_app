@@ -131,6 +131,9 @@ void main() {
 
   Future<int> savedWord() async => (await repo.findById(bookId))!.positionWord;
 
+  Future<DateTime?> finishedAt(WidgetTester tester) async =>
+      (await tester.runAsync(() => repo.findById(bookId)))!.finishedAt;
+
   Future<void> closeApp(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox());
   }
@@ -842,14 +845,39 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
+    expect(await finishedAt(tester), isNull);
     await speedReadFrom(tester, tokens.length - 3);
     await tester.pump(const Duration(seconds: 2));
     expect(find.text('Книга закончилась'), findsOneWidget);
+    await settle(tester);
+    expect(await finishedAt(tester), isNotNull, reason: 'read to the end');
     await tester.tap(find.text('К тексту'));
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);
     await settle(tester);
     expect(await tester.runAsync(savedWord), tokens.length - 1);
+    await closeApp(tester);
+  });
+
+  testWidgets('the last page marks the book read; turning back keeps it', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final words = reader(tester).widget.opened.tokens.length;
+
+    for (var i = 0; i < 200 && reader(tester).page.endWord < words; i++) {
+      expect(await finishedAt(tester), isNull, reason: 'page $i');
+      await tapAt(tester, 0.95);
+    }
+    expect(reader(tester).page.endWord, words);
+    final finished = await finishedAt(tester);
+    expect(finished, isNotNull);
+
+    await tapAt(tester, 0.05);
+    await tapAt(tester, 0.05);
+    expect(reader(tester).page.endWord, lessThan(words));
+    expect(await finishedAt(tester), finished);
     await closeApp(tester);
   });
 

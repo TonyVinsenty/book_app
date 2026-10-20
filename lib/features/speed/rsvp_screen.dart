@@ -83,6 +83,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     if (!_engine.isPlaying) {
       _ticker.stop();
       _savePosition();
+      if (_engine.isFinished) {
+        unawaited(
+          ref.read(bookRepositoryProvider).markFinished(widget.opened.book.id),
+        );
+      }
       setState(() {});
     } else if (changed) {
       setState(() {});

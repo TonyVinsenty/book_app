@@ -288,14 +288,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
       if (!keepReturn) _returnTo = null;
     });
     if (!shown.hasWords) return;
+    final books = ref.read(bookRepositoryProvider);
+    final id = widget.opened.book.id;
     unawaited(
-      ref
-          .read(bookRepositoryProvider)
-          .savePosition(
-            widget.opened.book.id,
-            widget.opened.tokens.positionOf(shown.firstWord),
-          ),
+      books.savePosition(id, widget.opened.tokens.positionOf(shown.firstWord)),
     );
+    // The last word of the book is on screen: read (ADR 0005, addendum 2).
+    if (shown.endWord >= widget.opened.tokens.length) {
+      unawaited(books.markFinished(id));
+    }
   }
 
   /// The first page with words from [section] on (ADR 0003, addendum 2
