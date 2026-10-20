@@ -7,6 +7,7 @@ import 'package:book_app/data/import_queue.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/library/book_menu.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -144,6 +145,7 @@ class _Library extends ConsumerWidget {
           SliverToBoxAdapter(
             child: ContinueCard(
               onTap: () => _openBook(context, last.id),
+              onLongPress: () => _showMenu(context, ref, last, view, titleFont),
               coverFile: repository.coverFile(last),
               title: last.title,
               authors: last.authors.join(', '),
@@ -169,6 +171,8 @@ class _Library extends ConsumerWidget {
                 return BookTile(
                   key: ValueKey(book.id),
                   onTap: () => _openBook(context, book.id),
+                  onLongPress: () =>
+                      _showMenu(context, ref, book, view, titleFont),
                   coverFile: repository.coverFile(book),
                   title: book.title,
                   authors: book.authors.join(', '),
@@ -177,10 +181,7 @@ class _Library extends ConsumerWidget {
                 );
               },
             ),
-            LibraryLayout.grid => _BookGrid(
-              books: view.books,
-              titleFont: titleFont,
-            ),
+            LibraryLayout.grid => _BookGrid(view: view, titleFont: titleFont),
           },
           // Room for the button over the last book.
           const SliverToBoxAdapter(child: SizedBox(height: 88)),
@@ -190,25 +191,42 @@ class _Library extends ConsumerWidget {
   }
 }
 
+void _showMenu(
+  BuildContext context,
+  WidgetRef ref,
+  BookRow book,
+  LibraryView view,
+  String titleFont,
+) => unawaited(
+  showBookMenu(
+    context,
+    ref,
+    book: book,
+    shelf: view.shelf,
+    titleFont: titleFont,
+  ),
+);
+
 ReadMark _markOf(BookRow book) =>
     ReadMark(percent: percentRead(book), finished: book.finishedAt != null);
 
 /// Covers three in a row; tiles grow with the system text size.
 class _BookGrid extends ConsumerWidget {
-  const _BookGrid({required this.books, required this.titleFont});
+  const _BookGrid({required this.view, required this.titleFont});
 
   static const _columns = 3;
   static const _side = 16.0;
   static const _gapX = 14.0;
   static const _gapY = 18.0;
 
-  final List<BookRow> books;
+  final LibraryView view;
   final String titleFont;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repository = ref.watch(bookRepositoryProvider);
     final scaler = MediaQuery.textScalerOf(context);
+    final books = view.books;
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(_side, 6, _side, 0),
       sliver: SliverLayoutBuilder(
@@ -228,6 +246,8 @@ class _BookGrid extends ConsumerWidget {
               return BookGridTile(
                 key: ValueKey(book.id),
                 onTap: () => _openBook(context, book.id),
+                onLongPress: () =>
+                    _showMenu(context, ref, book, view, titleFont),
                 coverFile: repository.coverFile(book),
                 title: book.title,
                 authors: book.authors.join(', '),

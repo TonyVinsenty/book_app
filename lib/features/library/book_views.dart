@@ -184,6 +184,7 @@ class BookTile extends StatelessWidget {
   const BookTile({
     super.key,
     required this.onTap,
+    this.onLongPress,
     required this.coverFile,
     required this.title,
     required this.authors,
@@ -195,6 +196,9 @@ class BookTile extends StatelessWidget {
   static const coverHeight = 76.0;
 
   final VoidCallback onTap;
+
+  /// Opens the book menu.
+  final VoidCallback? onLongPress;
   final File? coverFile;
   final String title;
 
@@ -209,6 +213,7 @@ class BookTile extends StatelessWidget {
     final colors = context.readingColors;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
@@ -266,6 +271,7 @@ class BookGridTile extends StatelessWidget {
   const BookGridTile({
     super.key,
     required this.onTap,
+    this.onLongPress,
     required this.coverFile,
     required this.title,
     required this.authors,
@@ -289,6 +295,9 @@ class BookGridTile extends StatelessWidget {
       4;
 
   final VoidCallback onTap;
+
+  /// Opens the book menu.
+  final VoidCallback? onLongPress;
   final File? coverFile;
   final String title;
   final String authors;
@@ -302,6 +311,7 @@ class BookGridTile extends StatelessWidget {
     final percent = mark.percent;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(6),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -412,6 +422,7 @@ class ContinueCard extends StatelessWidget {
   const ContinueCard({
     super.key,
     required this.onTap,
+    this.onLongPress,
     required this.coverFile,
     required this.title,
     required this.authors,
@@ -423,6 +434,9 @@ class ContinueCard extends StatelessWidget {
   static const _coverHeight = 120.0;
 
   final VoidCallback onTap;
+
+  /// Opens the book menu.
+  final VoidCallback? onLongPress;
   final File? coverFile;
   final String title;
   final String authors;
@@ -442,6 +456,7 @@ class ContinueCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: IntrinsicHeight(

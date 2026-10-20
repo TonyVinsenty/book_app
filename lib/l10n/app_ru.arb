@@ -118,6 +118,63 @@
   "@libraryCollectionEmptyHint": {
     "description": "Second line of an empty collection shelf"
   },
+  "bookMenuToCollection": "В подборку…",
+  "@bookMenuToCollection": {
+    "description": "Book menu (long press in the library): choose collections for the book"
+  },
+  "bookMenuMarkFinished": "Отметить прочитанной",
+  "@bookMenuMarkFinished": {
+    "description": "Book menu: put the book on the read shelf by hand"
+  },
+  "bookMenuReadAgain": "Читаю снова",
+  "@bookMenuReadAgain": {
+    "description": "Book menu: take the read mark off"
+  },
+  "bookMenuRemoveFromCollection": "Убрать из подборки",
+  "@bookMenuRemoveFromCollection": {
+    "description": "Book menu inside a collection: take the book out of it (the book stays in the library)"
+  },
+  "bookMenuDelete": "Удалить книгу",
+  "@bookMenuDelete": {
+    "description": "Book menu: delete the book from the library"
+  },
+  "bookDeleteTitle": "Удалить «{title}»?",
+  "@bookDeleteTitle": {
+    "description": "Title of the book deletion confirmation",
+    "placeholders": {"title": {"type": "String"}}
+  },
+  "bookDeleteText": "Файл книги и место чтения будут удалены.",
+  "@bookDeleteText": {
+    "description": "Text of the book deletion confirmation"
+  },
+  "delete": "Удалить",
+  "@delete": {
+    "description": "Confirm deletion"
+  },
+  "cancel": "Отмена",
+  "@cancel": {
+    "description": "Close a dialog without doing anything"
+  },
+  "collectionNew": "Новая подборка",
+  "@collectionNew": {
+    "description": "Create a collection (book menu, shelves)"
+  },
+  "collectionName": "Название",
+  "@collectionName": {
+    "description": "Field label: name of a collection"
+  },
+  "collectionNameEmpty": "Введите название",
+  "@collectionNameEmpty": {
+    "description": "Collection name is empty"
+  },
+  "collectionNameTaken": "Подборка с таким названием уже есть",
+  "@collectionNameTaken": {
+    "description": "Collection name is used by another collection"
+  },
+  "create": "Создать",
+  "@create": {
+    "description": "Create a collection"
+  },
   "addBook": "Добавить книгу",
   "@addBook": {
     "description": "Button that opens the file picker"
