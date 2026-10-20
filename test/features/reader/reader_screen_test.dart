@@ -493,6 +493,73 @@ void main() {
     await closeApp(tester);
   });
 
+  testWidgets('the slider opens a book page; the place can be returned to', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord;
+    final pagination = reader(tester).pagination;
+    expect(pagination.isComplete, isTrue);
+    int bookPage() =>
+        pagination.pagesBefore(reader(tester).layout.sectionIndex).value +
+        reader(tester).layout.pageOfWord(reader(tester).page.firstWord) +
+        1;
+    expect(bookPage(), 2);
+    final target = pagination.pagesBefore(2).value + 2;
+
+    // While dragged: the page and chapter it would open; nothing moves.
+    await tapAt(tester, 0.5);
+    final slider = tester.widget<Slider>(find.byType(Slider));
+    expect(slider.value, 2);
+    expect(slider.max, pagination.pageCount.value);
+    slider.onChangeStart!(target.toDouble());
+    slider.onChanged!(target.toDouble());
+    await tester.pump();
+    expect(find.text('Глава 3'), findsOneWidget);
+    expect(
+      find.text('стр. $target / ${pagination.pageCount.value}'),
+      findsOneWidget,
+    );
+    expect(reader(tester).page.firstWord, start);
+
+    slider.onChangeEnd!(target.toDouble());
+    await tester.pumpAndSettle();
+    expect(reader(tester).layout.sectionIndex, 2);
+    expect(bookPage(), target);
+    expect(reader(tester).panelsShown, isTrue, reason: 'to drag again');
+    expect(await tester.runAsync(savedWord), reader(tester).page.firstWord);
+
+    // A second jump still offers the first place.
+    tester.widget<Slider>(find.byType(Slider)).onChangeEnd!(5);
+    await tester.pumpAndSettle();
+    expect(bookPage(), 5);
+    await tester.tap(find.text('Вернуться на стр. 2'));
+    await tester.pumpAndSettle();
+    expect(reader(tester).page.firstWord, start);
+    expect(find.textContaining('Вернуться'), findsNothing);
+
+    // Turning a page forgets it.
+    tester.widget<Slider>(find.byType(Slider)).onChangeEnd!(7);
+    await tester.pumpAndSettle();
+    expect(find.text('Вернуться на стр. 2'), findsOneWidget);
+    await tapAt(tester, 0.5);
+    await tapAt(tester, 0.95);
+    await tapAt(tester, 0.5);
+    expect(bookPage(), 8);
+    expect(find.textContaining('Вернуться'), findsNothing);
+
+    // The table of contents gives chapter start pages.
+    await tester.tap(find.byTooltip('Оглавление'));
+    await tester.pumpAndSettle();
+    final contents = tester.widget<ContentsScreen>(find.byType(ContentsScreen));
+    expect(contents.pageOf!(0), (value: 1, exact: true));
+    expect(contents.pageOf!(2), (value: target - 1, exact: true));
+    expect(find.text('${target - 1}'), findsOneWidget);
+    await closeApp(tester);
+  });
+
   testWidgets('A− and A+ stop at the smallest and largest size', (
     tester,
   ) async {

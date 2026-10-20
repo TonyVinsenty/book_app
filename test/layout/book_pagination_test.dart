@@ -81,6 +81,35 @@ void main() {
     expect(pagination.pageCount.value, closeTo(first * 5, first * 2));
   });
 
+  test('a book page is found in its chapter, estimated or not', () {
+    final pagination = start()..addChapter(0, firstWordsOf(0));
+    final first = pagination.chapterPages(0)!.length;
+    expect(pagination.locate(0), (section: 0, page: 0, of: first, exact: true));
+    expect(pagination.locate(first - 1), (
+      section: 0,
+      page: first - 1,
+      of: first,
+      exact: true,
+    ));
+    final next = pagination.locate(first);
+    expect((next.section, next.page, next.exact), (1, 0, false));
+    // Past the end: the last page.
+    final total = pagination.pageCount.value;
+    final last = pagination.locate(total + 10);
+    expect(last.section, 4);
+    expect(last.page, last.of - 1);
+    expect(pagination.pagesBefore(4).value + last.page + 1, total);
+
+    runAll();
+    final later = pagination.locate(first);
+    expect(later, (
+      section: 1,
+      page: 0,
+      of: pagination.chapterPages(1)!.length,
+      exact: true,
+    ));
+  });
+
   test('a chapter the reader laid out is not split again', () {
     final pagination = start();
     queue.removeAt(0)(); // a portion into chapter 0

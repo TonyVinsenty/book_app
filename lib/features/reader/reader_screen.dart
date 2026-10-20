@@ -113,6 +113,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
   late int _section;
   int _page = 0;
 
+  /// The book page (from 1) the slider is being dragged to.
+  double? _dragPage;
+
+  /// The place before the first slider jump and its page number, offered
+  /// back until the page is changed some other way.
+  ({int word, String page})? _returnTo;
+
   /// The table of contents (or the chapters of a book without one).
   late final List<ContentsLine> _contents = contentsOf(
     widget.opened.tokens.content,
@@ -267,13 +274,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
   }
 
-  void _show(int section, int pageIndex) {
+  void _show(int section, int pageIndex, {bool keepReturn = false}) {
     final shown = _layoutOf(section).pages[pageIndex];
     _leaveSection(section);
     setState(() {
       _section = section;
       _page = pageIndex;
       _word = shown.firstWord;
+      if (!keepReturn) _returnTo = null;
     });
     if (!shown.hasWords) return;
     unawaited(
@@ -299,15 +307,51 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   Future<void> _openContents() async {
+    final pagination = _pagination!;
     final section = await Navigator.of(context).push<int>(
       MaterialPageRoute(
         builder: (_) => ContentsScreen(
           lines: _contents,
           current: currentLineOf(_contents, _section),
+          fontFamily: _style?.fontFamily,
+          pageOf: (section) {
+            final before = pagination.pagesBefore(section);
+            return (value: before.value + 1, exact: before.exact);
+          },
+          pageUpdates: pagination,
         ),
       ),
     );
     if (mounted && section != null) _goToSection(section);
+  }
+
+  /// Opens book page [number] (from 1) picked with the slider; the place
+  /// before the first such jump can be returned to.
+  void _jumpToBookPage(int number) {
+    final at = _pagination!.locate(number - 1);
+    final returnTo =
+        _returnTo ??
+        (word: _word, page: _pageNumbers(AppLocalizations.of(context)).page);
+    final sections = widget.opened.tokens.content.sections.length;
+    for (var s = at.section; s < sections; s++) {
+      final pages = _layoutOf(s).pages.length;
+      if (pages == 0) continue;
+      // A chapter not split yet: the same share of its real pages.
+      final page = s == at.section
+          ? min(at.page * pages ~/ at.of, pages - 1)
+          : 0;
+      if (s == _section && page == _page && _returnTo == null) return;
+      _show(s, page, keepReturn: true);
+      setState(() => _returnTo = returnTo);
+      return;
+    }
+  }
+
+  /// Back to the page read before the slider jumps.
+  void _returnBack() {
+    final word = _returnTo!.word;
+    final section = widget.opened.tokens[word].sectionIndex;
+    _show(section, _layoutOf(section).pageOfWord(word));
   }
 
   Future<void> _onLongPress(LongPressStartDetails details) async {
@@ -355,6 +399,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _shiftTo = word;
       _word = word;
       _litWord = word;
+      _returnTo = null;
     });
     _setPanels(false);
     unawaited(_lit.forward(from: 0));
@@ -467,7 +512,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
             _relayoutIfNeeded(pageSize, style);
             _applyShift(area.height);
             final chapter = layout;
-            final pageLabel = _pageLabel(l10n, chapter);
+            final numbers = _pageNumbers(l10n);
+            final pageLabel = l10n.readerPageOfBook(
+              numbers.page,
+              numbers.total,
+            );
             return Stack(
               children: [
                 Padding(
@@ -543,20 +592,25 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// «стр. N / M» across the book; «≈» marks a number not known exactly
-  /// yet (chapters still being split, or a shifted page).
-  String _pageLabel(AppLocalizations l10n, ChapterLayout chapter) {
+  /// The page across the book and the pages in it, for «стр. N / M»;
+  /// «≈» marks a number not known exactly yet (chapters still being split,
+  /// or a shifted page).
+  ({String page, String total}) _pageNumbers(AppLocalizations l10n) {
     final pagination = _pagination!;
     final before = pagination.pagesBefore(_section);
     final total = pagination.pageCount;
     final page = before.value + _page + 1;
-    String number(int value, {required bool exact}) =>
-        exact ? '$value' : l10n.readerApproxNumber(value);
-    return l10n.readerPageOfBook(
-      number(page, exact: before.exact && !chapter.isShifted),
-      number(max(total.value, page), exact: total.exact),
+    return (
+      page: _number(l10n, page, exact: before.exact && !layout.isShifted),
+      total: _number(l10n, max(total.value, page), exact: total.exact),
     );
   }
+
+  static String _number(
+    AppLocalizations l10n,
+    int value, {
+    required bool exact,
+  }) => exact ? '$value' : l10n.readerApproxNumber(value);
 
   /// «Библиотека» on the left; the table of contents and speed reading on
   /// the right.
@@ -611,14 +665,28 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
     final text = Theme.of(context).textTheme;
-    final line = switch (currentLineOf(_contents, _section)) {
+    final pagination = _pagination!;
+    final total = pagination.pageCount;
+    final current = pagination.pagesBefore(_section).value + _page + 1;
+    final last = max(total.value, current);
+    // While the slider is dragged: the page and chapter it would open.
+    final drag = _dragPage?.round();
+    final section = drag == null
+        ? _section
+        : pagination.locate(drag - 1).section;
+    final line = switch (currentLineOf(_contents, section)) {
       final i? => _contents[i],
       null => null,
     };
     final title =
         line?.title ??
-        widget.opened.tokens.content.sections[_section].title ??
-        l10n.readerChapterNumber(_section + 1);
+        widget.opened.tokens.content.sections[section].title ??
+        l10n.readerChapterNumber(section + 1);
+    String dragLabel(int page) => l10n.readerPageOfBook(
+      _number(l10n, page, exact: pagination.locate(page - 1).exact),
+      _number(l10n, last, exact: total.exact),
+    );
+    final returnTo = _returnTo;
     const sizes = ReadingSettings.fontSizes;
     return Material(
       color: colors.surface,
@@ -634,6 +702,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Above the rest: the panel grows up and the slider stays put.
+            if (returnTo != null)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.undo),
+                  label: Text(l10n.readerReturnToPage(returnTo.page)),
+                  onPressed: _returnBack,
+                ),
+              ),
             Text(
               title,
               style: text.titleSmall,
@@ -642,10 +720,34 @@ class ReaderViewState extends ConsumerState<ReaderView>
             ),
             const SizedBox(height: 2),
             Text(
-              '$pageLabel · ${l10n.readerPagesLeftInChapter(pagesLeft)}',
+              drag == null
+                  ? '$pageLabel · ${l10n.readerPagesLeftInChapter(pagesLeft)}'
+                  : dragLabel(drag),
               style: text.bodySmall?.copyWith(color: colors.textSecondary),
             ),
-            const SizedBox(height: 8),
+            if (last > 1)
+              Semantics(
+                label: l10n.readerBookPages,
+                child: Slider(
+                  value: (_dragPage ?? current.toDouble()).clamp(
+                    1,
+                    last.toDouble(),
+                  ),
+                  min: 1,
+                  max: last.toDouble(),
+                  activeColor: colors.accent,
+                  inactiveColor: colors.textSecondary.withValues(alpha: 0.3),
+                  semanticFormatterCallback: (v) => dragLabel(v.round()),
+                  onChangeStart: (v) => setState(() => _dragPage = v),
+                  onChanged: (v) => setState(() => _dragPage = v),
+                  onChangeEnd: (v) {
+                    setState(() => _dragPage = null);
+                    _jumpToBookPage(v.round());
+                  },
+                ),
+              )
+            else
+              const SizedBox(height: 8),
             Row(
               children: [
                 _FontSizeButton(

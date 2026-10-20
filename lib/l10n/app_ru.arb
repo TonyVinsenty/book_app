@@ -143,6 +143,15 @@
     "description": "Page number in the whole book, at the bottom of the reader; either number may be approximate (readerApproxNumber)",
     "placeholders": {"page": {"type": "String"}, "count": {"type": "String"}}
   },
+  "readerBookPages": "Страницы книги",
+  "@readerBookPages": {
+    "description": "Reader bottom panel: name of the slider over the pages of the whole book, for screen readers"
+  },
+  "readerReturnToPage": "Вернуться на стр. {page}",
+  "@readerReturnToPage": {
+    "description": "Reader bottom panel button after a jump with the slider: back to the page read before; the number may be approximate (readerApproxNumber)",
+    "placeholders": {"page": {"type": "String"}}
+  },
   "readerApproxNumber": "≈ {number}",
   "@readerApproxNumber": {
     "description": "A page number not known exactly yet: the book is still being split into pages, or pages go from a shifted page after speed reading",

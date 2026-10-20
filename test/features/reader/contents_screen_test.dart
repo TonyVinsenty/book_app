@@ -5,6 +5,7 @@ import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
+import 'package:book_app/layout/book_pagination.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -23,8 +24,9 @@ void main() {
   Future<List<int?>> pump(
     WidgetTester tester,
     List<ContentsLine> lines,
-    int? current,
-  ) async {
+    int? current, {
+    PageNumber Function(int section)? pageOf,
+  }) async {
     final popped = <int?>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -36,8 +38,11 @@ void main() {
             onPressed: () async => popped.add(
               await Navigator.of(context).push<int>(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      ContentsScreen(lines: lines, current: current),
+                  builder: (_) => ContentsScreen(
+                    lines: lines,
+                    current: current,
+                    pageOf: pageOf,
+                  ),
                 ),
               ),
             ),
@@ -92,5 +97,42 @@ void main() {
     final last = tester.getBottomLeft(find.text('Глава 100'));
     final screen = tester.getSize(find.byType(ContentsScreen));
     expect(last.dy, greaterThan(screen.height - ContentsScreen.lineHeight));
+  });
+
+  testWidgets('page numbers on the right, on the last line of a title', (
+    tester,
+  ) async {
+    final long = [
+      (title: 'Короткая', level: 0, sectionIndex: 0),
+      (
+        title: 'Очень длинное название главы, которое не помещается в строку',
+        level: 1,
+        sectionIndex: 1,
+      ),
+      (title: 'Ещё не размечена', level: 0, sectionIndex: 2),
+    ];
+    await pump(
+      tester,
+      long,
+      null,
+      pageOf: (s) => (value: [1, 12, 340][s], exact: s < 2),
+    );
+    final one = find.text('1');
+    final twelve = find.text('12');
+    expect(one, findsOne);
+    expect(find.text('≈ 340'), findsOne, reason: 'not split yet');
+    // Numbers end at the same edge, after their titles.
+    expect(tester.getTopRight(one).dx, tester.getTopRight(twelve).dx);
+    expect(
+      tester.getTopRight(find.text('Короткая')).dx,
+      lessThan(tester.getTopLeft(one).dx),
+    );
+    // The long title wraps; its number is on the second line.
+    final title = find.textContaining('Очень длинное');
+    expect(tester.getSize(title).height, greaterThan(30));
+    expect(
+      tester.getBottomLeft(twelve).dy,
+      closeTo(tester.getBottomLeft(title).dy, 2),
+    );
   });
 }

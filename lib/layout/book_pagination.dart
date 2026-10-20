@@ -125,6 +125,33 @@ class BookPagination extends ChangeNotifier {
         .every((p) => p != null),
   );
 
+  /// Where book page [index] (from 0, clamped to the book) is: its chapter,
+  /// the page in it out of [of] pages (estimated for a chapter not split
+  /// yet, so the reader takes the same share of the real ones), and
+  /// whether the chapters up to it are all split.
+  ({int section, int page, int of, bool exact}) locate(int index) {
+    var before = 0;
+    var exact = true;
+    var last = (section: 0, page: 0, of: 0, exact: true);
+    for (var s = 0; s < _chars.length; s++) {
+      final known = _firstWords[s];
+      final pages = known?.length ?? _estimate(s);
+      exact = exact && known != null;
+      if (pages == 0) continue;
+      last = (section: s, page: pages - 1, of: pages, exact: exact);
+      if (index < before + pages) {
+        return (
+          section: s,
+          page: math.max(0, index - before),
+          of: pages,
+          exact: exact,
+        );
+      }
+      before += pages;
+    }
+    return last;
+  }
+
   int _pagesUpTo(int section) {
     var pages = 0;
     for (var s = 0; s < section; s++) {
