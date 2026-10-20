@@ -7,11 +7,11 @@ import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
-import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/rsvp_engine.dart';
+import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -153,7 +153,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
       if (mounted) setState(() => _speedHint = false);
     });
     unawaited(
-      ref.read(settingsRepositoryProvider).set(SettingKeys.speedWpm, '$_wpm'),
+      ref
+          .read(speedSettingsProvider)
+          .setWordsPerMinute(SpeedMode.word, _wpm),
     );
   }
 

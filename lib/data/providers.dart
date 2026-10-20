@@ -9,6 +9,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/db/open_app_database.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/data/speed_settings.dart';
 import 'package:book_app/layout/hyphenation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -36,6 +37,10 @@ final bookImporterProvider = Provider<BookImporter>(
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
   (ref) => SettingsRepository(ref.watch(appDatabaseProvider)),
+);
+
+final speedSettingsProvider = Provider<SpeedSettings>(
+  (ref) => SpeedSettings(ref.watch(settingsRepositoryProvider)),
 );
 
 /// The library list, recently opened first.

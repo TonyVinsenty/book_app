@@ -1,4 +1,5 @@
 import 'package:book_app/data/db/app_database.dart';
+import 'package:book_app/speed/speed_mode.dart';
 import 'package:drift/drift.dart';
 
 /// Key → text settings (ADR 0001: one store, no `shared_preferences`).
@@ -59,8 +60,24 @@ final class SettingsRepository {
 
 /// Keys of the settings store.
 abstract final class SettingKeys {
-  /// Speed reading pace, words per minute.
+  /// Speed reading pace of the word mode, words per minute.
   static const speedWpm = 'speed.wpm';
+
+  /// Pace of the phrase mode, words per minute.
+  static const speedWpmPhrase = 'speed.wpm.phrase';
+
+  /// Pace of the leading highlight, words per minute.
+  static const speedWpmGuide = 'speed.wpm.guide';
+
+  /// The speed reading mode used last, a `SpeedMode` name.
+  static const speedMode = 'speed.mode';
+
+  /// The pace key of [mode].
+  static String speedWpmOf(SpeedMode mode) => switch (mode) {
+    SpeedMode.word => speedWpm,
+    SpeedMode.phrase => speedWpmPhrase,
+    SpeedMode.guide => speedWpmGuide,
+  };
 
   /// Before statuses (stage 9.10): the library shelf shown, `all`,
   /// `reading`, `finished` or `c:<collection id>`; read once into

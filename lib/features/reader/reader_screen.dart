@@ -21,7 +21,7 @@ import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
-import 'package:book_app/speed/timing.dart';
+import 'package:book_app/speed/speed_mode.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -458,16 +458,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
   Future<void> _speedRead(int word) async {
     _setPanels(false);
     _readOn();
-    final saved = await ref
-        .read(settingsRepositoryProvider)
-        .get(SettingKeys.speedWpm);
+    final wpm = await ref
+        .read(speedSettingsProvider)
+        .wordsPerMinute(SpeedMode.word);
     if (!mounted) return;
     final last = await Navigator.of(context).push<int>(
       MaterialPageRoute(
         builder: (_) => RsvpScreen(
           opened: widget.opened,
           startWord: word,
-          wordsPerMinute: int.tryParse(saved ?? '') ?? SpeedLimits.initial,
+          wordsPerMinute: wpm,
         ),
       ),
     );
