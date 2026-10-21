@@ -21,6 +21,7 @@ import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
+import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/platform/screen_channel.dart';
@@ -1171,6 +1172,98 @@ void main() {
     await closeApp(tester);
   });
 
+  testWidgets('the highlight pause panel: back, speed, settings, and modes '
+      'there and back keep the word', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord + 7;
+    await longPressWord(tester, start);
+    final guide = reader(tester).guide!;
+    expect(find.byType(GuidePanel), findsOneWidget);
+    expect(find.text('250 сл/мин'), findsOneWidget);
+
+    // Speed − on a pause: the pause stays, the speed is saved.
+    await tester.tap(find.byTooltip('Медленнее'));
+    await tester.pump();
+    expect(find.text('225 сл/мин'), findsOneWidget);
+    expect(guide.isPlaying, isFalse);
+    await settle(tester);
+    expect(
+      await tester.runAsync<String?>(
+        () =>
+            SettingsRepository(db).get(SettingKeys.speedWpmOf(SpeedMode.guide)),
+      ),
+      '225',
+    );
+
+    // Back by a sentence, still on a pause.
+    await tester.tap(find.byTooltip('Назад на предложение'));
+    await tester.pump();
+    final word = sentenceBack(tokens, start);
+    expect((guide.word, guide.isPlaying), (word, false));
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), word);
+
+    // The settings over the pause: a larger font keeps the word on the page;
+    // a tap on the page closes them, the pause panel is back.
+    await tester.tap(find.byTooltip('Настройки'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReadingSettingsPanel), findsOneWidget);
+    expect(find.byType(GuidePanel), findsNothing);
+    await tester.tap(find.byTooltip('Шрифт больше'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(guide.word, word);
+    expect(reader(tester).page.firstWord, lessThanOrEqualTo(word));
+    expect(reader(tester).page.endWord, greaterThan(word));
+    final size = tester.getSize(find.byType(ReaderView));
+    await tester.tapAt(Offset(size.width / 2, size.height / 8));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReadingSettingsPanel), findsNothing);
+    expect(find.byType(GuidePanel), findsOneWidget);
+    expect(guide.isPlaying, isFalse);
+
+    // To words: speed reading from the highlighted word, saved as the mode.
+    await tester.tap(find.text('Слово'));
+    await tester.pumpAndSettle();
+    expect(rsvp(tester).widget.mode, SpeedMode.word);
+    expect(rsvp(tester).engine.wordIndex, word);
+    expect(
+      await tester.runAsync<String?>(
+        () => SettingsRepository(db).get(SettingKeys.speedMode),
+      ),
+      'word',
+    );
+
+    // And back: the highlight on a pause at the same word.
+    await tester.tap(find.text('Подсветка'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    final back = reader(tester).guide!;
+    expect((back.word, back.isPlaying), (word, false));
+    expect(find.text('225 сл/мин'), findsOneWidget);
+
+    // To phrases: the phrase of the word.
+    await tester.tap(find.text('Фраза'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    await tester.pump();
+    final engine = rsvp(tester).engine;
+    expect(engine.steps, isA<PhraseSteps>());
+    expect(engine.wordIndex, (engine.steps as PhraseSteps).startOf(word));
+
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
   testWidgets('the highlight pauses before a new chapter and ends the book', (
     tester,
   ) async {
@@ -1188,7 +1281,7 @@ void main() {
     expect(reader(tester).page.firstWord, lessThanOrEqualTo(second));
     expect(reader(tester).page.endWord, greaterThan(second));
     expect(find.text('Новая глава'), findsOneWidget);
-    await tester.tap(find.text('Старт'));
+    await tester.tap(find.byTooltip('Старт'));
     await tester.pump();
     expect(guide.isPlaying, isTrue);
     // The title's first word starts a page and the gentle start: ~1.1 s.

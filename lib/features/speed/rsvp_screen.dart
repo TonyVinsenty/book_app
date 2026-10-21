@@ -8,6 +8,7 @@ import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/features/speed/speed_controls.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/speed/pause_text.dart';
 import 'package:book_app/speed/phrases.dart';
@@ -350,23 +351,6 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
 
   static const _wordSize = 36.0;
 
-  Widget _modeSwitch(AppLocalizations l10n) => SegmentedButton<SpeedMode>(
-    segments: [
-      for (final mode in SpeedMode.values)
-        ButtonSegment(
-          value: mode,
-          label: Text(switch (mode) {
-            SpeedMode.word => l10n.speedModeWord,
-            SpeedMode.phrase => l10n.speedModePhrase,
-            SpeedMode.guide => l10n.speedModeGuide,
-          }),
-        ),
-    ],
-    selected: {_mode},
-    showSelectedIcon: false,
-    onSelectionChanged: (picked) => unawaited(_switchMode(picked.first)),
-  );
-
   @override
   Widget build(BuildContext context) {
     final colors = context.readingColors;
@@ -485,39 +469,14 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                               textAlign: TextAlign.center,
                             ),
                           const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton.outlined(
-                                icon: const Icon(Icons.remove),
-                                tooltip: l10n.speedSlower,
-                                onPressed: _wpm > SpeedLimits.min
-                                    ? () => _changeSpeed(-SpeedLimits.step)
-                                    : null,
-                              ),
-                              SizedBox(
-                                width: 120,
-                                child: Text(
-                                  l10n.speedWordsPerMinute(_wpm),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              IconButton.outlined(
-                                icon: const Icon(Icons.add),
-                                tooltip: l10n.speedFaster,
-                                onPressed: _wpm < SpeedLimits.max
-                                    ? () => _changeSpeed(SpeedLimits.step)
-                                    : null,
-                              ),
-                            ],
-                          ),
+                          SpeedStepper(wpm: _wpm, onChange: _changeSpeed),
                           // Without "Pro" there is only the word mode.
                           if (ref.watch(proUnlockedProvider)) ...[
                             const SizedBox(height: 12),
-                            _modeSwitch(l10n),
+                            SpeedModeSwitch(
+                              mode: _mode,
+                              onChanged: (mode) => unawaited(_switchMode(mode)),
+                            ),
                           ],
                         ],
                       ),

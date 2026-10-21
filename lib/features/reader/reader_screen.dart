@@ -514,12 +514,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     await _speedRead(word);
   }
 
-  /// Speed reading from [word]; back on the page of the last word shown.
-  Future<void> _speedRead(int word) async {
+  /// Speed reading from [word] in [picked] (the saved mode by default); back
+  /// on the page of the last word shown.
+  Future<void> _speedRead(int word, {SpeedMode? picked}) async {
     _setPanels(false);
     _readOn();
     final settings = ref.read(speedSettingsProvider);
-    final mode = await settings.mode(pro: ref.read(proUnlockedProvider));
+    final mode =
+        picked ?? await settings.mode(pro: ref.read(proUnlockedProvider));
     if (mode == SpeedMode.guide) return _startGuide(word);
     final wpm = await settings.wordsPerMinute(mode);
     if (!mounted) return;
@@ -680,6 +682,24 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ),
   );
 
+  /// The pause panel's switch: the word or the phrase mode from the
+  /// highlighted word, as a long press on it (ADR 0004, addendum for stage
+  /// 10 п. 10).
+  Future<void> _switchFromGuide(SpeedMode mode) async {
+    final guide = _guide;
+    if (guide == null || mode == SpeedMode.guide) return;
+    unawaited(ref.read(speedSettingsProvider).setMode(mode));
+    _guideTicker.stop();
+    _saveGuidePlace();
+    final word = guide.word;
+    setState(() {
+      _guide = null;
+      _guideSpeedHint = false;
+      _settingsShown = false;
+    });
+    await _speedRead(word, picked: mode);
+  }
+
   /// Back to normal reading; the word stays lit for a moment, then fades.
   void _exitGuide() {
     final guide = _guide;
@@ -691,6 +711,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     setState(() {
       _guide = null;
       _guideSpeedHint = false;
+      _settingsShown = false;
       if (lit) {
         _word = word;
         _litWord = word;
@@ -761,7 +782,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _onTapUp(TapUpDetails details, double width) {
     final x = details.localPosition.dx;
     final guide = _guide;
-    if (guide != null && guide.isPlaying) {
+    if (_settingsShown && !_panelsShown) {
+      // The settings opened from the highlight's pause panel.
+      setState(() => _settingsShown = false);
+    } else if (guide != null && guide.isPlaying) {
       _pauseGuide();
     } else if (guide != null && !_panelsShown) {
       // On a pause the sides turn pages, the middle goes on.
@@ -832,9 +856,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
       canPop: !_panelsShown && _guide == null,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        // Back closes the panels, then the highlight.
+        // Back closes the panels and the settings, then the highlight.
         if (_panelsShown) {
           _setPanels(false);
+        } else if (_settingsShown) {
+          setState(() => _settingsShown = false);
         } else {
           _exitGuide();
         }
@@ -932,7 +958,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     ),
                   ),
                 ),
-                if (guide != null && !_panelsShown && !guide.isPlaying)
+                if (_settingsShown)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: ReadingSettingsPanel(insets: insets),
+                  )
+                else if (guide != null && !_panelsShown && !guide.isPlaying)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -942,16 +975,19 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       started: _guideStarted,
                       newChapter: guide.isStopped,
                       finished: guide.isFinished,
+                      wpm: _guidePace.wordsPerMinute,
+                      pro: ref.watch(proUnlockedProvider),
                       onPlay: _playGuide,
+                      onBack: guide.word > 0
+                          ? () => _guideSeek(
+                              sentenceBack(widget.opened.tokens, guide.word),
+                            )
+                          : null,
+                      onSpeed: _changeGuideSpeed,
+                      onMode: (mode) => unawaited(_switchFromGuide(mode)),
+                      onSettings: () => setState(() => _settingsShown = true),
                       onExit: _exitGuide,
                     ),
-                  )
-                else if (_settingsShown)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: ReadingSettingsPanel(insets: insets),
                   )
                 else if (_panelsShown) ...[
                   Positioned(
