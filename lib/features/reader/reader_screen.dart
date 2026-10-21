@@ -6,6 +6,7 @@ import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
+import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/providers.dart';
@@ -13,6 +14,8 @@ import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/font_size_button.dart';
+import 'package:book_app/features/reader/guide_layer.dart';
+import 'package:book_app/features/reader/guide_panel.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -22,9 +25,13 @@ import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
+import 'package:book_app/speed/guide.dart';
+import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/speed_mode.dart';
+import 'package:book_app/speed/timing.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -99,7 +106,7 @@ class ReaderView extends ConsumerStatefulWidget {
 }
 
 class ReaderViewState extends ConsumerState<ReaderView>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// Page margins from the reading settings (the bottom one is the footer).
   EdgeInsets _margin = EdgeInsets.zero;
 
@@ -166,6 +173,23 @@ class ReaderViewState extends ConsumerState<ReaderView>
     duration: const Duration(milliseconds: 1400),
   );
 
+  /// The leading highlight, while on (ADR 0004, addendum for stage 10
+  /// п. 6–9): it goes over the shown page and turns it.
+  GuideSession? _guide;
+  late SmartPace _guidePace;
+  late final Ticker _guideTicker = createTicker(_onGuideTick);
+  Duration _guideLastTick = Duration.zero;
+
+  /// The highlighted word, for the mark: it moves without a rebuild.
+  final _guideWord = ValueNotifier<int>(0);
+
+  /// Played at least once since the highlight came on.
+  bool _guideStarted = false;
+
+  /// The speed shown for a moment after a swipe changed it while playing.
+  bool _guideSpeedHint = false;
+  Timer? _guideHintTimer;
+
   /// Kept from [initState]: `ref` is not usable in [dispose].
   late final KeepScreenOn _keepScreenOn;
   late final ShowStatusBar _showStatusBar;
@@ -191,6 +215,17 @@ class ReaderViewState extends ConsumerState<ReaderView>
   @visibleForTesting
   bool get settingsShown => _settingsShown;
 
+  @visibleForTesting
+  GuideSession? get guide => _guide;
+
+  /// The leading highlight from any [word], on its page.
+  @visibleForTesting
+  Future<void> guideFrom(int word) {
+    final section = widget.opened.tokens.sectionOf(word);
+    _show(section, _layoutOf(section).pageOfWord(word));
+    return _startGuide(word);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -205,7 +240,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_keepScreenOn(true));
     _showStatusBar = ref.read(showStatusBarProvider);
     unawaited(_showStatusBar(false));
-    _lifecycle = AppLifecycleListener(onHide: () => _pagination?.flush());
+    _lifecycle = AppLifecycleListener(
+      onInactive: _pauseGuide,
+      onHide: () => _pagination?.flush(),
+    );
   }
 
   @override
@@ -213,6 +251,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_keepScreenOn(false));
     unawaited(_showStatusBar(true));
     _lit.dispose();
+    _guideHintTimer?.cancel();
+    _guideTicker.dispose();
+    _guideWord.dispose();
     _lifecycle.dispose();
     _clearLayouts();
     _pagination?.dispose();
@@ -251,6 +292,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// book is split again only if the pages change (not for a new color).
   void _relayoutIfNeeded(Size pageSize, PageStyle style) {
     if (pageSize == _pageSize && style == _style) return;
+    // The highlighted word, unless a page was turned away from it.
+    final guide = _guide;
+    final guided = guide != null && _onShownPage(guide.word);
+    if (guided) _word = guide.word;
     _clearLayouts();
     if (pageSize != _pageSize || !(_style?.sameLayoutAs(style) ?? false)) {
       _pagination?.dispose();
@@ -276,6 +321,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _pageSize = pageSize;
     _style = style;
     _page = _layoutOf(_section).pageOfWord(_word);
+    if (guide != null) {
+      guide.relayout();
+      if (!guided) guide.pageTurned(page.firstWord);
+    }
   }
 
   void _onPagination() {
@@ -348,6 +397,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     bool turned = false,
   }) {
     final shown = _layoutOf(section).pages[pageIndex];
+    final guide = _guide;
+    if (guide != null && !guide.isPlaying) guide.pageTurned(shown.firstWord);
     _readOn();
     _leaveSection(section);
     setState(() {
@@ -456,6 +507,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final word = layout.wordAt(_page, details.localPosition - _margin.topLeft);
     if (word == null) return;
     unawaited(HapticFeedback.selectionClick());
+    if (_guide != null) {
+      _guideSeek(word);
+      return _playGuide();
+    }
     await _speedRead(word);
   }
 
@@ -464,9 +519,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _setPanels(false);
     _readOn();
     final settings = ref.read(speedSettingsProvider);
-    var mode = await settings.mode(pro: ref.read(proUnlockedProvider));
-    // The leading highlight comes in a later step (stage 10).
-    if (mode == SpeedMode.guide) mode = SpeedMode.word;
+    final mode = await settings.mode(pro: ref.read(proUnlockedProvider));
+    if (mode == SpeedMode.guide) return _startGuide(word);
     final wpm = await settings.wordsPerMinute(mode);
     if (!mounted) return;
     final last = await Navigator.of(context).push<RsvpExit>(
@@ -479,9 +533,171 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ),
       ),
     );
-    // Switched to the leading highlight: for now the page of the word
-    // (the highlight itself comes in a later step of stage 10).
-    if (mounted && last != null) _showWord(last.word, last.end);
+    if (!mounted || last == null) return;
+    if (last.mode == SpeedMode.guide) {
+      // On a pause on the page of the word, its line where it was shown.
+      _showWord(last.word, last.end, lit: false);
+      return _startGuide(last.word);
+    }
+    _showWord(last.word, last.end);
+  }
+
+  /// The leading highlight from [word] on the shown page, on a pause.
+  Future<void> _startGuide(int word) async {
+    final settings = ref.read(speedSettingsProvider);
+    final wpm = SpeedLimits.clamp(
+      await settings.wordsPerMinute(SpeedMode.guide),
+    );
+    if (!mounted) return;
+    final tokens = widget.opened.tokens;
+    _guidePace = SmartPace(tokens, wpm);
+    setState(() {
+      _guide = GuideSession(
+        wordCount: tokens.length,
+        startWord: word,
+        timing: _guidePace,
+        pageOf: _guidePageOf,
+        stopBefore: (w) => tokens.flagsOf(w) & TokenFlags.sectionStart != 0,
+      );
+      _guideWord.value = word;
+      _guideStarted = false;
+      _litWord = null;
+    });
+    _setPanels(false);
+  }
+
+  GuidePage _guidePageOf(int word) {
+    final layout = _layoutOf(widget.opened.tokens.sectionOf(word));
+    final page = layout.pages[layout.pageOfWord(word)];
+    return (first: page.firstWord, end: page.endWord);
+  }
+
+  bool _onShownPage(int word) => word >= page.firstWord && word < page.endWord;
+
+  void _onGuideTick(Duration elapsed) {
+    final guide = _guide!;
+    final change = guide.advance(elapsed - _guideLastTick);
+    _guideLastTick = elapsed;
+    if (change == GuideChange.page) {
+      _followGuide();
+    } else if (change == GuideChange.word) {
+      _guideWord.value = guide.word;
+    }
+    if (guide.isPlaying) return;
+    _guideTicker.stop();
+    _saveGuidePlace();
+    if (guide.isFinished) {
+      unawaited(
+        ref.read(bookRepositoryProvider).markFinished(widget.opened.book.id),
+      );
+    }
+    setState(() {});
+  }
+
+  /// Opens the page of the highlighted word (it saves the place) and lays
+  /// out the next chapter ahead from its last page, so the turn is smooth.
+  void _followGuide() {
+    final guide = _guide!;
+    final word = guide.word;
+    _guideWord.value = word;
+    if (_onShownPage(word)) return;
+    final section = widget.opened.tokens.sectionOf(word);
+    _show(section, _layoutOf(section).pageOfWord(word), turned: true);
+    final sections = widget.opened.tokens.content.sections.length;
+    if (_page == layout.pages.length - 1 && section + 1 < sections) {
+      Timer.run(() {
+        if (mounted && _guide != null) _layoutOf(section + 1);
+      });
+    }
+  }
+
+  void _playGuide() {
+    final guide = _guide;
+    if (guide == null) return;
+    guide.play();
+    if (!guide.isPlaying) return;
+    _setPanels(false);
+    _followGuide();
+    setState(() => _guideStarted = true);
+    if (_guideTicker.isActive) return;
+    _guideLastTick = Duration.zero;
+    unawaited(_guideTicker.start());
+  }
+
+  void _pauseGuide() {
+    final guide = _guide;
+    if (guide == null || !guide.isPlaying) return;
+    guide.pause();
+    _guideTicker.stop();
+    _saveGuidePlace();
+    if (mounted) setState(() {});
+  }
+
+  /// Jumps the highlight to [word] and opens its page.
+  void _guideSeek(int word) {
+    final guide = _guide!..seek(word);
+    _followGuide();
+    if (!guide.isPlaying) _saveGuidePlace();
+  }
+
+  /// Swipe right: back by a sentence; up and down: the speed.
+  void _onGuideSwipe(DragEndDetails details, {required bool vertical}) {
+    final v = details.primaryVelocity ?? 0;
+    final wpm = _guidePace.wordsPerMinute;
+    if (!vertical) {
+      if (v > _swipeVelocity) {
+        _guideSeek(sentenceBack(widget.opened.tokens, _guide!.word));
+      }
+    } else if (v < -_swipeVelocity && wpm < SpeedLimits.max) {
+      _changeGuideSpeed(SpeedLimits.step);
+    } else if (v > _swipeVelocity && wpm > SpeedLimits.min) {
+      _changeGuideSpeed(-SpeedLimits.step);
+    }
+  }
+
+  static const _swipeVelocity = 300.0;
+
+  void _changeGuideSpeed(int delta) {
+    final wpm = SpeedLimits.clamp(_guidePace.wordsPerMinute + delta);
+    _guidePace = _guidePace.withSpeed(wpm);
+    _guide!.timing = _guidePace;
+    setState(() => _guideSpeedHint = _guide!.isPlaying);
+    _guideHintTimer?.cancel();
+    _guideHintTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _guideSpeedHint = false);
+    });
+    unawaited(
+      ref.read(speedSettingsProvider).setWordsPerMinute(SpeedMode.guide, wpm),
+    );
+  }
+
+  void _saveGuidePlace() => unawaited(
+    ref
+        .read(bookRepositoryProvider)
+        .savePosition(
+          widget.opened.book.id,
+          widget.opened.tokens.positionOf(_guide!.word),
+        ),
+  );
+
+  /// Back to normal reading; the word stays lit for a moment, then fades.
+  void _exitGuide() {
+    final guide = _guide;
+    if (guide == null) return;
+    _guideTicker.stop();
+    _saveGuidePlace();
+    final word = guide.word;
+    final lit = _onShownPage(word);
+    setState(() {
+      _guide = null;
+      _guideSpeedHint = false;
+      if (lit) {
+        _word = word;
+        _litWord = word;
+        _litEnd = word + 1;
+      }
+    });
+    if (lit) unawaited(_lit.forward(from: 0));
   }
 
   /// The current chapter goes back to the normal split when the reader
@@ -496,19 +712,19 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Opens the page with [word], its line where speed reading showed it,
   /// lights it with the rest of its phrase (up to [end]) and keeps the place
   /// on it.
-  void _showWord(int word, int end) {
+  void _showWord(int word, int end, {bool lit = true}) {
     final section = widget.opened.tokens[word].sectionIndex;
     _leaveSection(section);
     setState(() {
       _section = section;
       _shiftTo = word;
       _word = word;
-      _litWord = word;
+      _litWord = lit ? word : null;
       _litEnd = end;
       _returnTo = null;
     });
     _setPanels(false);
-    unawaited(_lit.forward(from: 0));
+    if (lit) unawaited(_lit.forward(from: 0));
     unawaited(
       ref
           .read(bookRepositoryProvider)
@@ -529,6 +745,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         .shifted(word: word, lineCenterY: centerY - _margin.top);
     _layouts[_section] = shifted;
     _page = shifted.pageOfWord(word);
+    _guide?.relayout();
   }
 
   /// The panels and the status bar come and go together.
@@ -543,7 +760,19 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   void _onTapUp(TapUpDetails details, double width) {
     final x = details.localPosition.dx;
-    if (_panelsShown) {
+    final guide = _guide;
+    if (guide != null && guide.isPlaying) {
+      _pauseGuide();
+    } else if (guide != null && !_panelsShown) {
+      // On a pause the sides turn pages, the middle goes on.
+      if (x < width / 3) {
+        _previous();
+      } else if (x > width * 2 / 3) {
+        _next();
+      } else {
+        _playGuide();
+      }
+    } else if (_panelsShown) {
       _setPanels(false);
     } else if (x < width / 3) {
       _previous();
@@ -564,6 +793,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   void _onSwipe(DragEndDetails details) {
+    if (_guide?.isPlaying ?? false) {
+      return _onGuideSwipe(details, vertical: false);
+    }
     final speed = details.primaryVelocity ?? 0;
     if (speed < -200) _next();
     if (speed > 200) _previous();
@@ -597,9 +829,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final dark = Theme.of(context).brightness == Brightness.dark;
     return PopScope(
       // Back closes the panels first.
-      canPop: !_panelsShown,
+      canPop: !_panelsShown && _guide == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _setPanels(false);
+        if (didPop) return;
+        // Back closes the panels, then the highlight.
+        if (_panelsShown) {
+          _setPanels(false);
+        } else {
+          _exitGuide();
+        }
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -617,6 +855,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                 insets.top;
             _applyShift(wordY);
             final chapter = layout;
+            final guide = _guide;
             final numbers = _pageNumbers(l10n);
             final pageLabel = l10n.readerPageOfBook(
               numbers.page,
@@ -630,6 +869,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (d) => _onTapUp(d, area.width),
                     onHorizontalDragEnd: _onSwipe,
+                    onVerticalDragEnd: guide != null && guide.isPlaying
+                        ? (d) => _onGuideSwipe(d, vertical: true)
+                        : null,
                     onLongPressStart: _onLongPress,
                     child: Padding(
                       padding: _margin,
@@ -638,30 +880,51 @@ class ReaderViewState extends ConsumerState<ReaderView>
                           Semantics(
                             container: true,
                             label: chapter.pageText(_page),
-                            child: CustomPaint(
-                              size: pageSize,
-                              painter: _PagePainter(
-                                chapter,
-                                _page,
-                                lit: _litWord == null
-                                    ? const []
-                                    : _joinLines([
-                                        for (
-                                          var w = _litWord!;
-                                          w < _litEnd;
-                                          w++
-                                        )
-                                          ...chapter.wordBoxes(_page, w),
-                                      ]),
-                                litColor: colors.highlight,
-                                litAnimation: _lit,
-                              ),
+                            child: Stack(
+                              children: [
+                                if (guide != null)
+                                  GuideLayer(
+                                    chapter: chapter,
+                                    page: _page,
+                                    word: _guideWord,
+                                    color: colors.highlight,
+                                  ),
+                                RepaintBoundary(
+                                  child: CustomPaint(
+                                    size: pageSize,
+                                    painter: _PagePainter(
+                                      chapter,
+                                      _page,
+                                      lit: _litWord == null
+                                          ? const []
+                                          : _joinLines([
+                                              for (
+                                                var w = _litWord!;
+                                                w < _litEnd;
+                                                w++
+                                              )
+                                                ...chapter.wordBoxes(_page, w),
+                                            ]),
+                                      litColor: colors.highlight,
+                                      litAnimation: _lit,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           SizedBox(
                             height: readerFooterHeight,
                             child: Center(
-                              child: Text(pageLabel, style: secondary),
+                              // A new speed shows here for a moment.
+                              child: Text(
+                                _guideSpeedHint
+                                    ? l10n.speedWordsPerMinute(
+                                        _guidePace.wordsPerMinute,
+                                      )
+                                    : pageLabel,
+                                style: secondary,
+                              ),
                             ),
                           ),
                         ],
@@ -669,7 +932,21 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     ),
                   ),
                 ),
-                if (_settingsShown)
+                if (guide != null && !_panelsShown && !guide.isPlaying)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: GuidePanel(
+                      insets: insets,
+                      started: _guideStarted,
+                      newChapter: guide.isStopped,
+                      finished: guide.isFinished,
+                      onPlay: _playGuide,
+                      onExit: _exitGuide,
+                    ),
+                  )
+                else if (_settingsShown)
                   Positioned(
                     left: 0,
                     right: 0,

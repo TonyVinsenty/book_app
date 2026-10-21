@@ -18,6 +18,8 @@ import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
+import 'package:book_app/features/reader/guide_layer.dart';
+import 'package:book_app/features/reader/guide_panel.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/layout/page_cache.dart';
@@ -980,12 +982,17 @@ void main() {
     expect(find.text('300 сл/мин'), findsOneWidget);
     expect(await tester.runAsync(savedWord), phrase);
 
-    // "Подсветка" leaves for the book page on the word.
+    // "Подсветка" leaves for the book page: the highlight on a pause there.
     await tester.tap(find.text('Подсветка'));
     await tester.pumpAndSettle();
     await settle(tester);
     expect(find.byType(RsvpScreen), findsNothing);
-    expect(reader(tester).litWord, phrase);
+    final guide = reader(tester).guide!;
+    expect(guide.word, phrase);
+    expect(guide.isPlaying, isFalse);
+    expect(reader(tester).page.firstWord, lessThanOrEqualTo(phrase));
+    expect(reader(tester).page.endWord, greaterThan(phrase));
+    expect(reader(tester).litWord, isNull);
     expect(
       await tester.runAsync<String?>(
         () => SettingsRepository(db).get(SettingKeys.speedMode),
@@ -1071,6 +1078,139 @@ void main() {
     expect(find.byType(RsvpScreen), findsNothing);
     await settle(tester);
     expect(await tester.runAsync(savedWord), tokens.length - 1);
+    await closeApp(tester);
+  });
+
+  testWidgets('the leading highlight goes over the page and turns it', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final start = reader(tester).page.firstWord + 3;
+
+    // A long press starts the saved mode: on the page, on a pause.
+    await longPressWord(tester, start);
+    final guide = reader(tester).guide!;
+    expect(find.byType(RsvpScreen), findsNothing);
+    expect(find.byType(GuideLayer), findsOneWidget);
+    expect((guide.word, guide.isPlaying), (start, false));
+    expect(find.text('Коснитесь экрана, чтобы начать'), findsOneWidget);
+
+    // A tap in the middle starts; 250 wpm by default.
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isTrue);
+    expect(find.byType(GuidePanel), findsNothing);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(guide.word, inInclusiveRange(start + 3, start + 12));
+
+    // Right after the last word of the page, the next one opens.
+    final first = reader(tester).page;
+    for (var i = 0; i < 600 && reader(tester).page == first; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    final next = reader(tester).page;
+    expect(next.firstWord, first.endWord);
+    expect(guide.word, next.firstWord);
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), next.firstWord);
+
+    // A tap pauses; the place is saved.
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isFalse);
+    expect(find.text('Коснитесь экрана, чтобы продолжить'), findsOneWidget);
+    final paused = guide.word;
+    await tester.pump(const Duration(seconds: 1));
+    expect(guide.word, paused);
+    expect(await tester.runAsync(savedWord), paused);
+
+    // On a pause the page turns; going on starts from its first word.
+    await tapAt(tester, 0.95);
+    final turned = reader(tester).page;
+    expect(turned.firstWord, next.endWord);
+    await tapAt(tester, 0.5);
+    expect(guide.word, turned.firstWord);
+    expect(guide.isPlaying, isTrue);
+
+    // Swipes while playing: right goes back by a sentence, up is faster.
+    await tester.pump(const Duration(seconds: 2));
+    final at = guide.word;
+    await tester.fling(find.byType(ReaderView), const Offset(300, 0), 1000);
+    expect(guide.word, sentenceBack(tokens, at));
+    expect(guide.isPlaying, isTrue);
+    expect(reader(tester).page.firstWord, lessThanOrEqualTo(guide.word));
+    await tester.fling(find.byType(ReaderView), const Offset(0, -300), 1000);
+    await tester.pump();
+    expect(find.text('275 сл/мин'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('275 сл/мин'), findsNothing);
+    await settle(tester);
+    expect(
+      await tester.runAsync<String?>(
+        () =>
+            SettingsRepository(db).get(SettingKeys.speedWpmOf(SpeedMode.guide)),
+      ),
+      '275',
+    );
+
+    // Leaving: the word stays lit for a moment, the place on it.
+    await tapAt(tester, 0.5);
+    final last = guide.word;
+    await tester.tap(find.text('Выйти из подсветки'));
+    await tester.pump();
+    expect(reader(tester).guide, isNull);
+    expect(find.byType(GuideLayer), findsNothing);
+    expect(reader(tester).litWord, last);
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), last);
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('the highlight pauses before a new chapter and ends the book', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final second = tokens.firstWordOfSection(1);
+
+    await reader(tester).guideFrom(second - 3);
+    await settle(tester);
+    await tapAt(tester, 0.5);
+    await tester.pump(const Duration(seconds: 3));
+    final guide = reader(tester).guide!;
+    expect((guide.isStopped, guide.word), (true, second));
+    expect(reader(tester).page.firstWord, lessThanOrEqualTo(second));
+    expect(reader(tester).page.endWord, greaterThan(second));
+    expect(find.text('Новая глава'), findsOneWidget);
+    await tester.tap(find.text('Старт'));
+    await tester.pump();
+    expect(guide.isPlaying, isTrue);
+    // The title's first word starts a page and the gentle start: ~1.1 s.
+    await tester.pump(const Duration(seconds: 2));
+    expect(guide.word, greaterThan(second));
+    await tapAt(tester, 0.5);
+
+    expect(await finishedAt(tester), isNull);
+    await reader(tester).guideFrom(tokens.length - 3);
+    await settle(tester);
+    await tapAt(tester, 0.5);
+    await tester.pump(const Duration(seconds: 3));
+    expect(reader(tester).guide!.isFinished, isTrue);
+    expect(find.text('Книга закончилась'), findsOneWidget);
+    await settle(tester);
+    expect(await finishedAt(tester), isNotNull, reason: 'read to the end');
+    await tester.tap(find.text('К тексту'));
+    await tester.pump();
+    expect(reader(tester).guide, isNull);
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), tokens.length - 1);
+    await tester.pumpAndSettle();
     await closeApp(tester);
   });
 

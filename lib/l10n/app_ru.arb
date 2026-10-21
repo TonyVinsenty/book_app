@@ -511,6 +511,10 @@
   "@speedBookEnd": {
     "description": "Shown in speed reading after the last word of the book"
   },
+  "guideExit": "Выйти из подсветки",
+  "@guideExit": {
+    "description": "Leading highlight pause panel: back to normal reading"
+  },
   "bookPageRead": "Читать",
   "@bookPageRead": {"description": "Book page main button: open a book never read"},
   "bookPageReadAgain": "Читать снова",
