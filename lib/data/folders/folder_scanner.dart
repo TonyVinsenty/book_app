@@ -73,7 +73,7 @@ final folderScannerProvider = Provider<FolderScanner>(
 typedef ScanFolders = Future<bool> Function();
 
 /// The own folder always; picked folders where the platform can list them
-/// (Android; iOS — stage 11.7), the ones with no access too: a scan that
+/// (Android and iOS), the ones with no access too: a scan that
 /// works gives the access back. Tests override it.
 final scanFoldersProvider = Provider<ScanFolders>(
   (ref) => () async {

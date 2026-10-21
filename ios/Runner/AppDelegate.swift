@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
   private let filesChannel = "com.tonyvinsenty.bookapp/files"
   private let screenChannel = "com.tonyvinsenty.bookapp/screen"
   private var bookPicker: BookPicker?
+  private var pickedFolders: PickedFolders?
   // Kept here: the registrar holds scene delegates weakly.
   private var incomingFiles: IncomingFiles?
 
@@ -27,6 +28,8 @@ import UniformTypeIdentifiers
     }
     let picker = BookPicker(registrar: registrar)
     bookPicker = picker
+    let folders = PickedFolders(registrar: registrar)
+    pickedFolders = folders
     let files = FlutterMethodChannel(name: filesChannel, binaryMessenger: registrar.messenger())
     // Registered before the scene connects (the storyboard creates the
     // engine first), so a cold start with a file reaches it too.
@@ -37,6 +40,13 @@ import UniformTypeIdentifiers
       switch call.method {
       case "pickBooks": picker.pick(result)
       case "hasInitialFiles": incoming.hasInitialFiles(result)
+      case "pickFolder": folders.pick(result)
+      case "listFolder": folders.list(call.arguments as? String ?? "", result)
+      case "copyFolderFiles":
+        let args = call.arguments as? [String: Any]
+        folders.copy(args?["ref"] as? String ?? "", args?["keys"] as? [String] ?? [], result)
+      // A bookmark holds no lasting access to give back.
+      case "releaseFolder": result(nil)
       default: result(FlutterMethodNotImplemented)
       }
     }
@@ -197,6 +207,190 @@ private final class BookPicker: NSObject, UIDocumentPickerDelegate {
     try? fm.removeItem(at: root)
     return urls.enumerated().compactMap { (i, url) in
       copyFile(url, into: root.appendingPathComponent(String(i), isDirectory: true))?.path
+    }
+  }
+}
+
+/// Folders the user connects (ADR 0007). A folder is a bookmark (base64);
+/// listing and copies run on their own queue, so incoming files don't wait
+/// for a long listing. Copies go to tmp/folders/<n>/<file name>, like
+/// MainActivity.kt does on Android.
+private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
+  private static let io = DispatchQueue(label: "com.tonyvinsenty.bookapp.folders")
+  private static var count = 0  // Used on io only.
+  private static let maxDepth = 8  // As in Dart.
+
+  private weak var registrar: FlutterPluginRegistrar?
+  private var pending: FlutterResult?
+
+  init(registrar: FlutterPluginRegistrar) {
+    self.registrar = registrar
+    super.init()
+    // Each engine has its own Dart side, so nothing still uses old copies.
+    PickedFolders.io.async { try? FileManager.default.removeItem(at: PickedFolders.root) }
+  }
+
+  func pick(_ result: @escaping FlutterResult) {
+    if pending != nil {
+      result(FlutterError(code: "busy", message: "A folder picker is already open", details: nil))
+      return
+    }
+    guard var host = registrar?.viewController else {
+      result(FlutterError(code: "unavailable", message: "No view to show the picker", details: nil))
+      return
+    }
+    while let presented = host.presentedViewController { host = presented }
+    pending = result
+    let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
+    picker.delegate = self
+    host.present(picker, animated: true)
+  }
+
+  func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    guard let result = pending else { return }
+    pending = nil
+    guard let url = urls.first else {
+      result(nil)
+      return
+    }
+    PickedFolders.io.async {
+      let scoped = url.startAccessingSecurityScopedResource()
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+      let ref = PickedFolders.bookmark(url)
+      let name = (try? url.resourceValues(forKeys: [.localizedNameKey]))?.localizedName
+      DispatchQueue.main.async {
+        if let ref = ref {
+          result(["ref": ref, "name": name ?? url.lastPathComponent])
+        } else {
+          result(FlutterError(code: "denied", message: "No bookmark for the folder", details: nil))
+        }
+      }
+    }
+  }
+
+  func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+    guard let result = pending else { return }
+    pending = nil
+    result(nil)
+  }
+
+  // Any failure is "lost": the bookmark or the folder is gone.
+  func list(_ ref: String, _ result: @escaping FlutterResult) {
+    PickedFolders.io.async {
+      let answer = PickedFolders.listTree(ref)
+      DispatchQueue.main.async {
+        if let answer = answer {
+          result(answer)
+        } else {
+          result(FlutterError(code: "lost", message: "No access to the folder", details: nil))
+        }
+      }
+    }
+  }
+
+  // Each file in its own folder (the Dart import queue deletes it when
+  // done); one that can't be read gets a path with nothing there.
+  func copy(_ ref: String, _ keys: [String], _ result: @escaping FlutterResult) {
+    PickedFolders.io.async {
+      let folder = PickedFolders.resolve(ref)?.url
+      let scoped = folder?.startAccessingSecurityScopedResource() ?? false
+      defer { if scoped { folder?.stopAccessingSecurityScopedResource() } }
+      let paths = keys.map { key -> String in
+        let dir = PickedFolders.root.appendingPathComponent(
+          String(PickedFolders.count), isDirectory: true)
+        PickedFolders.count += 1
+        if let folder = folder, let file = copyFile(folder.appendingPathComponent(key), into: dir) {
+          return file.path
+        }
+        let name = (key as NSString).lastPathComponent
+        return dir.appendingPathComponent(name.isEmpty ? "book" : name).path
+      }
+      DispatchQueue.main.async { result(paths) }
+    }
+  }
+
+  private static var root: URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("folders", isDirectory: true)
+  }
+
+  private static func bookmark(_ url: URL) -> String? {
+    return (try? url.bookmarkData(
+      options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil
+    ))?.base64EncodedString()
+  }
+
+  private static func resolve(_ ref: String) -> (url: URL, stale: Bool)? {
+    guard let data = Data(base64Encoded: ref) else { return nil }
+    var stale = false
+    guard
+      let url = try? URL(
+        resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
+    else { return nil }
+    return (url, stale)
+  }
+
+  // Runs on io. Book files of the folder, subfolders included (8 levels,
+  // as in Dart); hidden files and folders are skipped. The key is the path
+  // inside the folder, which is what copy takes. A stale bookmark comes
+  // back renewed as "ref". A file still in iCloud starts downloading and
+  // is left for the next scan.
+  private static func listTree(_ ref: String) -> [String: Any]? {
+    guard let resolved = resolve(ref) else { return nil }
+    let folder = resolved.url
+    // False for a folder inside the app's own container, which is readable
+    // anyway, so the listing below is what tells whether there is access.
+    let scoped = folder.startAccessingSecurityScopedResource()
+    defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
+    let fm = FileManager.default
+    guard (try? fm.contentsOfDirectory(atPath: folder.path)) != nil,
+      let walker = fm.enumerator(atPath: folder.path)
+    else { return nil }
+    var files: [[String: Any]] = []
+    while let key = walker.nextObject() as? String {
+      let name = (key as NSString).lastPathComponent
+      let attributes = walker.fileAttributes ?? [:]
+      if (attributes[.type] as? FileAttributeType) == .typeDirectory {
+        if name.hasPrefix(".") || walker.level > maxDepth { walker.skipDescendants() }
+        continue
+      }
+      if name.hasPrefix(".") {
+        // ".Book.fb2.icloud": a file iCloud hasn't downloaded yet.
+        if name.hasSuffix(".icloud") {
+          let real = String(name.dropFirst().dropLast(".icloud".count))
+          if isBookName(real) {
+            let dir = folder.appendingPathComponent((key as NSString).deletingLastPathComponent)
+            try? fm.startDownloadingUbiquitousItem(at: dir.appendingPathComponent(real))
+          }
+        }
+        continue
+      }
+      guard isBookName(name) else { continue }
+      let file = folder.appendingPathComponent(key)
+      let status = (try? file.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]))?
+        .ubiquitousItemDownloadingStatus
+      if let status = status, status != .current {
+        try? fm.startDownloadingUbiquitousItem(at: file)
+        continue
+      }
+      let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+      let date = attributes[.modificationDate] as? Date
+      files.append([
+        "key": key,
+        "name": name,
+        "size": size,
+        "modified": date.map { Int64(($0.timeIntervalSince1970 * 1000).rounded()) } ?? 0,
+      ])
+    }
+    var answer: [String: Any] = ["files": files]
+    if resolved.stale, let renewed = bookmark(folder) { answer["ref"] = renewed }
+    return answer
+  }
+
+  // As isBookFileName in Dart; the importer tells the format by content.
+  private static func isBookName(_ name: String) -> Bool {
+    let lower = name.lowercased()
+    return [".fb2", ".epub", ".txt", ".zip"].contains {
+      lower.hasSuffix($0) && lower.count > $0.count
     }
   }
 }

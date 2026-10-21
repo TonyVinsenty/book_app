@@ -15,13 +15,7 @@ void main() {
     expect(kotlin, contains('"$pickBooksMethod"'));
     expect(kotlin, contains('"$hasInitialFilesMethod"'));
     expect(kotlin, contains('"$onIncomingFilesMethod"'));
-    // Folders (ADR 0007); iOS has them from stage 11.7.
-    for (final method in [
-      pickFolderMethod,
-      listFolderMethod,
-      copyFolderFilesMethod,
-      releaseFolderMethod,
-    ]) {
+    for (final method in _folderMethods) {
       expect(kotlin, contains('"$method"'));
     }
   });
@@ -84,6 +78,9 @@ void main() {
     expect(swift, contains('"$hasInitialFilesMethod"'));
     expect(swift, contains('"$onIncomingFilesMethod"'));
     expect(swift, contains('addSceneDelegate'));
+    for (final method in _folderMethods) {
+      expect(swift, contains('"$method"'));
+    }
   });
 
   group('Info.plist', () {
@@ -127,6 +124,14 @@ void main() {
     });
   });
 }
+
+/// Folders (ADR 0007).
+const _folderMethods = [
+  pickFolderMethod,
+  listFolderMethod,
+  copyFolderFilesMethod,
+  releaseFolderMethod,
+];
 
 const _fb2Type = 'com.tonyvinsenty.bookapp.fb2';
 

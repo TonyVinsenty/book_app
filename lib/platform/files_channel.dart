@@ -61,8 +61,8 @@ typedef PickFolder = Future<PickedFolder?> Function();
 /// Gives back the access to a disconnected folder.
 typedef ReleaseFolder = Future<void> Function(String ref);
 
-/// Platforms whose native side has the folder methods (iOS — stage 11.7).
-final _canPickFolders = Platform.isAndroid;
+/// Platforms whose native side has the folder methods.
+final _canPickFolders = Platform.isAndroid || Platform.isIOS;
 
 Future<PickedFolder?> _pickFolder() async {
   final answer = await _channel.invokeMapMethod<String, String>(
