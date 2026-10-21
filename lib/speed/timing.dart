@@ -40,6 +40,10 @@ abstract final class PaceRules {
   static const paragraphStart = 1.6;
   static const number = 1.3;
 
+  /// First word of a page in the guide: the eye goes back to the top
+  /// (ADR 0004, addendum for stage 10 п. 7).
+  static const pageStart = 1.8;
+
   /// Longer words: +[longPerLetter] per letter over [longFrom], up to [longMax].
   static const longFrom = 8;
   static const longPerLetter = 0.05;
