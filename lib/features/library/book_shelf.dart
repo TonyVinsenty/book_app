@@ -7,6 +7,7 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
+import 'package:book_app/features/library/folders_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -300,6 +301,12 @@ class ShelfBar extends ConsumerWidget {
             ),
           ),
           const Spacer(),
+          IconButton(
+            tooltip: l10n.folders,
+            color: colors.textSecondary,
+            icon: const Icon(Icons.folder_outlined),
+            onPressed: () => openFolders(context),
+          ),
           IconButton(
             tooltip: grid ? l10n.libraryShowList : l10n.libraryShowGrid,
             color: colors.textSecondary,

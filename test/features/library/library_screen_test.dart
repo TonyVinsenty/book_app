@@ -13,6 +13,7 @@ import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_screen.dart';
+import 'package:book_app/features/library/folders_screen.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
@@ -283,6 +284,13 @@ void main() {
     await tester.fling(find.byType(ShelfBar), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
     expect(scans, 1);
+  });
+
+  testWidgets('the folder button opens "Папки"', (tester) async {
+    await pumpLibrary(tester, books: [_book(1, title: 'Война и мир')]);
+    await tester.tap(find.byTooltip('Папки'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FoldersScreen), findsOneWidget);
   });
 
   testWidgets('rows show the status of every book', (tester) async {

@@ -68,6 +68,11 @@ final folderRepositoryProvider = Provider<FolderRepository>(
   (ref) => FolderRepository(ref.watch(appDatabaseProvider)),
 );
 
+/// The own folder first, then picked ones oldest first.
+final foldersProvider = StreamProvider<List<FolderRow>>(
+  (ref) => ref.watch(folderRepositoryProvider).watchFolders(),
+);
+
 /// A book prepared for the reader screen, by book id. A failure is final
 /// (missing or broken files), so Riverpod's automatic retry is off.
 final openedBookProvider = FutureProvider.autoDispose.family<OpenedBook, int>(

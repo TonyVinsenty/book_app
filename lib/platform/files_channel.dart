@@ -41,6 +41,22 @@ Future<bool> _hasInitialFiles() async {
   }
 }
 
+/// A folder the user chose: an opaque handle for the native side and the
+/// name to show.
+typedef PickedFolder = ({String ref, String name});
+
+/// Lets the user choose a folder; null when cancelled.
+typedef PickFolder = Future<PickedFolder?> Function();
+
+/// Gives back the access to a disconnected folder.
+typedef ReleaseFolder = Future<void> Function(String ref);
+
+/// Null while the platform can't pick folders (Android — stage 11.5, iOS —
+/// 11.7): "Подключить папку" is hidden. Tests override it.
+final pickFolderProvider = Provider<PickFolder?>((ref) => null);
+
+final releaseFolderProvider = Provider<ReleaseFolder>((ref) => (_) async {});
+
 /// Tests override it with a fake.
 final pickBooksProvider = Provider<PickBooks>((ref) => _pickBooks);
 
