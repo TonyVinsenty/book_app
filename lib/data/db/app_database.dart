@@ -83,6 +83,55 @@ class BookCollections extends Table {
   Set<Column> get primaryKey => {bookId, collectionId};
 }
 
+/// Folders the library takes books from (schema v5, ADR 0007): the app's own
+/// folder and folders the owner picked.
+@DataClassName('FolderRow')
+class Folders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get kind => textEnum<FolderKind>()();
+  TextColumn get name => text()();
+
+  /// Opaque handle from the platform (Android tree URI, iOS bookmark);
+  /// null for the own folder.
+  TextColumn get ref => text().nullable()();
+  DateTimeColumn get addedAt => dateTime()();
+  DateTimeColumn get scannedAt => dateTime().nullable()();
+
+  /// No access any more: books stay, the owner can pick the folder again.
+  BoolColumn get lost => boolean().withDefault(const Constant(false))();
+
+  /// The last scan found more books than the limit and took only some.
+  BoolColumn get tooBig => boolean().withDefault(const Constant(false))();
+
+  /// Books from the folder also go to this collection; null — nowhere.
+  IntColumn get collectionId => integer().nullable().references(
+    Collections,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+}
+
+enum FolderKind { own, picked }
+
+/// Files of a folder already seen, so a deleted book does not come back and
+/// a rescan imports only new or changed files (schema v5).
+@DataClassName('FolderFileRow')
+class FolderFiles extends Table {
+  IntColumn get folderId =>
+      integer().references(Folders, #id, onDelete: KeyAction.cascade)();
+
+  /// Path inside the folder (or Android document id).
+  TextColumn get key => text()();
+  IntColumn get size => integer()();
+
+  /// Change time in milliseconds; 0 — unknown, compare by size only.
+  IntColumn get modified => integer()();
+  DateTimeColumn get seenAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {folderId, key};
+}
+
 /// App settings as key → value text; typed access lives in the settings
 /// code that owns each key.
 @DataClassName('SettingRow')
@@ -109,12 +158,21 @@ class StringListConverter extends TypeConverter<List<String>, String> {
 
 /// App database. The executor is a parameter: a file in the app, memory in
 /// tests (`NativeDatabase.memory()`).
-@DriftDatabase(tables: [Books, AppSettings, Collections, BookCollections])
+@DriftDatabase(
+  tables: [
+    Books,
+    AppSettings,
+    Collections,
+    BookCollections,
+    Folders,
+    FolderFiles,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -152,6 +210,10 @@ class AppDatabase extends _$AppDatabase {
           'UPDATE books SET finished_at = touched_at '
           'WHERE word_count > 0 AND position_word * 100 >= word_count * 98',
         );
+      }
+      if (from < 5) {
+        await m.createTable(folders);
+        await m.createTable(folderFiles);
       }
     },
     beforeOpen: (details) async {

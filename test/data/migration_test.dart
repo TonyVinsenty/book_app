@@ -9,6 +9,7 @@ import 'generated_migrations/schema_v1.dart' as v1;
 import 'generated_migrations/schema_v2.dart' as v2;
 import 'generated_migrations/schema_v3.dart' as v3;
 import 'generated_migrations/schema_v4.dart' as v4;
+import 'generated_migrations/schema_v5.dart' as v5;
 
 // Snapshots of every schema are in `drift_schemas/`; after a table change:
 //   dart run drift_dev schema dump lib/data/db/app_database.dart drift_schemas/
@@ -39,15 +40,15 @@ void main() {
 
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
-  for (final from in [1, 2, 3]) {
-    test('v$from → v4 gives the v4 schema', () async {
+  for (final from in [1, 2, 3, 4]) {
+    test('v$from → v5 gives the v5 schema', () async {
       final db = AppDatabase(await verifier.startAt(from));
-      await verifier.migrateAndValidate(db, 4);
+      await verifier.migrateAndValidate(db, 5);
       await db.close();
     });
   }
 
-  test('v1 → v4 does not give out ids of deleted books again', () async {
+  test('v1 → v5 does not give out ids of deleted books again', () async {
     final schema = await verifier.schemaAt(1);
     final old = v1.DatabaseAtV1(schema.newConnection());
     for (final title in ['А', 'Б', 'В']) {
@@ -57,7 +58,7 @@ void main() {
     await old.close();
 
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 4);
+    await verifier.migrateAndValidate(db, 5);
     final id = await db
         .into(db.books)
         .insert(
@@ -79,12 +80,12 @@ void main() {
     expect(id, 4);
   });
 
-  test('v1 → v4 keeps the books; touched = opened, else added', () async {
+  test('v1 → v5 keeps the books; touched = opened, else added', () async {
     await verifier.testWithDataIntegrity(
       oldVersion: 1,
-      newVersion: 4,
+      newVersion: 5,
       createOld: v1.DatabaseAtV1.new,
-      createNew: v4.DatabaseAtV4.new,
+      createNew: v5.DatabaseAtV5.new,
       openTestedDatabase: AppDatabase.new,
       createItems: (batch, old) => batch.insertAll(old.books, [
         _book('Открытая', openedAt: _opened),
@@ -105,7 +106,7 @@ void main() {
     );
   });
 
-  test('v2 → v4 keeps the books; read to 98% counts as read', () async {
+  test('v2 → v5 keeps the books; read to 98% counts as read', () async {
     v2.BooksCompanion book(String title, int position, int words) =>
         v2.BooksCompanion.insert(
           title: title,
@@ -124,9 +125,9 @@ void main() {
         );
     await verifier.testWithDataIntegrity(
       oldVersion: 2,
-      newVersion: 4,
+      newVersion: 5,
       createOld: v2.DatabaseAtV2.new,
-      createNew: v4.DatabaseAtV4.new,
+      createNew: v5.DatabaseAtV5.new,
       openTestedDatabase: AppDatabase.new,
       createItems: (batch, old) => batch.insertAll(old.books, [
         book('Почти', 97, 100),
@@ -147,12 +148,12 @@ void main() {
     );
   });
 
-  test('v3 → v4 keeps books, read marks and collections', () async {
+  test('v3 → v5 keeps books, read marks and collections', () async {
     await verifier.testWithDataIntegrity(
       oldVersion: 3,
-      newVersion: 4,
+      newVersion: 5,
       createOld: v3.DatabaseAtV3.new,
-      createNew: v4.DatabaseAtV4.new,
+      createNew: v5.DatabaseAtV5.new,
       openTestedDatabase: AppDatabase.new,
       createItems: (batch, old) {
         v3.BooksCompanion book(int id, String title, {int? finishedAt}) =>
@@ -201,6 +202,41 @@ void main() {
         expect([for (final r in rows) r.statusMark], [null, null]);
         final links = await db.select(db.bookCollections).get();
         expect([for (final l in links) l.bookId], [7]);
+      },
+    );
+  });
+
+  test('v4 → v5 keeps books and status marks; no folders yet', () async {
+    await verifier.testWithDataIntegrity(
+      oldVersion: 4,
+      newVersion: 5,
+      createOld: v4.DatabaseAtV4.new,
+      createNew: v5.DatabaseAtV5.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, old) {
+        batch.insert(
+          old.books,
+          v4.BooksCompanion.insert(
+            id: const Value(5),
+            title: 'Отложена',
+            authors: '["Автор"]',
+            sourceFormat: 'txt',
+            sourceName: 'Отложена.txt',
+            sourceSize: 10,
+            sourceHash: 'hash-5',
+            parserVersion: 1,
+            wordCount: 100,
+            addedAt: _added,
+            touchedAt: _opened,
+            statusMark: const Value('queued'),
+          ),
+        );
+      },
+      validateItems: (db) async {
+        final rows = await db.select(db.books).get();
+        expect([for (final r in rows) r.statusMark], ['queued']);
+        expect(await db.select(db.folders).get(), isEmpty);
+        expect(await db.select(db.folderFiles).get(), isEmpty);
       },
     );
   });

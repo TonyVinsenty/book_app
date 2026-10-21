@@ -2033,6 +2033,932 @@ class BookCollectionsCompanion extends UpdateCompanion<BookCollectionRow> {
   }
 }
 
+class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<FolderKind, String> kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<FolderKind>($FoldersTable.$converterkind);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _refMeta = const VerificationMeta('ref');
+  @override
+  late final GeneratedColumn<String> ref = GeneratedColumn<String>(
+    'ref',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scannedAtMeta = const VerificationMeta(
+    'scannedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> scannedAt = GeneratedColumn<DateTime>(
+    'scanned_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lostMeta = const VerificationMeta('lost');
+  @override
+  late final GeneratedColumn<bool> lost = GeneratedColumn<bool>(
+    'lost',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("lost" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _tooBigMeta = const VerificationMeta('tooBig');
+  @override
+  late final GeneratedColumn<bool> tooBig = GeneratedColumn<bool>(
+    'too_big',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("too_big" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _collectionIdMeta = const VerificationMeta(
+    'collectionId',
+  );
+  @override
+  late final GeneratedColumn<int> collectionId = GeneratedColumn<int>(
+    'collection_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES collections (id) ON DELETE SET NULL',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    name,
+    ref,
+    addedAt,
+    scannedAt,
+    lost,
+    tooBig,
+    collectionId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FolderRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('ref')) {
+      context.handle(
+        _refMeta,
+        ref.isAcceptableOrUnknown(data['ref']!, _refMeta),
+      );
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_addedAtMeta);
+    }
+    if (data.containsKey('scanned_at')) {
+      context.handle(
+        _scannedAtMeta,
+        scannedAt.isAcceptableOrUnknown(data['scanned_at']!, _scannedAtMeta),
+      );
+    }
+    if (data.containsKey('lost')) {
+      context.handle(
+        _lostMeta,
+        lost.isAcceptableOrUnknown(data['lost']!, _lostMeta),
+      );
+    }
+    if (data.containsKey('too_big')) {
+      context.handle(
+        _tooBigMeta,
+        tooBig.isAcceptableOrUnknown(data['too_big']!, _tooBigMeta),
+      );
+    }
+    if (data.containsKey('collection_id')) {
+      context.handle(
+        _collectionIdMeta,
+        collectionId.isAcceptableOrUnknown(
+          data['collection_id']!,
+          _collectionIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FolderRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FolderRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: $FoldersTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      ref: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ref'],
+      ),
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+      scannedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}scanned_at'],
+      ),
+      lost: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}lost'],
+      )!,
+      tooBig: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}too_big'],
+      )!,
+      collectionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}collection_id'],
+      ),
+    );
+  }
+
+  @override
+  $FoldersTable createAlias(String alias) {
+    return $FoldersTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<FolderKind, String, String> $converterkind =
+      const EnumNameConverter<FolderKind>(FolderKind.values);
+}
+
+class FolderRow extends DataClass implements Insertable<FolderRow> {
+  final int id;
+  final FolderKind kind;
+  final String name;
+
+  /// Opaque handle from the platform (Android tree URI, iOS bookmark);
+  /// null for the own folder.
+  final String? ref;
+  final DateTime addedAt;
+  final DateTime? scannedAt;
+
+  /// No access any more: books stay, the owner can pick the folder again.
+  final bool lost;
+
+  /// The last scan found more books than the limit and took only some.
+  final bool tooBig;
+
+  /// Books from the folder also go to this collection; null — nowhere.
+  final int? collectionId;
+  const FolderRow({
+    required this.id,
+    required this.kind,
+    required this.name,
+    this.ref,
+    required this.addedAt,
+    this.scannedAt,
+    required this.lost,
+    required this.tooBig,
+    this.collectionId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    {
+      map['kind'] = Variable<String>($FoldersTable.$converterkind.toSql(kind));
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || ref != null) {
+      map['ref'] = Variable<String>(ref);
+    }
+    map['added_at'] = Variable<DateTime>(addedAt);
+    if (!nullToAbsent || scannedAt != null) {
+      map['scanned_at'] = Variable<DateTime>(scannedAt);
+    }
+    map['lost'] = Variable<bool>(lost);
+    map['too_big'] = Variable<bool>(tooBig);
+    if (!nullToAbsent || collectionId != null) {
+      map['collection_id'] = Variable<int>(collectionId);
+    }
+    return map;
+  }
+
+  FoldersCompanion toCompanion(bool nullToAbsent) {
+    return FoldersCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      name: Value(name),
+      ref: ref == null && nullToAbsent ? const Value.absent() : Value(ref),
+      addedAt: Value(addedAt),
+      scannedAt: scannedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scannedAt),
+      lost: Value(lost),
+      tooBig: Value(tooBig),
+      collectionId: collectionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(collectionId),
+    );
+  }
+
+  factory FolderRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FolderRow(
+      id: serializer.fromJson<int>(json['id']),
+      kind: $FoldersTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      name: serializer.fromJson<String>(json['name']),
+      ref: serializer.fromJson<String?>(json['ref']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      scannedAt: serializer.fromJson<DateTime?>(json['scannedAt']),
+      lost: serializer.fromJson<bool>(json['lost']),
+      tooBig: serializer.fromJson<bool>(json['tooBig']),
+      collectionId: serializer.fromJson<int?>(json['collectionId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'kind': serializer.toJson<String>(
+        $FoldersTable.$converterkind.toJson(kind),
+      ),
+      'name': serializer.toJson<String>(name),
+      'ref': serializer.toJson<String?>(ref),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+      'scannedAt': serializer.toJson<DateTime?>(scannedAt),
+      'lost': serializer.toJson<bool>(lost),
+      'tooBig': serializer.toJson<bool>(tooBig),
+      'collectionId': serializer.toJson<int?>(collectionId),
+    };
+  }
+
+  FolderRow copyWith({
+    int? id,
+    FolderKind? kind,
+    String? name,
+    Value<String?> ref = const Value.absent(),
+    DateTime? addedAt,
+    Value<DateTime?> scannedAt = const Value.absent(),
+    bool? lost,
+    bool? tooBig,
+    Value<int?> collectionId = const Value.absent(),
+  }) => FolderRow(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    name: name ?? this.name,
+    ref: ref.present ? ref.value : this.ref,
+    addedAt: addedAt ?? this.addedAt,
+    scannedAt: scannedAt.present ? scannedAt.value : this.scannedAt,
+    lost: lost ?? this.lost,
+    tooBig: tooBig ?? this.tooBig,
+    collectionId: collectionId.present ? collectionId.value : this.collectionId,
+  );
+  FolderRow copyWithCompanion(FoldersCompanion data) {
+    return FolderRow(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      name: data.name.present ? data.name.value : this.name,
+      ref: data.ref.present ? data.ref.value : this.ref,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      scannedAt: data.scannedAt.present ? data.scannedAt.value : this.scannedAt,
+      lost: data.lost.present ? data.lost.value : this.lost,
+      tooBig: data.tooBig.present ? data.tooBig.value : this.tooBig,
+      collectionId: data.collectionId.present
+          ? data.collectionId.value
+          : this.collectionId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderRow(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('name: $name, ')
+          ..write('ref: $ref, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('scannedAt: $scannedAt, ')
+          ..write('lost: $lost, ')
+          ..write('tooBig: $tooBig, ')
+          ..write('collectionId: $collectionId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    name,
+    ref,
+    addedAt,
+    scannedAt,
+    lost,
+    tooBig,
+    collectionId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FolderRow &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.name == this.name &&
+          other.ref == this.ref &&
+          other.addedAt == this.addedAt &&
+          other.scannedAt == this.scannedAt &&
+          other.lost == this.lost &&
+          other.tooBig == this.tooBig &&
+          other.collectionId == this.collectionId);
+}
+
+class FoldersCompanion extends UpdateCompanion<FolderRow> {
+  final Value<int> id;
+  final Value<FolderKind> kind;
+  final Value<String> name;
+  final Value<String?> ref;
+  final Value<DateTime> addedAt;
+  final Value<DateTime?> scannedAt;
+  final Value<bool> lost;
+  final Value<bool> tooBig;
+  final Value<int?> collectionId;
+  const FoldersCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.name = const Value.absent(),
+    this.ref = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.scannedAt = const Value.absent(),
+    this.lost = const Value.absent(),
+    this.tooBig = const Value.absent(),
+    this.collectionId = const Value.absent(),
+  });
+  FoldersCompanion.insert({
+    this.id = const Value.absent(),
+    required FolderKind kind,
+    required String name,
+    this.ref = const Value.absent(),
+    required DateTime addedAt,
+    this.scannedAt = const Value.absent(),
+    this.lost = const Value.absent(),
+    this.tooBig = const Value.absent(),
+    this.collectionId = const Value.absent(),
+  }) : kind = Value(kind),
+       name = Value(name),
+       addedAt = Value(addedAt);
+  static Insertable<FolderRow> custom({
+    Expression<int>? id,
+    Expression<String>? kind,
+    Expression<String>? name,
+    Expression<String>? ref,
+    Expression<DateTime>? addedAt,
+    Expression<DateTime>? scannedAt,
+    Expression<bool>? lost,
+    Expression<bool>? tooBig,
+    Expression<int>? collectionId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (name != null) 'name': name,
+      if (ref != null) 'ref': ref,
+      if (addedAt != null) 'added_at': addedAt,
+      if (scannedAt != null) 'scanned_at': scannedAt,
+      if (lost != null) 'lost': lost,
+      if (tooBig != null) 'too_big': tooBig,
+      if (collectionId != null) 'collection_id': collectionId,
+    });
+  }
+
+  FoldersCompanion copyWith({
+    Value<int>? id,
+    Value<FolderKind>? kind,
+    Value<String>? name,
+    Value<String?>? ref,
+    Value<DateTime>? addedAt,
+    Value<DateTime?>? scannedAt,
+    Value<bool>? lost,
+    Value<bool>? tooBig,
+    Value<int?>? collectionId,
+  }) {
+    return FoldersCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      name: name ?? this.name,
+      ref: ref ?? this.ref,
+      addedAt: addedAt ?? this.addedAt,
+      scannedAt: scannedAt ?? this.scannedAt,
+      lost: lost ?? this.lost,
+      tooBig: tooBig ?? this.tooBig,
+      collectionId: collectionId ?? this.collectionId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $FoldersTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (ref.present) {
+      map['ref'] = Variable<String>(ref.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    if (scannedAt.present) {
+      map['scanned_at'] = Variable<DateTime>(scannedAt.value);
+    }
+    if (lost.present) {
+      map['lost'] = Variable<bool>(lost.value);
+    }
+    if (tooBig.present) {
+      map['too_big'] = Variable<bool>(tooBig.value);
+    }
+    if (collectionId.present) {
+      map['collection_id'] = Variable<int>(collectionId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('name: $name, ')
+          ..write('ref: $ref, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('scannedAt: $scannedAt, ')
+          ..write('lost: $lost, ')
+          ..write('tooBig: $tooBig, ')
+          ..write('collectionId: $collectionId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FolderFilesTable extends FolderFiles
+    with TableInfo<$FolderFilesTable, FolderFileRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FolderFilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<int> folderId = GeneratedColumn<int>(
+    'folder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES folders (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<int> size = GeneratedColumn<int>(
+    'size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modifiedMeta = const VerificationMeta(
+    'modified',
+  );
+  @override
+  late final GeneratedColumn<int> modified = GeneratedColumn<int>(
+    'modified',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _seenAtMeta = const VerificationMeta('seenAt');
+  @override
+  late final GeneratedColumn<DateTime> seenAt = GeneratedColumn<DateTime>(
+    'seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [folderId, key, size, modified, seenAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'folder_files';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FolderFileRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderIdMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('size')) {
+      context.handle(
+        _sizeMeta,
+        size.isAcceptableOrUnknown(data['size']!, _sizeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeMeta);
+    }
+    if (data.containsKey('modified')) {
+      context.handle(
+        _modifiedMeta,
+        modified.isAcceptableOrUnknown(data['modified']!, _modifiedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modifiedMeta);
+    }
+    if (data.containsKey('seen_at')) {
+      context.handle(
+        _seenAtMeta,
+        seenAt.isAcceptableOrUnknown(data['seen_at']!, _seenAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seenAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {folderId, key};
+  @override
+  FolderFileRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FolderFileRow(
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}folder_id'],
+      )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      size: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size'],
+      )!,
+      modified: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}modified'],
+      )!,
+      seenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}seen_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FolderFilesTable createAlias(String alias) {
+    return $FolderFilesTable(attachedDatabase, alias);
+  }
+}
+
+class FolderFileRow extends DataClass implements Insertable<FolderFileRow> {
+  final int folderId;
+
+  /// Path inside the folder (or Android document id).
+  final String key;
+  final int size;
+
+  /// Change time in milliseconds; 0 — unknown, compare by size only.
+  final int modified;
+  final DateTime seenAt;
+  const FolderFileRow({
+    required this.folderId,
+    required this.key,
+    required this.size,
+    required this.modified,
+    required this.seenAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['folder_id'] = Variable<int>(folderId);
+    map['key'] = Variable<String>(key);
+    map['size'] = Variable<int>(size);
+    map['modified'] = Variable<int>(modified);
+    map['seen_at'] = Variable<DateTime>(seenAt);
+    return map;
+  }
+
+  FolderFilesCompanion toCompanion(bool nullToAbsent) {
+    return FolderFilesCompanion(
+      folderId: Value(folderId),
+      key: Value(key),
+      size: Value(size),
+      modified: Value(modified),
+      seenAt: Value(seenAt),
+    );
+  }
+
+  factory FolderFileRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FolderFileRow(
+      folderId: serializer.fromJson<int>(json['folderId']),
+      key: serializer.fromJson<String>(json['key']),
+      size: serializer.fromJson<int>(json['size']),
+      modified: serializer.fromJson<int>(json['modified']),
+      seenAt: serializer.fromJson<DateTime>(json['seenAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'folderId': serializer.toJson<int>(folderId),
+      'key': serializer.toJson<String>(key),
+      'size': serializer.toJson<int>(size),
+      'modified': serializer.toJson<int>(modified),
+      'seenAt': serializer.toJson<DateTime>(seenAt),
+    };
+  }
+
+  FolderFileRow copyWith({
+    int? folderId,
+    String? key,
+    int? size,
+    int? modified,
+    DateTime? seenAt,
+  }) => FolderFileRow(
+    folderId: folderId ?? this.folderId,
+    key: key ?? this.key,
+    size: size ?? this.size,
+    modified: modified ?? this.modified,
+    seenAt: seenAt ?? this.seenAt,
+  );
+  FolderFileRow copyWithCompanion(FolderFilesCompanion data) {
+    return FolderFileRow(
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      key: data.key.present ? data.key.value : this.key,
+      size: data.size.present ? data.size.value : this.size,
+      modified: data.modified.present ? data.modified.value : this.modified,
+      seenAt: data.seenAt.present ? data.seenAt.value : this.seenAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderFileRow(')
+          ..write('folderId: $folderId, ')
+          ..write('key: $key, ')
+          ..write('size: $size, ')
+          ..write('modified: $modified, ')
+          ..write('seenAt: $seenAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(folderId, key, size, modified, seenAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FolderFileRow &&
+          other.folderId == this.folderId &&
+          other.key == this.key &&
+          other.size == this.size &&
+          other.modified == this.modified &&
+          other.seenAt == this.seenAt);
+}
+
+class FolderFilesCompanion extends UpdateCompanion<FolderFileRow> {
+  final Value<int> folderId;
+  final Value<String> key;
+  final Value<int> size;
+  final Value<int> modified;
+  final Value<DateTime> seenAt;
+  final Value<int> rowid;
+  const FolderFilesCompanion({
+    this.folderId = const Value.absent(),
+    this.key = const Value.absent(),
+    this.size = const Value.absent(),
+    this.modified = const Value.absent(),
+    this.seenAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FolderFilesCompanion.insert({
+    required int folderId,
+    required String key,
+    required int size,
+    required int modified,
+    required DateTime seenAt,
+    this.rowid = const Value.absent(),
+  }) : folderId = Value(folderId),
+       key = Value(key),
+       size = Value(size),
+       modified = Value(modified),
+       seenAt = Value(seenAt);
+  static Insertable<FolderFileRow> custom({
+    Expression<int>? folderId,
+    Expression<String>? key,
+    Expression<int>? size,
+    Expression<int>? modified,
+    Expression<DateTime>? seenAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (folderId != null) 'folder_id': folderId,
+      if (key != null) 'key': key,
+      if (size != null) 'size': size,
+      if (modified != null) 'modified': modified,
+      if (seenAt != null) 'seen_at': seenAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FolderFilesCompanion copyWith({
+    Value<int>? folderId,
+    Value<String>? key,
+    Value<int>? size,
+    Value<int>? modified,
+    Value<DateTime>? seenAt,
+    Value<int>? rowid,
+  }) {
+    return FolderFilesCompanion(
+      folderId: folderId ?? this.folderId,
+      key: key ?? this.key,
+      size: size ?? this.size,
+      modified: modified ?? this.modified,
+      seenAt: seenAt ?? this.seenAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (folderId.present) {
+      map['folder_id'] = Variable<int>(folderId.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (size.present) {
+      map['size'] = Variable<int>(size.value);
+    }
+    if (modified.present) {
+      map['modified'] = Variable<int>(modified.value);
+    }
+    if (seenAt.present) {
+      map['seen_at'] = Variable<DateTime>(seenAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderFilesCompanion(')
+          ..write('folderId: $folderId, ')
+          ..write('key: $key, ')
+          ..write('size: $size, ')
+          ..write('modified: $modified, ')
+          ..write('seenAt: $seenAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2042,6 +2968,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BookCollectionsTable bookCollections = $BookCollectionsTable(
     this,
   );
+  late final $FoldersTable folders = $FoldersTable(this);
+  late final $FolderFilesTable folderFiles = $FolderFilesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2051,6 +2979,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettings,
     collections,
     bookCollections,
+    folders,
+    folderFiles,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2067,6 +2997,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('book_collections', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'collections',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('folders', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'folders',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('folder_files', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -2922,6 +3866,25 @@ final class $$CollectionsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$FoldersTable, List<FolderRow>> _foldersRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.folders,
+    aliasName: 'collections__id__folders__collection_id',
+  );
+
+  $$FoldersTableProcessedTableManager get foldersRefs {
+    final manager = $$FoldersTableTableManager(
+      $_db,
+      $_db.folders,
+    ).filter((f) => f.collectionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_foldersRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CollectionsTableFilterComposer
@@ -2964,6 +3927,31 @@ class $$CollectionsTableFilterComposer
           }) => $$BookCollectionsTableFilterComposer(
             $db: $db,
             $table: $db.bookCollections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> foldersRefs(
+    Expression<bool> Function($$FoldersTableFilterComposer f) f,
+  ) {
+    final $$FoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.collectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.folders,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3041,6 +4029,31 @@ class $$CollectionsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> foldersRefs<T extends Object>(
+    Expression<T> Function($$FoldersTableAnnotationComposer a) f,
+  ) {
+    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.collectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CollectionsTableTableManager
@@ -3056,7 +4069,7 @@ class $$CollectionsTableTableManager
           $$CollectionsTableUpdateCompanionBuilder,
           (CollectionRow, $$CollectionsTableReferences),
           CollectionRow,
-          PrefetchHooks Function({bool bookCollectionsRefs})
+          PrefetchHooks Function({bool bookCollectionsRefs, bool foldersRefs})
         > {
   $$CollectionsTableTableManager(_$AppDatabase db, $CollectionsTable table)
     : super(
@@ -3092,40 +4105,63 @@ class $$CollectionsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({bookCollectionsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (bookCollectionsRefs) db.bookCollections,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (bookCollectionsRefs)
-                    await $_getPrefetchedData<
-                      CollectionRow,
-                      $CollectionsTable,
-                      BookCollectionRow
-                    >(
-                      currentTable: table,
-                      referencedTable: $$CollectionsTableReferences
-                          ._bookCollectionsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$CollectionsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).bookCollectionsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.collectionId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({bookCollectionsRefs = false, foldersRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (bookCollectionsRefs) db.bookCollections,
+                    if (foldersRefs) db.folders,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (bookCollectionsRefs)
+                        await $_getPrefetchedData<
+                          CollectionRow,
+                          $CollectionsTable,
+                          BookCollectionRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CollectionsTableReferences
+                              ._bookCollectionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CollectionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).bookCollectionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.collectionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (foldersRefs)
+                        await $_getPrefetchedData<
+                          CollectionRow,
+                          $CollectionsTable,
+                          FolderRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CollectionsTableReferences
+                              ._foldersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CollectionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).foldersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.collectionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -3142,7 +4178,7 @@ typedef $$CollectionsTableProcessedTableManager =
       $$CollectionsTableUpdateCompanionBuilder,
       (CollectionRow, $$CollectionsTableReferences),
       CollectionRow,
-      PrefetchHooks Function({bool bookCollectionsRefs})
+      PrefetchHooks Function({bool bookCollectionsRefs, bool foldersRefs})
     >;
 typedef $$BookCollectionsTableCreateCompanionBuilder =
     BookCollectionsCompanion Function({
@@ -3517,6 +4553,798 @@ typedef $$BookCollectionsTableProcessedTableManager =
       BookCollectionRow,
       PrefetchHooks Function({bool bookId, bool collectionId})
     >;
+typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
+  Value<int> id,
+  required FolderKind kind,
+  required String name,
+  Value<String?> ref,
+  required DateTime addedAt,
+  Value<DateTime?> scannedAt,
+  Value<bool> lost,
+  Value<bool> tooBig,
+  Value<int?> collectionId,
+});
+typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
+  Value<int> id,
+  Value<FolderKind> kind,
+  Value<String> name,
+  Value<String?> ref,
+  Value<DateTime> addedAt,
+  Value<DateTime?> scannedAt,
+  Value<bool> lost,
+  Value<bool> tooBig,
+  Value<int?> collectionId,
+});
+
+final class $$FoldersTableReferences
+    extends BaseReferences<_$AppDatabase, $FoldersTable, FolderRow> {
+  $$FoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CollectionsTable _collectionIdTable(_$AppDatabase db) =>
+      db.collections.createAlias('folders__collection_id__collections__id');
+
+  $$CollectionsTableProcessedTableManager? get collectionId {
+    final $_column = $_itemColumn<int>('collection_id');
+    if ($_column == null) return null;
+    final manager = $$CollectionsTableTableManager(
+      $_db,
+      $_db.collections,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_collectionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$FolderFilesTable, List<FolderFileRow>>
+  _folderFilesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.folderFiles,
+    aliasName: 'folders__id__folder_files__folder_id',
+  );
+
+  $$FolderFilesTableProcessedTableManager get folderFilesRefs {
+    final manager = $$FolderFilesTableTableManager(
+      $_db,
+      $_db.folderFiles,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_folderFilesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<FolderKind, FolderKind, String> get kind =>
+      $composableBuilder(
+        column: $table.kind,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ref => $composableBuilder(
+    column: $table.ref,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get scannedAt => $composableBuilder(
+    column: $table.scannedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get lost => $composableBuilder(
+    column: $table.lost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get tooBig => $composableBuilder(
+    column: $table.tooBig,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CollectionsTableFilterComposer get collectionId {
+    final $$CollectionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.collectionId,
+      referencedTable: $db.collections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionsTableFilterComposer(
+            $db: $db,
+            $table: $db.collections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> folderFilesRefs(
+    Expression<bool> Function($$FolderFilesTableFilterComposer f) f,
+  ) {
+    final $$FolderFilesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.folderFiles,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FolderFilesTableFilterComposer(
+            $db: $db,
+            $table: $db.folderFiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ref => $composableBuilder(
+    column: $table.ref,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get scannedAt => $composableBuilder(
+    column: $table.scannedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get lost => $composableBuilder(
+    column: $table.lost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get tooBig => $composableBuilder(
+    column: $table.tooBig,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CollectionsTableOrderingComposer get collectionId {
+    final $$CollectionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.collectionId,
+      referencedTable: $db.collections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.collections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<FolderKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get ref =>
+      $composableBuilder(column: $table.ref, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get scannedAt =>
+      $composableBuilder(column: $table.scannedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get lost =>
+      $composableBuilder(column: $table.lost, builder: (column) => column);
+
+  GeneratedColumn<bool> get tooBig =>
+      $composableBuilder(column: $table.tooBig, builder: (column) => column);
+
+  $$CollectionsTableAnnotationComposer get collectionId {
+    final $$CollectionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.collectionId,
+      referencedTable: $db.collections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CollectionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.collections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> folderFilesRefs<T extends Object>(
+    Expression<T> Function($$FolderFilesTableAnnotationComposer a) f,
+  ) {
+    final $$FolderFilesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.folderFiles,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FolderFilesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folderFiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FoldersTable,
+          FolderRow,
+          $$FoldersTableFilterComposer,
+          $$FoldersTableOrderingComposer,
+          $$FoldersTableAnnotationComposer,
+          $$FoldersTableCreateCompanionBuilder,
+          $$FoldersTableUpdateCompanionBuilder,
+          (FolderRow, $$FoldersTableReferences),
+          FolderRow,
+          PrefetchHooks Function({bool collectionId, bool folderFilesRefs})
+        > {
+  $$FoldersTableTableManager(_$AppDatabase db, $FoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<FolderKind> kind = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> ref = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<DateTime?> scannedAt = const Value.absent(),
+                Value<bool> lost = const Value.absent(),
+                Value<bool> tooBig = const Value.absent(),
+                Value<int?> collectionId = const Value.absent(),
+              }) => FoldersCompanion(
+                id: id,
+                kind: kind,
+                name: name,
+                ref: ref,
+                addedAt: addedAt,
+                scannedAt: scannedAt,
+                lost: lost,
+                tooBig: tooBig,
+                collectionId: collectionId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required FolderKind kind,
+                required String name,
+                Value<String?> ref = const Value.absent(),
+                required DateTime addedAt,
+                Value<DateTime?> scannedAt = const Value.absent(),
+                Value<bool> lost = const Value.absent(),
+                Value<bool> tooBig = const Value.absent(),
+                Value<int?> collectionId = const Value.absent(),
+              }) => FoldersCompanion.insert(
+                id: id,
+                kind: kind,
+                name: name,
+                ref: ref,
+                addedAt: addedAt,
+                scannedAt: scannedAt,
+                lost: lost,
+                tooBig: tooBig,
+                collectionId: collectionId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FoldersTable, FolderRow>(table),
+                  $$FoldersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({collectionId = false, folderFilesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (folderFilesRefs) db.folderFiles,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (collectionId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.collectionId,
+                            referencedTable: $$FoldersTableReferences
+                                ._collectionIdTable(db),
+                            referencedColumn: $$FoldersTableReferences
+                                ._collectionIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (folderFilesRefs)
+                        await $_getPrefetchedData<
+                          FolderRow,
+                          $FoldersTable,
+                          FolderFileRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FoldersTableReferences
+                              ._folderFilesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FoldersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).folderFilesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.folderId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$FoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FoldersTable,
+      FolderRow,
+      $$FoldersTableFilterComposer,
+      $$FoldersTableOrderingComposer,
+      $$FoldersTableAnnotationComposer,
+      $$FoldersTableCreateCompanionBuilder,
+      $$FoldersTableUpdateCompanionBuilder,
+      (FolderRow, $$FoldersTableReferences),
+      FolderRow,
+      PrefetchHooks Function({bool collectionId, bool folderFilesRefs})
+    >;
+typedef $$FolderFilesTableCreateCompanionBuilder =
+    FolderFilesCompanion Function({
+      required int folderId,
+      required String key,
+      required int size,
+      required int modified,
+      required DateTime seenAt,
+      Value<int> rowid,
+    });
+typedef $$FolderFilesTableUpdateCompanionBuilder =
+    FolderFilesCompanion Function({
+      Value<int> folderId,
+      Value<String> key,
+      Value<int> size,
+      Value<int> modified,
+      Value<DateTime> seenAt,
+      Value<int> rowid,
+    });
+
+final class $$FolderFilesTableReferences
+    extends BaseReferences<_$AppDatabase, $FolderFilesTable, FolderFileRow> {
+  $$FolderFilesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FoldersTable _folderIdTable(_$AppDatabase db) =>
+      db.folders.createAlias('folder_files__folder_id__folders__id');
+
+  $$FoldersTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<int>('folder_id')!;
+
+    final manager = $$FoldersTableTableManager(
+      $_db,
+      $_db.folders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FolderFilesTableFilterComposer
+    extends Composer<_$AppDatabase, $FolderFilesTable> {
+  $$FolderFilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get modified => $composableBuilder(
+    column: $table.modified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get seenAt => $composableBuilder(
+    column: $table.seenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$FoldersTableFilterComposer get folderId {
+    final $$FoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FolderFilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FolderFilesTable> {
+  $$FolderFilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get modified => $composableBuilder(
+    column: $table.modified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get seenAt => $composableBuilder(
+    column: $table.seenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$FoldersTableOrderingComposer get folderId {
+    final $$FoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FolderFilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FolderFilesTable> {
+  $$FolderFilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<int> get modified =>
+      $composableBuilder(column: $table.modified, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get seenAt =>
+      $composableBuilder(column: $table.seenAt, builder: (column) => column);
+
+  $$FoldersTableAnnotationComposer get folderId {
+    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FolderFilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FolderFilesTable,
+          FolderFileRow,
+          $$FolderFilesTableFilterComposer,
+          $$FolderFilesTableOrderingComposer,
+          $$FolderFilesTableAnnotationComposer,
+          $$FolderFilesTableCreateCompanionBuilder,
+          $$FolderFilesTableUpdateCompanionBuilder,
+          (FolderFileRow, $$FolderFilesTableReferences),
+          FolderFileRow,
+          PrefetchHooks Function({bool folderId})
+        > {
+  $$FolderFilesTableTableManager(_$AppDatabase db, $FolderFilesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FolderFilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FolderFilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FolderFilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> folderId = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<int> size = const Value.absent(),
+                Value<int> modified = const Value.absent(),
+                Value<DateTime> seenAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FolderFilesCompanion(
+                folderId: folderId,
+                key: key,
+                size: size,
+                modified: modified,
+                seenAt: seenAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int folderId,
+                required String key,
+                required int size,
+                required int modified,
+                required DateTime seenAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FolderFilesCompanion.insert(
+                folderId: folderId,
+                key: key,
+                size: size,
+                modified: modified,
+                seenAt: seenAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FolderFilesTable, FolderFileRow>(table),
+                  $$FolderFilesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({folderId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (folderId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.folderId,
+                        referencedTable: $$FolderFilesTableReferences
+                            ._folderIdTable(db),
+                        referencedColumn: $$FolderFilesTableReferences
+                            ._folderIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FolderFilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FolderFilesTable,
+      FolderFileRow,
+      $$FolderFilesTableFilterComposer,
+      $$FolderFilesTableOrderingComposer,
+      $$FolderFilesTableAnnotationComposer,
+      $$FolderFilesTableCreateCompanionBuilder,
+      $$FolderFilesTableUpdateCompanionBuilder,
+      (FolderFileRow, $$FolderFilesTableReferences),
+      FolderFileRow,
+      PrefetchHooks Function({bool folderId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3529,4 +5357,8 @@ class $AppDatabaseManager {
       $$CollectionsTableTableManager(_db, _db.collections);
   $$BookCollectionsTableTableManager get bookCollections =>
       $$BookCollectionsTableTableManager(_db, _db.bookCollections);
+  $$FoldersTableTableManager get folders =>
+      $$FoldersTableTableManager(_db, _db.folders);
+  $$FolderFilesTableTableManager get folderFiles =>
+      $$FolderFilesTableTableManager(_db, _db.folderFiles);
 }

@@ -8,6 +8,7 @@ import 'package:book_app/data/collection_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/db/open_app_database.dart';
+import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/data/speed_settings.dart';
 import 'package:book_app/layout/hyphenation.dart';
@@ -60,6 +61,11 @@ final collectionsProvider = StreamProvider<List<CollectionRow>>(
 /// Which book is in which collection.
 final collectionLinksProvider = StreamProvider<List<BookCollectionRow>>(
   (ref) => ref.watch(collectionRepositoryProvider).watchLinks(),
+);
+
+/// Folders the library takes books from (ADR 0007).
+final folderRepositoryProvider = Provider<FolderRepository>(
+  (ref) => FolderRepository(ref.watch(appDatabaseProvider)),
 );
 
 /// A book prepared for the reader screen, by book id. A failure is final
