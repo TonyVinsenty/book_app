@@ -123,7 +123,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   static int _phraseChars(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
     final room =
-        MediaQuery.sizeOf(context).width - padding.horizontal - 2 * _side;
+        MediaQuery.sizeOf(context).width -
+        padding.horizontal -
+        2 * RsvpWordPainter.phraseSide;
     final painter = TextPainter(
       text: TextSpan(
         text: _sample,
@@ -140,13 +142,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     return (room / letter).floor().clamp(_minChars, _maxChars);
   }
 
-  /// Common letters with a space, for the average letter width.
-  static const _sample = 'в старом доме on the stairs';
+  /// Common letters with spaces, for the average letter width (Cyrillic is
+  /// the wider).
+  static const _sample = 'в старом доме на широкой лестнице';
   static const _minChars = 12;
   static const _maxChars = 24;
-
-  /// Room left on each side of a phrase.
-  static const _side = 16.0;
 
   @override
   void dispose() {
@@ -550,6 +550,9 @@ class RsvpWordPainter extends CustomPainter {
   /// Where the fixation letter stands, as a share of the width.
   static const fixationX = 0.38;
 
+  /// Room left on each side of a phrase, so it does not touch the edges.
+  static const phraseSide = 32.0;
+
   final String text;
 
   /// UTF-16 offset of the fixation letter in [text]; null for a phrase.
@@ -614,7 +617,7 @@ class RsvpWordPainter extends CustomPainter {
     var painter = _layout(fontSize);
     // A word or phrase wider than the screen gets a smaller font (splitting
     // long words comes later, ADR 0004 п. 1).
-    final room = size.width - 16;
+    final room = size.width - 2 * (this.orp == null ? phraseSide : 8);
     if (painter.width > room && room > 0) {
       final smaller = fontSize * room / painter.width;
       painter.dispose();

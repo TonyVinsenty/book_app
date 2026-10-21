@@ -643,11 +643,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
                               painter: _PagePainter(
                                 chapter,
                                 _page,
-                                lit: [
-                                  if (_litWord case final lit?)
-                                    for (var w = lit; w < _litEnd; w++)
-                                      ...chapter.wordBoxes(_page, w),
-                                ],
+                                lit: _litWord == null
+                                    ? const []
+                                    : _joinLines([
+                                        for (
+                                          var w = _litWord!;
+                                          w < _litEnd;
+                                          w++
+                                        )
+                                          ...chapter.wordBoxes(_page, w),
+                                      ]),
                                 litColor: colors.highlight,
                                 litAnimation: _lit,
                               ),
@@ -890,6 +895,21 @@ class ReaderViewState extends ConsumerState<ReaderView>
       ),
     );
   }
+}
+
+/// The boxes of words one after another, one box per line: a lit phrase
+/// is one mark, not a row of them.
+List<Rect> _joinLines(List<Rect> boxes) {
+  final lines = <Rect>[];
+  for (final box in boxes) {
+    final last = lines.isEmpty ? null : lines.last;
+    if (last != null && (last.center.dy - box.center.dy).abs() < 1) {
+      lines.last = last.expandToInclude(box);
+    } else {
+      lines.add(box);
+    }
+  }
+  return lines;
 }
 
 class _PagePainter extends CustomPainter {
