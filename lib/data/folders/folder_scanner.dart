@@ -3,6 +3,8 @@ import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/folders/folder_scan.dart';
 import 'package:book_app/data/import_queue.dart';
+import 'package:book_app/data/providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Takes new books from folders into the library (ADR 0007): quietly — no
 /// book opens and a duplicate keeps its place in the list.
@@ -58,3 +60,31 @@ final class FolderScanner {
     await _folders.markScanned(folder.id, tooBig: plan.tooBig);
   }
 }
+
+final folderScannerProvider = Provider<FolderScanner>(
+  (ref) => FolderScanner(
+    ref.watch(folderRepositoryProvider),
+    ref.watch(importQueueProvider.notifier),
+  ),
+);
+
+/// Scans all folders of the library; false while a scan is on.
+typedef ScanFolders = Future<bool> Function();
+
+/// The own folder always; picked folders once the platform can list them
+/// (stage 11.5). Tests override it.
+final scanFoldersProvider = Provider<ScanFolders>(
+  (ref) => () async {
+    final scanner = ref.read(folderScannerProvider);
+    if (scanner.busy) return false;
+    final repo = ref.read(folderRepositoryProvider);
+    final own = ref.read(ownFolderProvider);
+    if (own != null) await repo.ensureOwn();
+    final copies = ref.read(folderCopiesProvider);
+    return scanner.scanAll([
+      for (final folder in await repo.folders())
+        if (folder.kind == FolderKind.own && own != null)
+          (folder, LocalFolderSource(own, copies: copies)),
+    ]);
+  },
+);

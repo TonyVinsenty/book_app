@@ -96,11 +96,37 @@ Future<List<Override>> openStorageOverrides() async {
   final store = ContentStore(
     Directory('${dir.path}${Platform.pathSeparator}books'),
   );
+  final temp = await getTemporaryDirectory();
   return [
     appDatabaseProvider.overrideWithValue(db),
     contentStoreProvider.overrideWithValue(store),
+    ownFolderProvider.overrideWithValue(await _ownFolder()),
+    folderCopiesProvider.overrideWithValue(
+      Directory('${temp.path}${Platform.pathSeparator}folder_scan'),
+    ),
   ];
 }
+
+/// iOS: `Documents`, shown in Files as "On My iPhone → BookApp" (with the
+/// Info.plist keys, ADR 0007); Android: `files/Books` in the app's external
+/// folder, reachable by cable from a computer and by `adb push`.
+Future<Directory?> _ownFolder() async {
+  if (Platform.isIOS) return getApplicationDocumentsDirectory();
+  if (Platform.isAndroid) {
+    final external = await getExternalStorageDirectory();
+    if (external == null) return null;
+    return Directory('${external.path}/Books').create(recursive: true);
+  }
+  return null;
+}
+
+/// The app's own folder of books; null where there is none (tests).
+final ownFolderProvider = Provider<Directory?>((ref) => null);
+
+/// Where folder files are copied for the import queue.
+final folderCopiesProvider = Provider<Directory>(
+  (ref) => Directory('${Directory.systemTemp.path}/folder_scan'),
+);
 
 /// The page the reader laid out last (`reader.lastLayout`), for the book
 /// page.

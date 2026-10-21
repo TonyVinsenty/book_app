@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/book/import/book_importer.dart';
+import 'package:book_app/data/folders/folder_scanner.dart';
 import 'package:book_app/data/import_queue.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
@@ -257,45 +258,50 @@ class _BooksTab extends ConsumerWidget {
     final last = view.filter.status == null && view.sort != LibrarySort.author
         ? view.continueBook
         : null;
-    return CustomScrollView(
-      slivers: [
-        if (last != null)
-          SliverToBoxAdapter(
-            child: ContinueCard(
-              onTap: () => openBook(context, last.id),
-              onLongPress: () => pickForNewCollection(context, last.id),
-              coverFile: repository.coverFile(last),
-              title: last.title,
-              authors: last.authors.join(', '),
-              percent: percentRead(last) ?? 0,
-              titleFont: titleFont,
+    // Pull down → look in the folders now; the queue line shows the rest.
+    return RefreshIndicator(
+      onRefresh: () async => unawaited(ref.read(scanFoldersProvider)()),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (last != null)
+            SliverToBoxAdapter(
+              child: ContinueCard(
+                onTap: () => openBook(context, last.id),
+                onLongPress: () => pickForNewCollection(context, last.id),
+                coverFile: repository.coverFile(last),
+                title: last.title,
+                authors: last.authors.join(', '),
+                percent: percentRead(last) ?? 0,
+                titleFont: titleFont,
+              ),
             ),
-          ),
-        SliverToBoxAdapter(
-          child: ShelfBar(
-            view: view,
-            onStatus: (status) => unawaited(
-              chooseFilter(
-                ref.read(settingsRepositoryProvider),
-                LibraryFilter(status: status),
+          SliverToBoxAdapter(
+            child: ShelfBar(
+              view: view,
+              onStatus: (status) => unawaited(
+                chooseFilter(
+                  ref.read(settingsRepositoryProvider),
+                  LibraryFilter(status: status),
+                ),
               ),
             ),
           ),
-        ),
-        if (view.books.isEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: EmptyShelf(status: view.filter.status),
-          )
-        else ...[
-          BookShelf(
-            view: view,
-            onLongPress: (book) => pickForNewCollection(context, book.id),
-          ),
-          // Room for the button over the last book.
-          const SliverToBoxAdapter(child: SizedBox(height: 88)),
+          if (view.books.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: EmptyShelf(status: view.filter.status),
+            )
+          else ...[
+            BookShelf(
+              view: view,
+              onLongPress: (book) => pickForNewCollection(context, book.id),
+            ),
+            // Room for the button over the last book.
+            const SliverToBoxAdapter(child: SizedBox(height: 88)),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

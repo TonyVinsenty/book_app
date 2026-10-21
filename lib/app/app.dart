@@ -1,3 +1,4 @@
+import 'package:book_app/app/folder_scans.dart';
 import 'package:book_app/app/incoming_books.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/reading_settings.dart';
@@ -8,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Root widget: localization, theme, the first screen and books coming
-/// from other apps.
+/// from other apps and folders.
 class BookApp extends ConsumerStatefulWidget {
   const BookApp({super.key, this.reopenBookId});
 
@@ -30,8 +31,9 @@ class _BookAppState extends ConsumerState<BookApp> {
     final settings = ref.watch(readingSettingsProvider);
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      builder: (context, child) =>
-          IncomingBooks(navigatorKey: _navigatorKey, child: child!),
+      builder: (context, child) => FolderScans(
+        child: IncomingBooks(navigatorKey: _navigatorKey, child: child!),
+      ),
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

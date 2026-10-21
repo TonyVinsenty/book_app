@@ -6,6 +6,7 @@ import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
+import 'package:book_app/data/folders/folder_scanner.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/book_page.dart';
@@ -60,8 +61,10 @@ void main() {
   late Directory temp;
   late FakeImporter importer;
   late AppDatabase db;
+  var scans = 0;
 
   setUp(() {
+    scans = 0;
     temp = Directory.systemTemp.createTempSync('library_');
     importer = FakeImporter()..hold = true;
     // Closing a drift database under fake time hangs, so it is left open;
@@ -118,6 +121,10 @@ void main() {
           ],
           bookImporterProvider.overrideWithValue(importer),
           pickBooksProvider.overrideWithValue(() async => paths),
+          scanFoldersProvider.overrideWithValue(() async {
+            scans++;
+            return true;
+          }),
         ],
         child: MaterialApp(
           theme: buildAppTheme(ReadingPalette.paper, night: false),
@@ -270,6 +277,13 @@ void main() {
     await settle(tester);
     await tester.pumpAndSettle();
   }
+
+  testWidgets('pulling the list down looks in the folders', (tester) async {
+    await pumpLibrary(tester, books: [_book(1, title: 'Война и мир')]);
+    await tester.fling(find.byType(ShelfBar), const Offset(0, 300), 1000);
+    await tester.pumpAndSettle();
+    expect(scans, 1);
+  });
 
   testWidgets('rows show the status of every book', (tester) async {
     tall(tester);
