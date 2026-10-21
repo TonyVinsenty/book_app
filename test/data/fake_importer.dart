@@ -27,6 +27,9 @@ BookRow bookRow(String title) => BookRow(
 /// holds three books; each file waits for [release] when [hold] is on.
 class FakeImporter implements BookImporter {
   final calls = <String>[];
+
+  /// The `touch` flag of each call.
+  final touches = <bool>[];
   bool hold = false;
   Completer<void>? _gate;
 
@@ -41,9 +44,14 @@ class FakeImporter implements BookImporter {
   }
 
   @override
-  Future<List<ImportResult>> importFile(File file, {OnBook? onBook}) async {
+  Future<List<ImportResult>> importFile(
+    File file, {
+    OnBook? onBook,
+    bool touch = true,
+  }) async {
     final name = file.path.split(RegExp(r'[/\\]')).last;
     calls.add(name);
+    touches.add(touch);
     if (hold) await (_gate = Completer<void>()).future;
     final names = name.startsWith('box')
         ? ['$name-1', '$name-2', '$name-3']

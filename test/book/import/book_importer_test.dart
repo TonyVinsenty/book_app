@@ -223,6 +223,12 @@ void main() {
 
     expect((again as ImportDuplicate).book.touchedAt, clock);
     expect([for (final r in await repo.watchBooks().first) r.id], [a.id, b.id]);
+
+    // From a folder: a duplicate keeps its place.
+    clock = clock.add(const Duration(minutes: 1));
+    final quiet = (await importer.importFile(second, touch: false)).single;
+    expect((quiet as ImportDuplicate).book.id, b.id);
+    expect([for (final r in await repo.watchBooks().first) r.id], [a.id, b.id]);
   });
 
   test('FB2 and FB2.ZIP of one book are a duplicate', () async {

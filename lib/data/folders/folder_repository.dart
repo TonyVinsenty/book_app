@@ -90,10 +90,15 @@ final class FolderRepository {
         FoldersCompanion(collectionId: Value(collectionId)),
       );
 
-  /// After a scan: when, and whether the limit cut it short.
+  /// After a scan: when, and whether the limit cut it short; the access is
+  /// there again.
   Future<void> markScanned(int id, {bool tooBig = false}) =>
       (_db.update(_db.folders)..where((f) => f.id.equals(id))).write(
-        FoldersCompanion(scannedAt: Value(_now()), tooBig: Value(tooBig)),
+        FoldersCompanion(
+          scannedAt: Value(_now()),
+          tooBig: Value(tooBig),
+          lost: const Value(false),
+        ),
       );
 
   /// Disconnects a picked folder; its books stay, the seen files go

@@ -138,8 +138,13 @@ class BookImporter {
   /// Imports the book in [file], or every book of a ZIP box, which is
   /// unpacked next to [file] and removed afterwards (ADR 0005). Never
   /// throws: failures come back as [ImportFailed]; a box that can't be
-  /// unpacked is one failure under its own name.
-  Future<List<ImportResult>> importFile(File file, {OnBook? onBook}) async {
+  /// unpacked is one failure under its own name. With [touch] off a
+  /// duplicate stays where it is in the library (books from folders).
+  Future<List<ImportResult>> importFile(
+    File file, {
+    OnBook? onBook,
+    bool touch = true,
+  }) async {
     Directory? unpackDir;
     try {
       var books = [file];
@@ -156,7 +161,7 @@ class BookImporter {
       for (final book in books) {
         final name = fileNameOf(book.path);
         onBook?.call(name, books.length);
-        results.add(await _importBook(book, name));
+        results.add(await _importBook(book, name, touch: touch));
       }
       return results;
     } finally {
@@ -164,10 +169,15 @@ class BookImporter {
     }
   }
 
-  Future<ImportResult> _importBook(File book, String name) async {
+  Future<ImportResult> _importBook(
+    File book,
+    String name, {
+    required bool touch,
+  }) async {
     try {
       final hash = await _hashInIsolate(book.path);
       final existing = await _books.findByHash(hash);
+      if (existing != null && !touch) return ImportDuplicate(name, existing);
       // Deleted in the meantime → added again.
       final touched = existing == null ? null : await _books.touch(existing.id);
       if (touched != null) return ImportDuplicate(name, touched);

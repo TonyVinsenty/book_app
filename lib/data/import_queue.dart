@@ -31,8 +31,8 @@ final class ImportQueueState {
   bool get busy => current != null;
 }
 
-/// One queue for every way books come in: the picker, incoming files and,
-/// later, folders. Files are imported strictly one at a time (memory); ones
+/// One queue for every way books come in: the picker, incoming files and
+/// folders. Files are imported strictly one at a time (memory); ones
 /// added while it works go to the tail. The queue owns the files given to
 /// it and deletes each one when done.
 class ImportQueue extends Notifier<ImportQueueState> {
@@ -44,9 +44,21 @@ class ImportQueue extends Notifier<ImportQueueState> {
 
   /// Queues the files at [paths]; completes with their results, in order,
   /// when they are done.
-  Future<List<ImportResult>> add(List<String> paths) async {
-    if (paths.isEmpty) return const [];
-    final jobs = [for (final path in paths) _Job(File(path))];
+  Future<List<ImportResult>> add(List<String> paths) => _add([
+    for (final path in paths) _Job(fileNameOf(path), () async => path),
+  ]);
+
+  /// Queues one file that [fetch] makes (a copy the queue then owns) only
+  /// when its turn comes, so a big folder never sits copied in full. With
+  /// [touch] off a duplicate stays where it is in the library.
+  Future<List<ImportResult>> addLater(
+    String name,
+    Future<String> Function() fetch, {
+    bool touch = true,
+  }) => _add([_Job(name, fetch, touch: touch)]);
+
+  Future<List<ImportResult>> _add(List<_Job> jobs) async {
+    if (jobs.isEmpty) return const [];
     _jobs.addAll(jobs);
     if (state.busy) {
       state = ImportQueueState(
@@ -56,7 +68,7 @@ class ImportQueue extends Notifier<ImportQueueState> {
       );
     } else {
       _results = [];
-      state = ImportQueueState(total: jobs.length, current: _name(jobs.first));
+      state = ImportQueueState(total: jobs.length, current: jobs.first.name);
       unawaited(_run());
     }
     final done = await Future.wait([for (final job in jobs) job.done.future]);
@@ -69,11 +81,14 @@ class ImportQueue extends Notifier<ImportQueueState> {
       final doneBefore = state.done;
       var books = 0;
       List<ImportResult> results;
+      File? file;
       try {
+        file = File(await job.fetch());
         results = await ref
             .read(bookImporterProvider)
             .importFile(
-              job.file,
+              file,
+              touch: job.touch,
               onBook: (name, count) {
                 state = ImportQueueState(
                   // A box adds its other books to the count.
@@ -87,27 +102,35 @@ class ImportQueue extends Notifier<ImportQueueState> {
       } on Object {
         // The importer reports failures itself; this is a last resort, so
         // one bad file never stops the queue.
-        results = [ImportFailed(_name(job), ImportError.damaged)];
+        results = [
+          ImportFailed(
+            job.name,
+            file == null ? ImportError.unreadable : ImportError.damaged,
+          ),
+        ];
       }
-      await _deleteQuietly(job.file);
+      if (file != null) await _deleteQuietly(file);
       _results.addAll(results);
       job.done.complete(results);
       state = ImportQueueState(
         total: state.total,
         done: doneBefore + results.length,
-        current: _jobs.isEmpty ? null : _name(_jobs.first),
+        current: _jobs.isEmpty ? null : _jobs.first.name,
         finished: _jobs.isEmpty ? List.unmodifiable(_results) : null,
       );
     }
   }
 
-  static String _name(_Job job) => fileNameOf(job.file.path);
 }
 
 final class _Job {
-  _Job(this.file);
+  _Job(this.name, this.fetch, {this.touch = true});
 
-  final File file;
+  final String name;
+
+  /// The path of the file to import, which the queue deletes afterwards.
+  final Future<String> Function() fetch;
+  final bool touch;
   final done = Completer<List<ImportResult>>();
 }
 

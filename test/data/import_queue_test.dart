@@ -120,4 +120,37 @@ void main() {
     expect(await queue().add([]), isEmpty);
     expect(states, isEmpty);
   });
+
+  test('a later file is fetched only on its turn, with its touch', () async {
+    importer.hold = true;
+    final fetched = <String>[];
+    final first = queue().add([file('a.txt')]);
+    final later = queue().addLater('b.txt', () async {
+      fetched.add('b.txt');
+      return file('b.txt');
+    }, touch: false);
+    await Future<void>.delayed(Duration.zero);
+    expect(state().total, 2);
+    expect(fetched, isEmpty);
+
+    await importer.release();
+    await first;
+    await importer.release();
+    final results = await later;
+
+    expect(fetched, ['b.txt']);
+    expect(importer.touches, [true, false]);
+    expect(results.single, isA<ImportAdded>());
+    expect(File('${temp.path}/b.txt').existsSync(), isFalse);
+  });
+
+  test('a file that cannot be fetched is unreadable; the queue goes on', () async {
+    final results = await queue().addLater(
+      'gone.fb2',
+      () async => throw const FileSystemException('no access'),
+    );
+    expect((results.single as ImportFailed).error, ImportError.unreadable);
+    expect(results.single.fileName, 'gone.fb2');
+    expect(await queue().add([file('a.txt')]), hasLength(1));
+  });
 }
