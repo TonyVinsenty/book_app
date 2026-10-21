@@ -587,6 +587,8 @@
   "@foldersOwnHintAndroid": {"description": "Folders screen, Android: where the own folder is"},
   "foldersPickedHint": "Подключите папку с книгами — новые книги из неё будут появляться в библиотеке сами. Файлы в папке приложение не меняет.",
   "@foldersPickedHint": {"description": "Folders screen: what a connected folder does"},
+  "foldersPickedHintAndroid": "Саму память телефона или «Загрузки» Android подключить не даёт — создайте в них папку, например «Загрузки/Книги», и подключите её.",
+  "@foldersPickedHintAndroid": {"description": "Folders screen, Android: the system won't let the storage root or Downloads be picked"},
   "foldersConnect": "Подключить папку",
   "@foldersConnect": {"description": "Folders screen: pick a folder to take books from"},
   "foldersReconnect": "Подключить заново",

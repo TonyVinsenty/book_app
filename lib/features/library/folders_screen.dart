@@ -48,7 +48,11 @@ class FoldersScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 20, 4, 12),
               child: Text(
-                l10n.foldersPickedHint,
+                [
+                  l10n.foldersPickedHint,
+                  if (Theme.of(context).platform == TargetPlatform.android)
+                    l10n.foldersPickedHintAndroid,
+                ].join('\n\n'),
                 style: TextStyle(color: colors.textSecondary),
               ),
             ),

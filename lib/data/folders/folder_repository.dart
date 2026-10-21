@@ -7,10 +7,14 @@ final class FolderEntry {
     required this.key,
     required this.size,
     required this.modified,
+    this.name,
   });
 
   final String key;
   final int size;
+
+  /// The file's own name when the key isn't a path (Android document ids).
+  final String? name;
 
   /// Milliseconds; 0 — unknown.
   final int modified;

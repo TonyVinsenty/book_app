@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:book_app/data/folders/folder_repository.dart';
+import 'package:book_app/data/folders/folder_scan.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +17,13 @@ const hasInitialFilesMethod = 'hasInitialFiles';
 /// Native → Dart: private copies of files from other apps. A file that
 /// couldn't be copied comes as a path with nothing there.
 const onIncomingFilesMethod = 'onIncomingFiles';
+
+/// Folders (ADR 0007): pick one, list its book files, copy some of them,
+/// give the access back.
+const pickFolderMethod = 'pickFolder';
+const listFolderMethod = 'listFolder';
+const copyFolderFilesMethod = 'copyFolderFiles';
+const releaseFolderMethod = 'releaseFolder';
 
 /// Lets the user choose book files; returns paths to private copies in the
 /// cache folder (empty when cancelled). The caller deletes the copies.
@@ -51,11 +61,77 @@ typedef PickFolder = Future<PickedFolder?> Function();
 /// Gives back the access to a disconnected folder.
 typedef ReleaseFolder = Future<void> Function(String ref);
 
-/// Null while the platform can't pick folders (Android — stage 11.5, iOS —
-/// 11.7): "Подключить папку" is hidden. Tests override it.
-final pickFolderProvider = Provider<PickFolder?>((ref) => null);
+/// Platforms whose native side has the folder methods (iOS — stage 11.7).
+final _canPickFolders = Platform.isAndroid;
 
-final releaseFolderProvider = Provider<ReleaseFolder>((ref) => (_) async {});
+Future<PickedFolder?> _pickFolder() async {
+  final answer = await _channel.invokeMapMethod<String, String>(
+    pickFolderMethod,
+  );
+  if (answer == null) return null;
+  return (ref: answer['ref']!, name: answer['name'] ?? '');
+}
+
+/// Any failure means no access: the permission or the folder is gone.
+Future<FolderListing> _listFolder(String ref) async {
+  final Map<String, Object?>? answer;
+  try {
+    answer = await _channel.invokeMapMethod<String, Object?>(
+      listFolderMethod,
+      ref,
+    );
+  } on PlatformException {
+    throw const FolderLostException();
+  }
+  final files = (answer?['files'] as List<Object?>?) ?? const [];
+  return (
+    files: [
+      for (final file in files.cast<Map<Object?, Object?>>())
+        FolderEntry(
+          key: file['key']! as String,
+          name: file['name'] as String?,
+          size: (file['size'] as int?) ?? 0,
+          modified: (file['modified'] as int?) ?? 0,
+        ),
+    ],
+    ref: answer?['ref'] as String?,
+  );
+}
+
+Future<List<String>> _copyFolderFiles(String ref, List<String> keys) async {
+  final paths = await _channel.invokeListMethod<String>(copyFolderFilesMethod, {
+    'ref': ref,
+    'keys': keys,
+  });
+  return paths ?? const [];
+}
+
+Future<void> _releaseFolder(String ref) async {
+  try {
+    await _channel.invokeMethod<void>(releaseFolderMethod, ref);
+  } on PlatformException {
+    // The access is gone already.
+  }
+}
+
+/// Null where the platform can't pick folders: "Подключить папку" is
+/// hidden. Tests override it.
+final pickFolderProvider = Provider<PickFolder?>(
+  (ref) => _canPickFolders ? _pickFolder : null,
+);
+
+/// Null where picked folders can't be read: they aren't scanned.
+final listFolderProvider = Provider<ListFolder?>(
+  (ref) => _canPickFolders ? _listFolder : null,
+);
+
+final copyFolderFilesProvider = Provider<CopyFolderFiles>(
+  (ref) => _copyFolderFiles,
+);
+
+final releaseFolderProvider = Provider<ReleaseFolder>(
+  (ref) => _canPickFolders ? _releaseFolder : (_) async {},
+);
 
 /// Tests override it with a fake.
 final pickBooksProvider = Provider<PickBooks>((ref) => _pickBooks);

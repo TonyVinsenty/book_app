@@ -84,6 +84,52 @@ abstract interface class FolderSource {
   Future<String> copy(String key);
 }
 
+/// A folder listing from the platform; [ref] — a renewed handle (an iOS
+/// bookmark gone stale), to keep instead of the old one.
+typedef FolderListing = ({List<FolderEntry> files, String? ref});
+
+/// Lists a picked folder; throws [FolderLostException].
+typedef ListFolder = Future<FolderListing> Function(String ref);
+
+/// Copies files of a picked folder where the import queue may delete them;
+/// a file that couldn't be copied comes as a path with nothing there.
+typedef CopyFolderFiles = Future<List<String>> Function(
+  String ref,
+  List<String> keys,
+);
+
+/// A folder the owner picked, read by the platform (Android: the storage
+/// access framework; iOS: a bookmark).
+final class ChannelFolderSource implements FolderSource {
+  ChannelFolderSource(
+    this._ref, {
+    required this._list,
+    required this._copy,
+    required this.onRef,
+  });
+
+  String _ref;
+  final ListFolder _list;
+  final CopyFolderFiles _copy;
+
+  /// Keeps a renewed handle.
+  final Future<void> Function(String ref) onRef;
+
+  @override
+  Future<List<FolderEntry>> list() async {
+    final listing = await _list(_ref);
+    final renewed = listing.ref;
+    if (renewed != null && renewed != _ref) {
+      _ref = renewed;
+      await onRef(renewed);
+    }
+    return listing.files;
+  }
+
+  @override
+  Future<String> copy(String key) async => (await _copy(_ref, [key])).single;
+}
+
 /// Whether the file name looks like a book the importer takes; the format
 /// itself is told by the content.
 bool isBookFileName(String name) {

@@ -15,6 +15,15 @@ void main() {
     expect(kotlin, contains('"$pickBooksMethod"'));
     expect(kotlin, contains('"$hasInitialFilesMethod"'));
     expect(kotlin, contains('"$onIncomingFilesMethod"'));
+    // Folders (ADR 0007); iOS has them from stage 11.7.
+    for (final method in [
+      pickFolderMethod,
+      listFolderMethod,
+      copyFolderFilesMethod,
+      releaseFolderMethod,
+    ]) {
+      expect(kotlin, contains('"$method"'));
+    }
   });
 
   group('AndroidManifest.xml', () {
