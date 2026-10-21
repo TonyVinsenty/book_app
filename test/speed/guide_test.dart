@@ -126,6 +126,22 @@ void main() {
     expect((guide.word, guide.page), (5, (first: 0, end: 10)));
   });
 
+  test('a page without words at the end: no word past the book', () {
+    final pages = FakePages([0, 10], 15);
+    final guide = GuideSession(
+      wordCount: 15,
+      startWord: 5,
+      timing: const ConstantPace(600),
+      pageOf: (word) {
+        RangeError.checkValidIndex(word, null, 'word', 15);
+        return pages.pageOf(word);
+      },
+    )..pageTurned(15);
+    expect(guide.page, (first: 10, end: 15));
+    guide.play();
+    expect(guide.word, 10);
+  });
+
   test('seek shows the page of the word', () {
     final guide = session(FakePages([0, 10, 20], 30))..seek(23);
     expect((guide.word, guide.page), (23, (first: 20, end: 30)));

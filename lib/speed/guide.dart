@@ -20,7 +20,8 @@ final class GuideSession {
     required this.pageOf,
     bool Function(int word)? stopBefore,
     int rampWords = 10,
-  }) : _timing = _PageTiming(timing, pageOf) {
+  }) : _wordCount = wordCount,
+       _timing = _PageTiming(timing, pageOf) {
     _engine = RsvpEngine(
       wordCount: wordCount,
       startWord: startWord,
@@ -34,6 +35,7 @@ final class GuideSession {
   /// The page [word] is on.
   final GuidePage Function(int word) pageOf;
 
+  final int _wordCount;
   final _PageTiming _timing;
   late final RsvpEngine _engine;
   late GuidePage _page;
@@ -64,16 +66,16 @@ final class GuideSession {
 
   void pause() => _engine.pause();
 
-  void toggle() => isPlaying ? pause() : play();
-
   /// Jumps to [word] (long press, back by a sentence) and shows its page.
   void seek(int word) {
     _engine.seek(word);
     _page = pageOf(this.word);
   }
 
-  /// The reader turned the page by hand on a pause: [play] starts there.
-  void pageTurned(int firstWord) => _page = pageOf(firstWord);
+  /// The reader turned the page by hand on a pause: [play] starts there. A
+  /// page without words at the book's end has no first word: the last one.
+  void pageTurned(int firstWord) =>
+      _page = pageOf(firstWord.clamp(0, _wordCount - 1));
 
   /// Pages were laid out again (font, screen): the same word, its new page.
   void relayout() {

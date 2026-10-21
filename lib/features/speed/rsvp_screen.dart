@@ -94,7 +94,15 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     final maxChars = _phraseChars(context);
     if (_phrases?.maxChars == maxChars) return;
     _phrases = PhraseSteps(widget.opened.tokens, maxChars: maxChars);
-    if (_mode == SpeedMode.phrase) _engine.steps = _phrases!;
+    // While playing the new phrases wait for the next start: a switch steps
+    // back to the start of a phrase.
+    if (!_engine.isPlaying) _usePhrases();
+  }
+
+  void _usePhrases() {
+    if (_mode == SpeedMode.phrase && _engine.steps != _phrases) {
+      _engine.steps = _phrases!;
+    }
   }
 
   /// Word ↔ phrase in place, from the current word, at the pace of the new
@@ -175,6 +183,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   }
 
   void _play() {
+    _usePhrases();
     _engine.play();
     _started = true;
     if (!_engine.isPlaying || _ticker.isActive) return;

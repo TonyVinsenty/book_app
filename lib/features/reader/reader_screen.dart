@@ -177,7 +177,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// п. 6–9): it goes over the shown page and turns it.
   GuideSession? _guide;
   late SmartPace _guidePace;
-  late final Ticker _guideTicker = createTicker(_onGuideTick);
+  Ticker? _guideTicker;
   Duration _guideLastTick = Duration.zero;
 
   /// The highlighted word, for the mark: it moves without a rebuild.
@@ -252,7 +252,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_showStatusBar(true));
     _lit.dispose();
     _guideHintTimer?.cancel();
-    _guideTicker.dispose();
+    _guideTicker?.dispose();
     _guideWord.dispose();
     _lifecycle.dispose();
     _clearLayouts();
@@ -397,10 +397,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     bool turned = false,
   }) {
     final shown = _layoutOf(section).pages[pageIndex];
+    _leaveSection(section);
     final guide = _guide;
     if (guide != null && !guide.isPlaying) guide.pageTurned(shown.firstWord);
     _readOn();
-    _leaveSection(section);
     setState(() {
       _section = section;
       _page = pageIndex;
@@ -547,9 +547,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The leading highlight from [word] on the shown page, on a pause.
   Future<void> _startGuide(int word) async {
     final settings = ref.read(speedSettingsProvider);
-    final wpm = SpeedLimits.clamp(
-      await settings.wordsPerMinute(SpeedMode.guide),
-    );
+    final wpm = await settings.wordsPerMinute(SpeedMode.guide);
     if (!mounted) return;
     final tokens = widget.opened.tokens;
     _guidePace = SmartPace(tokens, wpm);
@@ -561,7 +559,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         pageOf: _guidePageOf,
         stopBefore: (w) => tokens.flagsOf(w) & TokenFlags.sectionStart != 0,
       );
-      _guideWord.value = word;
+      _guideWord.value = _guide!.word;
       _guideStarted = false;
       _litWord = null;
     });
@@ -586,7 +584,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _guideWord.value = guide.word;
     }
     if (guide.isPlaying) return;
-    _guideTicker.stop();
+    _guideTicker!.stop();
     _saveGuidePlace();
     if (guide.isFinished) {
       unawaited(
@@ -621,16 +619,17 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _setPanels(false);
     _followGuide();
     setState(() => _guideStarted = true);
-    if (_guideTicker.isActive) return;
+    final ticker = _guideTicker ??= createTicker(_onGuideTick);
+    if (ticker.isActive) return;
     _guideLastTick = Duration.zero;
-    unawaited(_guideTicker.start());
+    unawaited(ticker.start());
   }
 
   void _pauseGuide() {
     final guide = _guide;
     if (guide == null || !guide.isPlaying) return;
     guide.pause();
-    _guideTicker.stop();
+    _guideTicker?.stop();
     _saveGuidePlace();
     if (mounted) setState(() {});
   }
@@ -689,7 +688,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final guide = _guide;
     if (guide == null || mode == SpeedMode.guide) return;
     unawaited(ref.read(speedSettingsProvider).setMode(mode));
-    _guideTicker.stop();
+    _guideTicker?.stop();
     _saveGuidePlace();
     final word = guide.word;
     setState(() {
@@ -704,7 +703,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _exitGuide() {
     final guide = _guide;
     if (guide == null) return;
-    _guideTicker.stop();
+    _guideTicker?.stop();
     _saveGuidePlace();
     final word = guide.word;
     final lit = _onShownPage(word);
@@ -727,6 +726,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final current = _layouts[_section];
     if (section != _section && current != null) {
       _layouts[_section] = current.unshifted();
+      _guide?.relayout();
     }
   }
 
@@ -769,9 +769,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guide?.relayout();
   }
 
-  /// The panels and the status bar come and go together.
+  /// The panels and the status bar come and go together; hiding them also
+  /// closes the settings opened from the highlight's pause panel.
   void _setPanels(bool shown) {
-    if (shown == _panelsShown) return;
+    if (shown == _panelsShown) {
+      if (!shown && _settingsShown) setState(() => _settingsShown = false);
+      return;
+    }
     setState(() {
       _panelsShown = shown;
       _settingsShown = false;
