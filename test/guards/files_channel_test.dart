@@ -98,7 +98,7 @@ void main() {
       expect(tags['public.filename-extension'], contains('fb2'));
     });
 
-    test('opens FB2, EPUB, ZIP and plain text as copies', () {
+    test('opens FB2, EPUB, ZIP and plain text', () {
       final docs = plist['CFBundleDocumentTypes'] as List<Object?>;
       final contentTypes = [
         for (final d in docs.cast<Map<String, Object?>>())
@@ -113,7 +113,13 @@ void main() {
           'public.zip-archive',
         ]),
       );
-      expect(plist['LSSupportsOpeningDocumentsInPlace'], isFalse);
+    });
+
+    test('Documents shows in Files as the own folder (ADR 0007)', () {
+      // In place: "Open in" from Files hands over the file itself; the
+      // receiver copies it and deletes nothing outside Inbox.
+      expect(plist['LSSupportsOpeningDocumentsInPlace'], isTrue);
+      expect(plist['UIFileSharingEnabled'], isTrue);
     });
 
     test('a file URL is not taken for a deep link', () {

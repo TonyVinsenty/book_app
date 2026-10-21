@@ -83,8 +83,11 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- ADR 0007: Documents is the own folder, "On My iPhone → BookApp" in Files. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<false/>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

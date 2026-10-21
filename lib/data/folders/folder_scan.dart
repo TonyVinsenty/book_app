@@ -163,7 +163,11 @@ final class LocalFolderSource implements FolderSource {
         final name = fileNameOf(entity.path);
         if (name.startsWith('.')) continue;
         if (entity is Directory) {
-          if (depth == 0 && name == 'Inbox') continue;
+          if (depth == 0 && name == 'Inbox') {
+            // The receiver takes these; an empty one would show in Files.
+            await _removeIfEmpty(entity);
+            continue;
+          }
           if (depth < maxFolderDepth) {
             await walk(entity, '$prefix$name/', depth + 1);
           }
@@ -194,5 +198,13 @@ final class LocalFolderSource implements FolderSource {
     final name = key.split('/').last;
     final copy = await File('${root.path}/$key').copy('${copies.path}/$name');
     return copy.path;
+  }
+
+  static Future<void> _removeIfEmpty(Directory dir) async {
+    try {
+      await dir.delete();
+    } on FileSystemException {
+      // Not empty: a copy is still there for the receiver.
+    }
   }
 }

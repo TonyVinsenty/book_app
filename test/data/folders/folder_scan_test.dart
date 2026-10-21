@@ -132,6 +132,16 @@ void main() {
       expect(entry.modified, greaterThan(0));
     });
 
+    test('an empty Inbox is removed, one with copies is left', () async {
+      final inbox = Directory('${root.path}/Inbox')..createSync();
+      await source.list();
+      expect(inbox.existsSync(), isFalse);
+
+      put('Inbox/open-in.fb2');
+      await source.list();
+      expect(File('${inbox.path}/open-in.fb2').existsSync(), isTrue);
+    });
+
     test('goes 8 levels deep', () async {
       put('${List.filled(8, 'd').join('/')}/in.txt');
       put('${List.filled(9, 'd').join('/')}/out.txt');
