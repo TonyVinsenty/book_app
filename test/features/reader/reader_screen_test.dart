@@ -5,6 +5,7 @@ import 'package:book_app/app/app.dart';
 import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
+import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_pages.dart';
@@ -74,6 +75,7 @@ void main() {
     bool reopen = false,
     bool lostFiles = false,
     bool pro = true,
+    BookContent? book,
   }) async {
     // Closing a drift database under fake time hangs, so it is left open;
     // synchronous stream closing leaves no pending timer.
@@ -87,7 +89,7 @@ void main() {
     );
     store = ContentStore(Directory('${temp.path}/books'));
     repo = BookRepository(db, store);
-    final content = sampleBook(paragraphs: 30);
+    final content = book ?? sampleBook(paragraphs: 30);
     final source = File('${temp.path}/book.txt')..writeAsStringSync('книга');
     await tester.runAsync(() async {
       bookId = (await repo.addBook(
@@ -433,6 +435,38 @@ void main() {
     expect(find.byType(ReaderView), findsNothing);
     expect(statusBar.last, isTrue, reason: 'the library shows it');
     await closeApp(tester);
+  });
+
+  testWidgets('a swipe down closes the settings panel, a short pull does '
+      'not', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    Future<void> open() async {
+      await tapAt(tester, 0.5);
+      await tester.tap(find.text('Настройки'));
+      await tester.pumpAndSettle();
+      expect(reader(tester).settingsShown, isTrue);
+    }
+
+    await open();
+    final panel = find.byType(ReadingSettingsPanel);
+    final top = tester.getTopLeft(panel) + const Offset(200, 8);
+    await tester.timedDragFrom(
+      top,
+      const Offset(0, 30),
+      const Duration(milliseconds: 500),
+    );
+    await tester.pumpAndSettle();
+    expect(reader(tester).settingsShown, isTrue, reason: 'a short pull');
+
+    await tester.dragFrom(top, const Offset(0, 120));
+    await tester.pumpAndSettle();
+    expect(reader(tester).settingsShown, isFalse, reason: 'by the grip');
+
+    await open();
+    await tester.fling(find.text('Шрифт'), const Offset(0, 200), 1500);
+    await tester.pumpAndSettle();
+    expect(reader(tester).settingsShown, isFalse, reason: 'past the list top');
   });
 
   testWidgets('the settings panel changes the text at once, in the same '
@@ -1411,6 +1445,181 @@ void main() {
     expect(pages.current, 5);
     await tapAt(tester, 0.5);
     expect(find.text('стр. ${pages.current} / ${pages.total}'), findsOneWidget);
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 10: a shifted page after words, then back and forward '
+      'on a pause: the first word of a page lasts longer', (tester) async {
+    tester.view.viewPadding = const FakeViewPadding(top: 144);
+    tester.view.padding = FakeViewPadding.zero;
+    addTearDown(tester.view.reset);
+    await pumpApp(tester);
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    for (var i = 0; i < 60 && reader(tester).layout.sectionIndex < 1; i++) {
+      await tapAt(tester, 0.95);
+    }
+    await tapAt(tester, 0.95);
+    expect(reader(tester).layout.sectionIndex, 1);
+    final start = reader(tester).page.firstWord + 6;
+
+    await longPressWord(tester, start);
+    await tapRsvp(tester);
+    await tester.pump(const Duration(seconds: 2));
+    await tapRsvp(tester);
+    final stopped = rsvp(tester).engine.wordIndex;
+    expect(stopped, greaterThan(start));
+    await tester.tap(find.text('Подсветка'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+
+    // The guide starts on the stopped word, on its (shifted) page.
+    final guide = reader(tester).guide!;
+    expect(guide.word, stopped);
+    expect(reader(tester).layout.isShifted, isTrue);
+    expect(reader(tester).page.firstWord, lessThanOrEqualTo(stopped));
+    expect(reader(tester).page.endWord, greaterThan(stopped));
+    expect(guide.page.first, reader(tester).page.firstWord);
+
+    // Back to the previous chapter and forward again, on a pause.
+    for (var i = 0; i < 60 && reader(tester).layout.sectionIndex > 0; i++) {
+      await tapAt(tester, 0.05);
+    }
+    expect(reader(tester).layout.sectionIndex, 0);
+    for (var i = 0; i < 60 && reader(tester).layout.sectionIndex < 1; i++) {
+      await tapAt(tester, 0.95);
+    }
+    for (var i = 0; i < 60 && reader(tester).page.firstWord <= stopped; i++) {
+      await tapAt(tester, 0.95);
+    }
+    expect(reader(tester).layout.isShifted, isFalse);
+    final page = reader(tester).page;
+    expect(page.firstWord, greaterThan(stopped));
+    expect(guide.isPlaying, isFalse);
+
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isTrue);
+    expect(guide.word, page.firstWord);
+    // 250 wpm; the gentle start (1/0.6) and the page start (1.8) apply.
+    final pace = SmartPace(tokens, 250);
+    final expected =
+        pace.durationOf(page.firstWord).inMicroseconds *
+        PaceRules.pageStart /
+        0.6 /
+        1000;
+    final plain = pace.durationOf(page.firstWord).inMicroseconds / 0.6 / 1000;
+    var elapsed = 0;
+    while (guide.word == page.firstWord && elapsed < 5000) {
+      await tester.pump(const Duration(milliseconds: 10));
+      elapsed += 10;
+    }
+    expect(elapsed, closeTo(expected, 40), reason: 'plain would be $plain');
+    expect(elapsed, greaterThan(plain + 20));
+
+    await tapAt(tester, 0.5);
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 10: a wordless last page (separators) on a guide pause', (
+    tester,
+  ) async {
+    final base = sampleBook(sections: 1, paragraphs: 14);
+    final last = base.sections.last;
+    final book = BookContent(
+      meta: base.meta,
+      sections: [
+        Section(
+          title: last.title,
+          blocks: [
+            ...last.blocks,
+            for (var i = 0; i < 80; i++) const SeparatorBlock(),
+          ],
+        ),
+      ],
+    );
+    await pumpApp(tester, book: book);
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final pages = reader(tester).layout.pages;
+    expect(pages.last.hasWords, isFalse, reason: 'the book ends on a picture');
+
+    await reader(tester).guideFrom(tokens.length - 3);
+    await settle(tester);
+    final guide = reader(tester).guide!;
+    for (var i = 0; i < 20 && reader(tester).page.endWord < tokens.length;) {
+      await tapAt(tester, 0.95);
+      i++;
+    }
+    // On to the pictures: pages without words.
+    for (var i = 0; i < 10; i++) {
+      await tapAt(tester, 0.95);
+      expect(tester.takeException(), isNull);
+    }
+    expect(reader(tester).page.hasWords, isFalse);
+    expect(guide.word, lessThan(tokens.length));
+
+    // Back and forward over them, then go on.
+    await tapAt(tester, 0.05);
+    await tapAt(tester, 0.95);
+    expect(tester.takeException(), isNull);
+    await tapAt(tester, 0.5);
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+    await settle(tester);
+    expect(await tester.runAsync(savedWord), lessThan(tokens.length));
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 10: a wrapped word has marks on both lines', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final long = [
+      for (var i = 0; i < tokens.length; i++)
+        if (tokens.textOf(i).startsWith('Сверх')) i,
+    ].first;
+    await reader(tester).guideFrom(long);
+    await settle(tester);
+    final layout = reader(tester).layout;
+    final boxes = layout.wordBoxes(
+      reader(tester).layout.pageOfWord(long),
+      long,
+    );
+    expect(boxes.length, greaterThan(1), reason: 'the word is wrapped');
+    expect(boxes.first.top, lessThan(boxes.last.top));
+    expect(find.byType(GuideLayer), findsOneWidget);
+    // It plays over the wrapped word and on.
+    await tapAt(tester, 0.5);
+    await tester.pump(const Duration(seconds: 2));
+    expect(reader(tester).guide!.word, greaterThan(long));
+    expect(tester.takeException(), isNull);
+    await tapAt(tester, 0.5);
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 10: without Pro a saved guide opens as words', (
+    tester,
+  ) async {
+    await pumpApp(tester, pro: false);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    await longPressWord(tester, reader(tester).page.firstWord + 5);
+    expect(rsvp(tester).widget.mode, SpeedMode.word);
+    expect(find.byType(SegmentedButton<SpeedMode>), findsNothing);
+    expect(find.text('Подсветка'), findsNothing);
+    expect(find.text('Фраза'), findsNothing);
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
+    expect(reader(tester).guide, isNull);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
     await closeApp(tester);
   });
 }

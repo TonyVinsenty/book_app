@@ -769,6 +769,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guide?.relayout();
   }
 
+  /// As a tap on the page: from the panels all of them go, from the
+  /// highlight's pause panel back to it.
+  void _closeSettings() =>
+      _panelsShown ? _setPanels(false) : setState(() => _settingsShown = false);
+
   /// The panels and the status bar come and go together; hiding them also
   /// closes the settings opened from the highlight's pause panel.
   void _setPanels(bool shown) {
@@ -967,7 +972,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    child: ReadingSettingsPanel(insets: insets),
+                    child: ReadingSettingsPanel(
+                      insets: insets,
+                      onClose: _closeSettings,
+                    ),
                   )
                 else if (guide != null && !_panelsShown && !guide.isPlaying)
                   Positioned(
