@@ -1,7 +1,7 @@
-/// FictionBook 2 books (ADR 0002): sections, titles, paragraphs, poems,
-/// epigraphs and citations, bold and italic, the cover. Read as a stream of
-/// XML events, so 10 MB files with pictures stay cheap; a broken tail keeps
-/// the text read before it. Other pictures and footnotes are skipped for now.
+/// FictionBook 2 books (ADR 0002, 0008): sections, titles, paragraphs,
+/// poems, epigraphs and citations, bold and italic, pictures (the cover is
+/// the first one) and footnotes from the `notes` and `comments` bodies. Read
+/// as a stream of XML events; a broken tail keeps the text read before it.
 library;
 
 import 'dart:convert';
@@ -10,12 +10,13 @@ import 'dart:typed_data';
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/model/book_cover.dart';
+import 'package:book_app/book/model/book_image.dart';
 import 'package:book_app/book/parsers/parse_utils.dart';
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 /// Bump when the result for the same file changes (books get re-parsed).
-const fb2ParserVersion = 2;
+const fb2ParserVersion = 3;
 
 /// The file is not FictionBook (no `<FictionBook>` root).
 final class NotFb2Exception implements Exception {
@@ -25,35 +26,41 @@ final class NotFb2Exception implements Exception {
   String toString() => 'NotFb2Exception';
 }
 
-/// [title] is used when the file has no `book-title` (usually the file name).
-/// Throws [NotFb2Exception] or [NotTextException].
+/// [title] is used when the file has no `book-title` (usually the file name);
+/// pictures of the text go to [images]. Throws [NotFb2Exception] or
+/// [NotTextException].
 BookContent parseFb2(
   Uint8List bytes, {
   required String title,
   SourceFormat format = SourceFormat.fb2,
-}) => parseFb2WithCover(bytes, title: title, format: format).$1;
+  ImageSink? images,
+}) => parseFb2WithCover(bytes, title: title, format: format, images: images).$1;
 
 /// [parseFb2] plus the `coverpage` picture, if the file has a usable one.
 (BookContent, BookCover?) parseFb2WithCover(
   Uint8List bytes, {
   required String title,
   SourceFormat format = SourceFormat.fb2,
+  ImageSink? images,
 }) => _parse(
   decodeText(bytes, declared: _declaredEncoding(bytes)).text,
   title: title,
   format: format,
+  images: images,
 );
 
 BookContent parseFb2String(
   String xml, {
   required String title,
   SourceFormat format = SourceFormat.fb2,
-}) => _parse(xml, title: title, format: format).$1;
+  ImageSink? images,
+}) => _parse(xml, title: title, format: format, images: images).$1;
 
 (BookContent, BookCover?) _parse(
   String xml, {
   required String title,
   required SourceFormat format,
+  ImageSink? images,
 }) {
   final start = xml.indexOf('<');
   if (start < 0) throw const NotFb2Exception();
@@ -70,11 +77,20 @@ BookContent parseFb2String(
     if (!reader.hasText) throw const NotFb2Exception();
   }
   if (!reader.isFictionBook) throw const NotFb2Exception();
-  return (reader.finish(fallbackTitle: title, format: format), reader.cover());
+  return (
+    reader.finish(fallbackTitle: title, format: format, images: images),
+    reader.cover(),
+  );
 }
 
-/// Base64 of a picture bigger than [maxCoverBytes] is not collected.
-const _maxCoverText = maxCoverBytes * 4 ~/ 3 + 64 * 1024;
+/// Base64 of a picture bigger than [maxImageBytes] is not collected.
+const _maxBinaryText = maxImageBytes * 4 ~/ 3 + 64 * 1024;
+
+/// `[12]`, `{1}`, `(3)`: the label inside.
+final _bracketed = RegExp(r'^[\[{(](.*)[\]})]$');
+
+/// A link text that is a footnote label, not words.
+final _markText = RegExp(r'^[0-9*†‡§¶#]{1,6}$');
 
 final _encodingAttribute = RegExp(r'''encoding\s*=\s*["']([^"']+)["']''');
 
@@ -104,7 +120,7 @@ const _inline = {
 /// Bodies with footnotes and comments, not the main text.
 const _noteBodies = {'notes', 'comments', 'footnotes'};
 
-enum _Kind { paragraph, stanza, sectionTitle, bodyTitle, annotation }
+enum _Kind { paragraph, stanza, sectionTitle, bodyTitle, annotation, noteTitle }
 
 /// A text block being collected: whitespace runs become one space, soft
 /// hyphens are dropped, lines (title parts, verses) are joined with `\n`.
@@ -154,6 +170,19 @@ final class _Text {
   void openSpan(SpanKind kind) =>
       _open.add((_buffer.length + (_space ? 1 : 0), kind));
 
+  /// Kinds of the spans not closed yet, outer first.
+  List<SpanKind> get openKinds => [for (final (_, kind) in _open) kind];
+
+  /// A footnote label (ADR 0008): its chars are not words.
+  void mark(String label, String noteId) {
+    if (_space) _buffer.writeCharCode(0x20);
+    _space = false;
+    _lineStart = false;
+    final start = _buffer.length;
+    _buffer.write(label);
+    spans.add(Span(start, _buffer.length, SpanKind.noteRef, noteId: noteId));
+  }
+
   void closeSpan(SpanKind kind) {
     final i = _open.lastIndexWhere((s) => s.$2 == kind);
     if (i < 0) return;
@@ -191,10 +220,24 @@ final class _Reader {
   String? _lang;
   String? _annotation;
 
-  /// The `binary` id the `coverpage` points to, and its base64 text.
+  /// The `binary` id the `coverpage` points to.
   String? _coverId;
-  StringBuffer? _coverText;
-  var _coverDone = false;
+
+  // pictures: blocks are `ImageBlock(assetId: <binary id>)` until [finish]
+  final _binaries = <String, Uint8List>{};
+  var _binaryBytes = 0;
+  final _imageIds = <String>{};
+  String? _binaryId;
+  StringBuffer? _binaryText;
+  var _bodiesRead = 0;
+
+  // footnotes
+  var _inNotes = false;
+  _OpenNote? _note;
+  final _notes = <String, Note>{};
+
+  /// A link to `#id` being read: a footnote label or plain words.
+  _Link? _link;
 
   // the main body
   var _inBody = false;
@@ -227,9 +270,9 @@ final class _Reader {
       case XmlTextEvent(:final value) || XmlCDATAEvent(:final value):
         if (_skip == null) {
           _addText(value);
-        } else if (_coverText case final cover? when !_coverDone) {
-          cover.write(value);
-          if (cover.length > _maxCoverText) _coverText = null;
+        } else if (_binaryText case final binary?) {
+          binary.write(value);
+          if (binary.length > _maxBinaryText) _binaryText = null;
         }
       default:
         break;
@@ -255,7 +298,7 @@ final class _Reader {
     if (_skip != null) {
       if (depth == _skip) {
         _skip = null;
-        if (_coverText != null) _coverDone = true;
+        _endBinary();
       }
       return;
     }
@@ -273,9 +316,14 @@ final class _Reader {
 
     if (name == 'binary') {
       _skip = depth;
-      final id = attribute('id');
-      if (id != null && id == _coverId && _coverText == null && !_coverDone) {
-        _coverText = StringBuffer();
+      final id = attribute('id')?.trim();
+      // After the text only the pictures it shows are kept.
+      if (id != null &&
+          !_binaries.containsKey(id) &&
+          (_bodiesRead == 0 || _imageIds.contains(id) || id == _coverId) &&
+          _binaryBytes < maxBookImageBytes) {
+        _binaryId = id;
+        _binaryText = StringBuffer();
       }
       return;
     }
@@ -286,13 +334,17 @@ final class _Reader {
     if (name == 'body' && depth == 2) {
       final bodyName = attribute('name')?.trim().toLowerCase();
       if (_noteBodies.contains(bodyName)) {
-        _skip = depth;
+        _inNotes = true;
       } else {
         _inBody = true;
       }
       return;
     }
-    if (!_inBody) return;
+    if (_inNotes) {
+      if (!_startInNotes(name, depth, attribute)) return;
+    } else if (!_inBody) {
+      return;
+    }
 
     switch (name) {
       case 'section':
@@ -302,7 +354,7 @@ final class _Reader {
       case 'title':
         _flushText();
         final parent = _parent;
-        _text = parent == 'poem' || parent == 'stanza'
+        _text = parent == 'poem' || parent == 'stanza' || _inNotes
             ? _Text(_Kind.paragraph, ParagraphStyle.subtitle, depth)
             : _Text(
                 parent == 'section' ? _Kind.sectionTitle : _Kind.bodyTitle,
@@ -330,16 +382,91 @@ final class _Reader {
         _text?.gap();
       case 'strong' || 'emphasis':
         _implicitText(depth - 1).openSpan(_spanKind(name));
-      case 'a':
-        // A footnote mark like `[1]`: not a word of the text.
-        final href = attribute('href');
-        if (attribute('type') == 'note' || (href?.startsWith('#') ?? false)) {
-          _skip = depth;
+      case 'a' when _link == null:
+        final href = attribute('href')?.trim() ?? '';
+        final isNote = attribute('type') == 'note';
+        if (isNote || href.startsWith('#')) {
+          _implicitText(depth - 1);
+          final id = href.startsWith('#') ? href.substring(1) : href;
+          _link = _Link(depth, id, isNote: isNote);
         }
+      case 'image':
+        _image(attribute('href')?.trim() ?? '');
       case 'empty-line':
         break;
       default:
         if (!_inline.contains(name)) _flushText();
+    }
+  }
+
+  /// Inside a `notes` body: a section with an id is a footnote, everything
+  /// outside footnotes is skipped. False when [name] is handled here.
+  bool _startInNotes(
+    String name,
+    int depth,
+    String? Function(String) attribute,
+  ) {
+    if (name == 'section') {
+      _flushText();
+      final id = attribute('id')?.trim() ?? '';
+      if (id.isNotEmpty) {
+        _closeNote();
+        _note = _OpenNote(id, depth);
+      }
+      return false;
+    }
+    final note = _note;
+    if (note == null) {
+      _skip = depth;
+      return false;
+    }
+    if (name == 'title' && depth == note.depth + 1) {
+      _flushText();
+      _text = _Text(_Kind.noteTitle, ParagraphStyle.normal, depth);
+      return false;
+    }
+    return true;
+  }
+
+  /// `<image l:href="#id">`: a block; inside a paragraph it splits the
+  /// paragraph in two. Pictures in titles are skipped.
+  void _image(String href) {
+    if (!href.startsWith('#') || href.length < 2) return;
+    final id = href.substring(1);
+    final text = _text;
+    if (text != null &&
+        (text.kind == _Kind.sectionTitle ||
+            text.kind == _Kind.bodyTitle ||
+            text.kind == _Kind.noteTitle)) {
+      return;
+    }
+    _imageIds.add(id);
+    final open = text?.openKinds ?? const <SpanKind>[];
+    _flushText();
+    _blocks.add(ImageBlock(assetId: id));
+    if (text != null) {
+      _text = _Text(text.kind, text.style, text.owner);
+      open.forEach(_text!.openSpan);
+    }
+  }
+
+  /// The end of a link opened by [_link]: a label when the text looks like
+  /// one (or the link says it is a note), the words as they are otherwise.
+  void _endLink() {
+    final link = _link!;
+    _link = null;
+    final raw = cleanSpaces(link.text.toString());
+    final bracketed = _bracketed.firstMatch(raw);
+    final inside = bracketed?[1]!.trim() ?? raw;
+    final text = _implicitText(_stack.length);
+    if (link.isNote) {
+      text.mark(inside.isEmpty ? '*' : inside, link.noteId);
+    } else if (inside.isNotEmpty &&
+        (_markText.hasMatch(inside) ||
+            (bracketed != null && inside.length <= 8))) {
+      text.mark(inside, link.noteId);
+    } else {
+      text.add(link.text.toString());
     }
   }
 
@@ -381,15 +508,24 @@ final class _Reader {
       _endTitleInfo(name, depth);
       return;
     }
-    if (!_inBody) return;
+    if (!_inBody && !_inNotes) return;
     switch (name) {
       case 'strong' || 'emphasis':
         _text?.closeSpan(_spanKind(name));
+      case 'a' when _link?.depth == depth:
+        _endLink();
+      case 'section' when _inNotes:
+        if (_note?.depth == depth) _closeNote();
       case 'section':
         _sectionDepth--;
+      case 'body' when depth == 2 && _inNotes:
+        _closeNote();
+        _inNotes = false;
+        _bodiesRead++;
       case 'body' when depth == 2:
         _closeSection();
         _inBody = false;
+        _bodiesRead++;
     }
   }
 
@@ -422,12 +558,16 @@ final class _Reader {
       field.write(value);
       return;
     }
+    if (_link case final link?) {
+      link.text.write(value);
+      return;
+    }
     if (_text case final text?) {
       text.add(value);
       return;
     }
     // Text right inside a section (broken files): an unmarked paragraph.
-    if (_inBody && value.trim().isNotEmpty) {
+    if ((_inBody || _note != null) && value.trim().isNotEmpty) {
       _implicitText(_stack.length).add(value);
     }
   }
@@ -466,6 +606,9 @@ final class _Reader {
       case _Kind.annotation:
         _annotation ??= value;
         return;
+      case _Kind.noteTitle:
+        _note?.label ??= cleanSpaces(_withoutMarks(value, text.spans));
+        return;
       // `<subtitle>* * *</subtitle>`: a scene break.
       case _Kind.paragraph when separatorPattern.hasMatch(value):
         _blocks.add(const SeparatorBlock());
@@ -478,7 +621,7 @@ final class _Reader {
       case _Kind.sectionTitle:
         final level = _sectionDepth < 1 ? 1 : _sectionDepth;
         _blocks.add(HeadingBlock(text: value, level: level, spans: text.spans));
-        final title = tocTitle(value);
+        final title = tocTitle(_withoutMarks(value, text.spans));
         _toc.add(
           TocEntry(
             title: title,
@@ -504,27 +647,113 @@ final class _Reader {
     _sectionTitle = null;
   }
 
-  /// The cover picture: only a fully read `binary` that decodes.
-  BookCover? cover() {
-    final text = _coverText;
-    if (!_coverDone || text == null) return null;
-    try {
-      return coverFromBytes(
-        base64.decode(
-          base64.normalize(text.toString().replaceAll(whitespacePattern, '')),
-        ),
-      );
-    } on FormatException {
-      return null;
+  /// [value] without its footnote labels.
+  static String _withoutMarks(String value, List<Span> spans) {
+    final out = StringBuffer();
+    var from = 0;
+    for (final s in spans) {
+      if (s.kind != SpanKind.noteRef || s.start < from) continue;
+      out.write(value.substring(from, s.start));
+      from = s.end;
     }
+    out.write(value.substring(from));
+    return out.toString();
+  }
+
+  void _closeNote() {
+    final note = _note;
+    if (note == null) return;
+    _flushText();
+    _note = null;
+    final blocks = _blocks;
+    _blocks = <Block>[];
+    if (blocks.isEmpty) return;
+    _notes.putIfAbsent(note.id, () => Note(label: note.label, blocks: blocks));
+  }
+
+  /// A fully read `binary` that decodes is kept for [finish].
+  void _endBinary() {
+    final id = _binaryId;
+    final text = _binaryText;
+    _binaryId = null;
+    _binaryText = null;
+    if (id == null || text == null) return;
+    try {
+      final bytes = base64.decode(
+        base64.normalize(text.toString().replaceAll(whitespacePattern, '')),
+      );
+      if (bytes.isEmpty) return;
+      _binaries[id] = bytes;
+      _binaryBytes += bytes.length;
+    } on FormatException {
+      return;
+    }
+  }
+
+  /// The cover picture for the library.
+  BookCover? cover() {
+    final bytes = _binaries[_coverId];
+    return bytes == null ? null : coverFromBytes(bytes);
   }
 
   BookContent finish({
     required String fallbackTitle,
     required SourceFormat format,
+    ImageSink? images,
   }) {
     _flushText();
+    _closeNote();
     _closeSection();
+    // Numbered in book order: the cover, the text, the notes.
+    final pictures = BookImages(images);
+    ImageBlock? picture(String id) => pictures.add(id, () => _binaries[id]);
+    final coverId = _coverId;
+    final cover = coverId == null ? null : picture(coverId);
+    List<Block> resolve(List<Block> blocks) => [
+      for (final b in blocks)
+        if (b is ImageBlock) ?picture(b.assetId) else b,
+    ];
+
+    // A section of pictures only joins the next one (the last one joins the
+    // one before): a chapter has words.
+    final sections = <Section>[];
+    final newIndex = <int>[];
+    var carried = <Block>[];
+    for (final s in _sections) {
+      final blocks = [...carried, ...resolve(s.blocks)];
+      newIndex.add(sections.length);
+      if (blocks.any((b) => b is TextBlock)) {
+        sections.add(Section(title: s.title, blocks: blocks));
+        carried = [];
+      } else {
+        carried = blocks;
+      }
+    }
+    if (carried.isNotEmpty && sections.isNotEmpty) {
+      final last = sections.removeLast();
+      sections.add(
+        Section(title: last.title, blocks: [...last.blocks, ...carried]),
+      );
+    }
+    // The cover is the first page, unless the text already opens with it.
+    if (cover != null && sections.isNotEmpty) {
+      final first = sections.first;
+      final opening = first.blocks.takeWhile((b) => b is! ParagraphBlock);
+      if (!opening.any((b) => b is ImageBlock && b.assetId == cover.assetId)) {
+        sections[0] = Section(
+          title: first.title,
+          blocks: [cover, ...first.blocks],
+        );
+      }
+    }
+    final notes = <String, Note>{};
+    for (final MapEntry(:key, :value) in _notes.entries) {
+      final blocks = resolve(value.blocks);
+      if (blocks.isNotEmpty) {
+        notes[key] = Note(label: value.label, blocks: blocks);
+      }
+    }
+    final last = sections.length - 1;
     return BookContent(
       meta: BookMeta(
         title: _bookTitle ?? fallbackTitle,
@@ -533,10 +762,45 @@ final class _Reader {
         seriesNumber: _seriesNumber,
         lang: _lang,
         annotation: _annotation,
+        coverAssetId: cover?.assetId,
         sourceFormat: format,
       ),
-      toc: _toc,
-      sections: _sections,
+      toc: [
+        for (final t in _toc)
+          TocEntry(
+            title: t.title,
+            level: t.level,
+            sectionIndex: newIndex[t.sectionIndex] > last
+                ? last
+                : newIndex[t.sectionIndex],
+          ),
+      ],
+      sections: sections,
+      notes: notes,
     );
   }
+}
+
+/// A footnote section of a `notes` body being read.
+final class _OpenNote {
+  _OpenNote(this.id, this.depth);
+
+  final String id;
+
+  /// Depth of its `section`.
+  final int depth;
+  String? label;
+}
+
+final class _Link {
+  _Link(this.depth, this.noteId, {required this.isNote});
+
+  final int depth;
+
+  /// The `href` without `#`; empty when there is none.
+  final String noteId;
+
+  /// `type="note"`: a label whatever its text.
+  final bool isNote;
+  final text = StringBuffer();
 }

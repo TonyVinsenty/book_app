@@ -1,0 +1,7267 @@
+{
+  "meta": {
+    "title": "Много сносок",
+    "authors": [
+      "Анна Тестова"
+    ],
+    "lang": "ru",
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Много сносок",
+      "level": 0,
+      "section": 0
+    }
+  ],
+  "sections": [
+    {
+      "title": "Много сносок",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Много сносок",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 1 с мыслью1 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn1"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 2 с мыслью2 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn2"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 3 с мыслью3 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn3"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 4 с мыслью4 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn4"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 5 с мыслью5 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn5"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 6 с мыслью6 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn6"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 7 с мыслью7 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn7"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 8 с мыслью8 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn8"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 9 с мыслью9 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              22,
+              23,
+              "noteRef",
+              "fn9"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 10 с мыслью10 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn10"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 11 с мыслью11 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn11"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 12 с мыслью12 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn12"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 13 с мыслью13 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn13"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 14 с мыслью14 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn14"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 15 с мыслью15 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn15"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 16 с мыслью16 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn16"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 17 с мыслью17 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn17"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 18 с мыслью18 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn18"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 19 с мыслью19 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn19"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 20 с мыслью20 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn20"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 21 с мыслью21 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn21"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 22 с мыслью22 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn22"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 23 с мыслью23 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn23"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 24 с мыслью24 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn24"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 25 с мыслью25 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn25"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 26 с мыслью26 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn26"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 27 с мыслью27 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn27"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 28 с мыслью28 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn28"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 29 с мыслью29 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn29"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 30 с мыслью30 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn30"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 31 с мыслью31 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn31"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 32 с мыслью32 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn32"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 33 с мыслью33 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn33"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 34 с мыслью34 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn34"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 35 с мыслью35 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn35"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 36 с мыслью36 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn36"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 37 с мыслью37 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn37"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 38 с мыслью38 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn38"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 39 с мыслью39 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn39"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 40 с мыслью40 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn40"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 41 с мыслью41 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn41"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 42 с мыслью42 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn42"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 43 с мыслью43 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn43"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 44 с мыслью44 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn44"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 45 с мыслью45 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn45"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 46 с мыслью46 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn46"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 47 с мыслью47 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn47"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 48 с мыслью48 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn48"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 49 с мыслью49 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn49"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 50 с мыслью50 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn50"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 51 с мыслью51 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn51"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 52 с мыслью52 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn52"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 53 с мыслью53 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn53"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 54 с мыслью54 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn54"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 55 с мыслью55 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn55"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 56 с мыслью56 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn56"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 57 с мыслью57 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn57"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 58 с мыслью58 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn58"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 59 с мыслью59 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn59"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 60 с мыслью60 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn60"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 61 с мыслью61 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn61"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 62 с мыслью62 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn62"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 63 с мыслью63 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn63"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 64 с мыслью64 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn64"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 65 с мыслью65 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn65"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 66 с мыслью66 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn66"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 67 с мыслью67 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn67"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 68 с мыслью68 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn68"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 69 с мыслью69 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn69"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 70 с мыслью70 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn70"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 71 с мыслью71 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn71"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 72 с мыслью72 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn72"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 73 с мыслью73 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn73"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 74 с мыслью74 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn74"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 75 с мыслью75 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn75"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 76 с мыслью76 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn76"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 77 с мыслью77 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn77"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 78 с мыслью78 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn78"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 79 с мыслью79 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn79"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 80 с мыслью80 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn80"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 81 с мыслью81 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn81"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 82 с мыслью82 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn82"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 83 с мыслью83 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn83"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 84 с мыслью84 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn84"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 85 с мыслью85 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn85"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 86 с мыслью86 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn86"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 87 с мыслью87 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn87"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 88 с мыслью88 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn88"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 89 с мыслью89 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn89"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 90 с мыслью90 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn90"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 91 с мыслью91 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn91"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 92 с мыслью92 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn92"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 93 с мыслью93 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn93"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 94 с мыслью94 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn94"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 95 с мыслью95 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn95"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 96 с мыслью96 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn96"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 97 с мыслью97 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn97"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 98 с мыслью98 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn98"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 99 с мыслью99 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              25,
+              "noteRef",
+              "fn99"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 100 с мыслью100 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn100"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 101 с мыслью101 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn101"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 102 с мыслью102 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn102"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 103 с мыслью103 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn103"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 104 с мыслью104 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn104"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 105 с мыслью105 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn105"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 106 с мыслью106 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn106"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 107 с мыслью107 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn107"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 108 с мыслью108 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn108"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 109 с мыслью109 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn109"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 110 с мыслью110 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn110"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 111 с мыслью111 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn111"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 112 с мыслью112 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn112"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 113 с мыслью113 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn113"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 114 с мыслью114 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn114"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 115 с мыслью115 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn115"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 116 с мыслью116 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn116"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 117 с мыслью117 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn117"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 118 с мыслью118 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn118"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 119 с мыслью119 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn119"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 120 с мыслью120 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn120"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 121 с мыслью121 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn121"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 122 с мыслью122 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn122"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 123 с мыслью123 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn123"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 124 с мыслью124 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn124"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 125 с мыслью125 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn125"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 126 с мыслью126 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn126"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 127 с мыслью127 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn127"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 128 с мыслью128 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn128"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 129 с мыслью129 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn129"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 130 с мыслью130 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn130"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 131 с мыслью131 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn131"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 132 с мыслью132 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn132"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 133 с мыслью133 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn133"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 134 с мыслью134 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn134"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 135 с мыслью135 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn135"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 136 с мыслью136 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn136"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 137 с мыслью137 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn137"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 138 с мыслью138 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn138"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 139 с мыслью139 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn139"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 140 с мыслью140 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn140"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 141 с мыслью141 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn141"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 142 с мыслью142 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn142"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 143 с мыслью143 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn143"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 144 с мыслью144 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn144"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 145 с мыслью145 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn145"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 146 с мыслью146 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn146"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 147 с мыслью147 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn147"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 148 с мыслью148 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn148"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 149 с мыслью149 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn149"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 150 с мыслью150 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn150"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 151 с мыслью151 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn151"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 152 с мыслью152 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn152"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 153 с мыслью153 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn153"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 154 с мыслью154 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn154"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 155 с мыслью155 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn155"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 156 с мыслью156 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn156"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 157 с мыслью157 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn157"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 158 с мыслью158 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn158"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 159 с мыслью159 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn159"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 160 с мыслью160 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn160"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 161 с мыслью161 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn161"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 162 с мыслью162 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn162"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 163 с мыслью163 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn163"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 164 с мыслью164 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn164"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 165 с мыслью165 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn165"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 166 с мыслью166 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn166"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 167 с мыслью167 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn167"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 168 с мыслью168 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn168"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 169 с мыслью169 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn169"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 170 с мыслью170 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn170"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 171 с мыслью171 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn171"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 172 с мыслью172 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn172"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 173 с мыслью173 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn173"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 174 с мыслью174 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn174"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 175 с мыслью175 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn175"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 176 с мыслью176 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn176"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 177 с мыслью177 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn177"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 178 с мыслью178 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn178"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 179 с мыслью179 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn179"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 180 с мыслью180 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn180"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 181 с мыслью181 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn181"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 182 с мыслью182 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn182"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 183 с мыслью183 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn183"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 184 с мыслью184 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn184"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 185 с мыслью185 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn185"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 186 с мыслью186 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn186"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 187 с мыслью187 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn187"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 188 с мыслью188 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn188"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 189 с мыслью189 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn189"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 190 с мыслью190 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn190"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 191 с мыслью191 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn191"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 192 с мыслью192 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn192"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 193 с мыслью193 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn193"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 194 с мыслью194 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn194"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 195 с мыслью195 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn195"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 196 с мыслью196 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn196"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 197 с мыслью197 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn197"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 198 с мыслью198 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn198"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 199 с мыслью199 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn199"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 200 с мыслью200 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn200"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 201 с мыслью201 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn201"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 202 с мыслью202 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn202"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 203 с мыслью203 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn203"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 204 с мыслью204 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn204"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 205 с мыслью205 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn205"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 206 с мыслью206 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn206"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 207 с мыслью207 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn207"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 208 с мыслью208 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn208"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 209 с мыслью209 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn209"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 210 с мыслью210 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn210"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 211 с мыслью211 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn211"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 212 с мыслью212 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn212"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 213 с мыслью213 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn213"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 214 с мыслью214 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn214"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 215 с мыслью215 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn215"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 216 с мыслью216 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn216"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 217 с мыслью217 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn217"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 218 с мыслью218 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn218"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 219 с мыслью219 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn219"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 220 с мыслью220 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn220"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 221 с мыслью221 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn221"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 222 с мыслью222 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn222"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 223 с мыслью223 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn223"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 224 с мыслью224 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn224"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 225 с мыслью225 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn225"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 226 с мыслью226 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn226"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 227 с мыслью227 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn227"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 228 с мыслью228 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn228"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 229 с мыслью229 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn229"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 230 с мыслью230 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn230"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 231 с мыслью231 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn231"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 232 с мыслью232 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn232"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 233 с мыслью233 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn233"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 234 с мыслью234 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn234"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 235 с мыслью235 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn235"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 236 с мыслью236 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn236"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 237 с мыслью237 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn237"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 238 с мыслью238 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn238"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 239 с мыслью239 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn239"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 240 с мыслью240 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn240"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 241 с мыслью241 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn241"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 242 с мыслью242 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn242"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 243 с мыслью243 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn243"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 244 с мыслью244 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn244"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 245 с мыслью245 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn245"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 246 с мыслью246 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn246"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 247 с мыслью247 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn247"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 248 с мыслью248 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn248"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 249 с мыслью249 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn249"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 250 с мыслью250 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn250"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 251 с мыслью251 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn251"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 252 с мыслью252 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn252"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 253 с мыслью253 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn253"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 254 с мыслью254 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn254"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 255 с мыслью255 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn255"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 256 с мыслью256 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn256"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 257 с мыслью257 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn257"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 258 с мыслью258 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn258"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 259 с мыслью259 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn259"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 260 с мыслью260 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn260"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 261 с мыслью261 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn261"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 262 с мыслью262 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn262"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 263 с мыслью263 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn263"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 264 с мыслью264 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn264"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 265 с мыслью265 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn265"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 266 с мыслью266 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn266"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 267 с мыслью267 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn267"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 268 с мыслью268 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn268"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 269 с мыслью269 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn269"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 270 с мыслью270 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn270"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 271 с мыслью271 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn271"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 272 с мыслью272 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn272"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 273 с мыслью273 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn273"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 274 с мыслью274 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn274"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 275 с мыслью275 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn275"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 276 с мыслью276 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn276"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 277 с мыслью277 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn277"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 278 с мыслью278 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn278"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 279 с мыслью279 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn279"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 280 с мыслью280 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn280"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 281 с мыслью281 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn281"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 282 с мыслью282 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn282"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 283 с мыслью283 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn283"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 284 с мыслью284 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn284"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 285 с мыслью285 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn285"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 286 с мыслью286 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn286"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 287 с мыслью287 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn287"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 288 с мыслью288 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn288"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 289 с мыслью289 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn289"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 290 с мыслью290 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn290"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 291 с мыслью291 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn291"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 292 с мыслью292 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn292"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 293 с мыслью293 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn293"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 294 с мыслью294 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn294"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 295 с мыслью295 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn295"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 296 с мыслью296 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn296"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 297 с мыслью297 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn297"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 298 с мыслью298 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn298"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 299 с мыслью299 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn299"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац номер 300 с мыслью300 и продолжением текста.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              27,
+              "noteRef",
+              "fn300"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "fn1": {
+      "label": "1",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 1.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn2": {
+      "label": "2",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 2.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn3": {
+      "label": "3",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 3.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn4": {
+      "label": "4",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 4.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn5": {
+      "label": "5",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 5.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn6": {
+      "label": "6",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 6.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn7": {
+      "label": "7",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 7. Смотри ещё8.",
+          "style": "normal",
+          "spans": [
+            [
+              31,
+              32,
+              "noteRef",
+              "fn8"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn8": {
+      "label": "8",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 8.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn9": {
+      "label": "9",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 9.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn10": {
+      "label": "10",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 10.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn11": {
+      "label": "11",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 11.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn12": {
+      "label": "12",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 12.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn13": {
+      "label": "13",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 13.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn14": {
+      "label": "14",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 14. Смотри ещё15.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn15"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn15": {
+      "label": "15",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 15.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn16": {
+      "label": "16",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 16.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn17": {
+      "label": "17",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 17.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn18": {
+      "label": "18",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 18.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn19": {
+      "label": "19",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 19.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn20": {
+      "label": "20",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 20.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn21": {
+      "label": "21",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 21. Смотри ещё22.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn22"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn22": {
+      "label": "22",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 22.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn23": {
+      "label": "23",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 23.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn24": {
+      "label": "24",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 24.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn25": {
+      "label": "25",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 25.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn26": {
+      "label": "26",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 26.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn27": {
+      "label": "27",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 27.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn28": {
+      "label": "28",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 28. Смотри ещё29.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn29"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn29": {
+      "label": "29",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 29.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn30": {
+      "label": "30",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 30.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn31": {
+      "label": "31",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 31.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn32": {
+      "label": "32",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 32.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn33": {
+      "label": "33",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 33.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn34": {
+      "label": "34",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 34.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn35": {
+      "label": "35",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 35. Смотри ещё36.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn36"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn36": {
+      "label": "36",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 36.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn37": {
+      "label": "37",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 37.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn38": {
+      "label": "38",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 38.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn39": {
+      "label": "39",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 39.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn40": {
+      "label": "40",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 40.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn41": {
+      "label": "41",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 41.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn42": {
+      "label": "42",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 42. Смотри ещё43.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn43"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn43": {
+      "label": "43",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 43.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn44": {
+      "label": "44",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 44.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn45": {
+      "label": "45",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 45.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn46": {
+      "label": "46",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 46.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn47": {
+      "label": "47",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 47.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn48": {
+      "label": "48",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 48.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn49": {
+      "label": "49",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 49. Смотри ещё50.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn50"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn50": {
+      "label": "50",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 50.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn51": {
+      "label": "51",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 51.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn52": {
+      "label": "52",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 52.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn53": {
+      "label": "53",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 53.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn54": {
+      "label": "54",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 54.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn55": {
+      "label": "55",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 55.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn56": {
+      "label": "56",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 56. Смотри ещё57.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn57"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn57": {
+      "label": "57",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 57.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn58": {
+      "label": "58",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 58.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn59": {
+      "label": "59",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 59.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn60": {
+      "label": "60",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 60.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn61": {
+      "label": "61",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 61.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn62": {
+      "label": "62",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 62.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn63": {
+      "label": "63",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 63. Смотри ещё64.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn64"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn64": {
+      "label": "64",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 64.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn65": {
+      "label": "65",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 65.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn66": {
+      "label": "66",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 66.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn67": {
+      "label": "67",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 67.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn68": {
+      "label": "68",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 68.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn69": {
+      "label": "69",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 69.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn70": {
+      "label": "70",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 70. Смотри ещё71.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn71"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn71": {
+      "label": "71",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 71.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn72": {
+      "label": "72",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 72.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn73": {
+      "label": "73",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 73.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn74": {
+      "label": "74",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 74.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn75": {
+      "label": "75",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 75.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn76": {
+      "label": "76",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 76.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn77": {
+      "label": "77",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 77. Смотри ещё78.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn78"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn78": {
+      "label": "78",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 78.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn79": {
+      "label": "79",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 79.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn80": {
+      "label": "80",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 80.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn81": {
+      "label": "81",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 81.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn82": {
+      "label": "82",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 82.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn83": {
+      "label": "83",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 83.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn84": {
+      "label": "84",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 84. Смотри ещё85.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn85"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn85": {
+      "label": "85",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 85.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn86": {
+      "label": "86",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 86.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn87": {
+      "label": "87",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 87.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn88": {
+      "label": "88",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 88.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn89": {
+      "label": "89",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 89.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn90": {
+      "label": "90",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 90.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn91": {
+      "label": "91",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 91. Смотри ещё92.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn92"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn92": {
+      "label": "92",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 92.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn93": {
+      "label": "93",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 93.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn94": {
+      "label": "94",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 94.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn95": {
+      "label": "95",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 95.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn96": {
+      "label": "96",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 96.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn97": {
+      "label": "97",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 97.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn98": {
+      "label": "98",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 98. Смотри ещё99.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              34,
+              "noteRef",
+              "fn99"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn99": {
+      "label": "99",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 99.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn100": {
+      "label": "100",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 100.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn101": {
+      "label": "101",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 101.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn102": {
+      "label": "102",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 102.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn103": {
+      "label": "103",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 103.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn104": {
+      "label": "104",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 104.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn105": {
+      "label": "105",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 105. Смотри ещё106.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn106"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn106": {
+      "label": "106",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 106.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn107": {
+      "label": "107",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 107.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn108": {
+      "label": "108",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 108.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn109": {
+      "label": "109",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 109.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn110": {
+      "label": "110",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 110.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn111": {
+      "label": "111",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 111.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn112": {
+      "label": "112",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 112. Смотри ещё113.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn113"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn113": {
+      "label": "113",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 113.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn114": {
+      "label": "114",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 114.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn115": {
+      "label": "115",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 115.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn116": {
+      "label": "116",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 116.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn117": {
+      "label": "117",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 117.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn118": {
+      "label": "118",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 118.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn119": {
+      "label": "119",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 119. Смотри ещё120.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn120"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn120": {
+      "label": "120",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 120.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn121": {
+      "label": "121",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 121.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn122": {
+      "label": "122",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 122.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn123": {
+      "label": "123",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 123.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn124": {
+      "label": "124",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 124.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn125": {
+      "label": "125",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 125.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn126": {
+      "label": "126",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 126. Смотри ещё127.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn127"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn127": {
+      "label": "127",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 127.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn128": {
+      "label": "128",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 128.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn129": {
+      "label": "129",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 129.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn130": {
+      "label": "130",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 130.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn131": {
+      "label": "131",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 131.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn132": {
+      "label": "132",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 132.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn133": {
+      "label": "133",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 133. Смотри ещё134.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn134"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn134": {
+      "label": "134",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 134.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn135": {
+      "label": "135",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 135.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn136": {
+      "label": "136",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 136.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn137": {
+      "label": "137",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 137.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn138": {
+      "label": "138",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 138.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn139": {
+      "label": "139",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 139.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn140": {
+      "label": "140",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 140. Смотри ещё141.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn141"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn141": {
+      "label": "141",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 141.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn142": {
+      "label": "142",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 142.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn143": {
+      "label": "143",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 143.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn144": {
+      "label": "144",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 144.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn145": {
+      "label": "145",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 145.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn146": {
+      "label": "146",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 146.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn147": {
+      "label": "147",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 147. Смотри ещё148.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn148"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn148": {
+      "label": "148",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 148.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn149": {
+      "label": "149",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 149.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn150": {
+      "label": "150",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 150.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn151": {
+      "label": "151",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 151.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn152": {
+      "label": "152",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 152.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn153": {
+      "label": "153",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 153.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn154": {
+      "label": "154",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 154. Смотри ещё155.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn155"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn155": {
+      "label": "155",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 155.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn156": {
+      "label": "156",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 156.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn157": {
+      "label": "157",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 157.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn158": {
+      "label": "158",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 158.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn159": {
+      "label": "159",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 159.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn160": {
+      "label": "160",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 160.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn161": {
+      "label": "161",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 161. Смотри ещё162.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn162"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn162": {
+      "label": "162",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 162.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn163": {
+      "label": "163",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 163.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn164": {
+      "label": "164",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 164.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn165": {
+      "label": "165",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 165.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn166": {
+      "label": "166",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 166.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn167": {
+      "label": "167",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 167.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn168": {
+      "label": "168",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 168. Смотри ещё169.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn169"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn169": {
+      "label": "169",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 169.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn170": {
+      "label": "170",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 170.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn171": {
+      "label": "171",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 171.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn172": {
+      "label": "172",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 172.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn173": {
+      "label": "173",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 173.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn174": {
+      "label": "174",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 174.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn175": {
+      "label": "175",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 175. Смотри ещё176.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn176"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn176": {
+      "label": "176",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 176.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn177": {
+      "label": "177",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 177.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn178": {
+      "label": "178",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 178.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn179": {
+      "label": "179",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 179.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn180": {
+      "label": "180",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 180.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn181": {
+      "label": "181",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 181.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn182": {
+      "label": "182",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 182. Смотри ещё183.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn183"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn183": {
+      "label": "183",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 183.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn184": {
+      "label": "184",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 184.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn185": {
+      "label": "185",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 185.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn186": {
+      "label": "186",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 186.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn187": {
+      "label": "187",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 187.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn188": {
+      "label": "188",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 188.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn189": {
+      "label": "189",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 189. Смотри ещё190.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn190"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn190": {
+      "label": "190",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 190.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn191": {
+      "label": "191",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 191.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn192": {
+      "label": "192",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 192.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn193": {
+      "label": "193",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 193.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn194": {
+      "label": "194",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 194.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn195": {
+      "label": "195",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 195.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn196": {
+      "label": "196",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 196. Смотри ещё197.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn197"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn197": {
+      "label": "197",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 197.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn198": {
+      "label": "198",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 198.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn199": {
+      "label": "199",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 199.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn200": {
+      "label": "200",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 200.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn201": {
+      "label": "201",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 201.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn202": {
+      "label": "202",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 202.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn203": {
+      "label": "203",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 203. Смотри ещё204.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn204"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn204": {
+      "label": "204",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 204.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn205": {
+      "label": "205",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 205.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn206": {
+      "label": "206",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 206.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn207": {
+      "label": "207",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 207.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn208": {
+      "label": "208",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 208.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn209": {
+      "label": "209",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 209.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn210": {
+      "label": "210",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 210. Смотри ещё211.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn211"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn211": {
+      "label": "211",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 211.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn212": {
+      "label": "212",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 212.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn213": {
+      "label": "213",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 213.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn214": {
+      "label": "214",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 214.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn215": {
+      "label": "215",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 215.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn216": {
+      "label": "216",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 216.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn217": {
+      "label": "217",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 217. Смотри ещё218.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn218"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn218": {
+      "label": "218",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 218.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn219": {
+      "label": "219",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 219.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn220": {
+      "label": "220",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 220.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn221": {
+      "label": "221",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 221.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn222": {
+      "label": "222",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 222.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn223": {
+      "label": "223",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 223.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn224": {
+      "label": "224",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 224. Смотри ещё225.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn225"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn225": {
+      "label": "225",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 225.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn226": {
+      "label": "226",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 226.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn227": {
+      "label": "227",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 227.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn228": {
+      "label": "228",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 228.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn229": {
+      "label": "229",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 229.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn230": {
+      "label": "230",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 230.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn231": {
+      "label": "231",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 231. Смотри ещё232.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn232"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn232": {
+      "label": "232",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 232.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn233": {
+      "label": "233",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 233.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn234": {
+      "label": "234",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 234.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn235": {
+      "label": "235",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 235.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn236": {
+      "label": "236",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 236.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn237": {
+      "label": "237",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 237.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn238": {
+      "label": "238",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 238. Смотри ещё239.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn239"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn239": {
+      "label": "239",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 239.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn240": {
+      "label": "240",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 240.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn241": {
+      "label": "241",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 241.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn242": {
+      "label": "242",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 242.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn243": {
+      "label": "243",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 243.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn244": {
+      "label": "244",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 244.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn245": {
+      "label": "245",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 245. Смотри ещё246.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn246"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn246": {
+      "label": "246",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 246.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn247": {
+      "label": "247",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 247.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn248": {
+      "label": "248",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 248.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn249": {
+      "label": "249",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 249.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn250": {
+      "label": "250",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 250.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn251": {
+      "label": "251",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 251.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn252": {
+      "label": "252",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 252. Смотри ещё253.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn253"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn253": {
+      "label": "253",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 253.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn254": {
+      "label": "254",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 254.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn255": {
+      "label": "255",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 255.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn256": {
+      "label": "256",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 256.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn257": {
+      "label": "257",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 257.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn258": {
+      "label": "258",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 258.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn259": {
+      "label": "259",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 259. Смотри ещё260.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn260"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn260": {
+      "label": "260",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 260.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn261": {
+      "label": "261",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 261.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn262": {
+      "label": "262",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 262.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn263": {
+      "label": "263",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 263.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn264": {
+      "label": "264",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 264.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn265": {
+      "label": "265",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 265.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn266": {
+      "label": "266",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 266. Смотри ещё267.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn267"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn267": {
+      "label": "267",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 267.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn268": {
+      "label": "268",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 268.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn269": {
+      "label": "269",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 269.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn270": {
+      "label": "270",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 270.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn271": {
+      "label": "271",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 271.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn272": {
+      "label": "272",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 272.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn273": {
+      "label": "273",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 273. Смотри ещё274.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn274"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn274": {
+      "label": "274",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 274.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn275": {
+      "label": "275",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 275.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn276": {
+      "label": "276",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 276.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn277": {
+      "label": "277",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 277.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn278": {
+      "label": "278",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 278.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn279": {
+      "label": "279",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 279.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn280": {
+      "label": "280",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 280. Смотри ещё281.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn281"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn281": {
+      "label": "281",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 281.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn282": {
+      "label": "282",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 282.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn283": {
+      "label": "283",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 283.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn284": {
+      "label": "284",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 284.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn285": {
+      "label": "285",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 285.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn286": {
+      "label": "286",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 286.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn287": {
+      "label": "287",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 287. Смотри ещё288.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn288"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn288": {
+      "label": "288",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 288.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn289": {
+      "label": "289",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 289.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn290": {
+      "label": "290",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 290.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn291": {
+      "label": "291",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 291.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn292": {
+      "label": "292",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 292.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn293": {
+      "label": "293",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 293.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn294": {
+      "label": "294",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 294. Смотри ещё295.",
+          "style": "normal",
+          "spans": [
+            [
+              33,
+              36,
+              "noteRef",
+              "fn295"
+            ]
+          ]
+        }
+      ]
+    },
+    "fn295": {
+      "label": "295",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 295.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn296": {
+      "label": "296",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 296.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn297": {
+      "label": "297",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 297.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn298": {
+      "label": "298",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 298.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn299": {
+      "label": "299",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 299.",
+          "style": "normal"
+        }
+      ]
+    },
+    "fn300": {
+      "label": "300",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Пояснение к месту 300.",
+          "style": "normal"
+        }
+      ]
+    }
+  }
+}

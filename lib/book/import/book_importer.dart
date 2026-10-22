@@ -87,7 +87,11 @@ ParsedBook parseBook(
   switch (detectFormat(bytes)) {
     case DetectedFormat.fb2:
       try {
-        (content, cover) = parseFb2WithCover(bytes, title: title);
+        (content, cover) = parseFb2WithCover(
+          bytes,
+          title: title,
+          images: images,
+        );
       } on NotFb2Exception {
         throw const ImportException(ImportError.damaged);
       } on NotTextException {

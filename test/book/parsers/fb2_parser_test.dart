@@ -4,10 +4,12 @@ import 'dart:typed_data';
 
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_image.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../model/book_image_test.dart' show png;
 import '../snapshot.dart';
 
 const fixtures = 'test/fixtures/fb2';
@@ -35,12 +37,33 @@ List<String> blocksOf(BookContent book) => [
       },
 ];
 
+/// (label, note id) of the footnote labels of [block].
+List<(String, String)> marksOf(Block block) => [
+  if (block case TextBlock(:final text, :final spans))
+    for (final s in spans)
+      if (s.kind == SpanKind.noteRef)
+        (text.substring(s.start, s.end), s.noteId!),
+];
+
+/// A whole FB2 with [binaries] (`id` → bytes) after the body.
+String withBinaries(String body, Map<String, Uint8List> binaries) => [
+  '<?xml version="1.0"?><FictionBook><description><title-info/>',
+  '</description><body>$body</body>',
+  for (final MapEntry(:key, :value) in binaries.entries)
+    '<binary id="$key">${base64.encode(value)}</binary>',
+  '</FictionBook>',
+].join();
+
 void main() {
   group('fixtures', () {
     for (final name in [
       'utf8_nested.fb2',
       'cp1251_entities.fb2',
       'broken_tail.fb2',
+      'images_basic.fb2',
+      'images_broken.fb2',
+      'notes_basic.fb2',
+      'notes_many.fb2',
     ]) {
       test(name, () => expectSnapshot(parseFile(name), '$fixtures/$name'));
     }
@@ -83,7 +106,7 @@ void main() {
       expect(book.sections[5].title, isNull);
     });
 
-    test('blocks: styles, poems by stanza, notes and pictures skipped', () {
+    test('blocks: styles, poems by stanza, notes out of the text', () {
       final blocks = blocksOf(book);
       expect(blocks.take(7), [
         '#1 Анна Тестова\nУтро над рекой',
@@ -91,7 +114,7 @@ void main() {
         '[epigraph] Народное',
         '#1 Часть первая',
         '#2 Глава 1\nТуман',
-        'Утро было тихим, и над рекой ещё стоял туман. Анна вышла на '
+        'Утро было тихим, и над рекой ещё стоял туман.1 Анна вышла на '
             'крыльцо.',
         '— Ты опять встала раньше всех? — спросил отец.',
       ]);
@@ -216,9 +239,11 @@ void main() {
     test('links without note type but to #id are note marks', () {
       final book = parse(
         '<section><p>Слово<a l:href="#n2"><sup>2</sup></a> и '
-        '<a l:href="https://example.com">ссылка</a>.</p></section>',
+        '<a l:href="https://example.com">ссылка</a>, '
+        '<a l:href="#ch2">вторая глава</a>.</p></section>',
       );
-      expect(blocksOf(book), ['Слово и ссылка.']);
+      expect(blocksOf(book), ['Слово2 и ссылка, вторая глава.']);
+      expect(marksOf(book.sections[0].blocks[0]), [('2', 'n2')]);
     });
 
     test('a title with a trailing period joins with a space', () {
@@ -276,6 +301,198 @@ void main() {
         ),
         throwsA(isA<NotTextException>()),
       );
+    });
+  });
+
+  group('pictures', () {
+    test('images_basic.fb2: the cover first, each picture stored once', () {
+      final sink = MemoryImageSink();
+      final (book, cover) = parseFb2WithCover(
+        File('$fixtures/images_basic.fb2').readAsBytesSync(),
+        title: 'x',
+        images: sink,
+      );
+      expect(blocksOf(book), [
+        'image', // the cover
+        '#1 Книга с картинками',
+        '#1 Глава 1',
+        'Перед первой картинкой идёт обычный текст из нескольких слов.',
+        'image',
+        'После картинки текст продолжается, и ещё одна фраза для длины.',
+        'Строка с виньеткой:',
+        'image', // the spacer 1×1 is skipped
+        'Хвост главы.',
+        '#1 Глава 2',
+        'image',
+        'Картинка в начале главы, а ниже она же повторена.',
+        'image',
+        'Конец.',
+      ]);
+      expect(
+        [
+          for (final s in book.sections)
+            for (final i in s.blocks.whereType<ImageBlock>())
+              (i.assetId, i.width, i.height),
+        ],
+        [
+          ('1.jpg', 120, 160),
+          ('2.png', 200, 120),
+          ('3.gif', 40, 30),
+          ('4.jpg', 160, 100),
+          ('2.png', 200, 120),
+        ],
+      );
+      expect(sink.files.keys, ['1.jpg', '2.png', '3.gif', '4.jpg']);
+      expect(book.meta.coverAssetId, '1.jpg');
+      expect(cover?.extension, 'jpg');
+    });
+
+    test('images_broken.fb2: only pictures that can be shown', () {
+      final sink = MemoryImageSink();
+      final (book, cover) = parseFb2WithCover(
+        File('$fixtures/images_broken.fb2').readAsBytesSync(),
+        title: 'x',
+        images: sink,
+      );
+      final blocks = book.sections.single.blocks;
+      expect(
+        [for (final b in blocks.whereType<ImageBlock>()) (b.width, b.height)],
+        [(80, 60), (30, 30)], // ok.png, the first dup.png
+      );
+      expect(blocks.whereType<ParagraphBlock>(), hasLength(6));
+      expect(sink.files, hasLength(2));
+      expect(cover, isNull);
+      expect(book.meta.coverAssetId, isNull);
+    });
+
+    test('a picture inside a paragraph splits it, spans go on', () {
+      final book = parseFb2String(
+        withBinaries(
+          '<section><p>До <emphasis>кур<image l:href="#a"/>сив</emphasis> '
+          'после</p><p><image l:href="#a"/>Сразу текст</p></section>',
+          {'a': png(40, 40)},
+        ),
+        title: 'x',
+      );
+      expect(blocksOf(book), [
+        'До кур',
+        'image',
+        'сив после',
+        'image',
+        'Сразу текст',
+      ]);
+      final after = book.sections.single.blocks[2] as ParagraphBlock;
+      expect(
+        [for (final s in after.spans) (s.start, s.end, s.kind)],
+        [(0, 3, SpanKind.emphasis)],
+      );
+    });
+
+    test('a section of pictures joins the next one, the last one joins the '
+        'one before', () {
+      final book = parseFb2String(
+        withBinaries(
+          '<section><image l:href="#a"/></section>'
+          '<section><title><p>Глава 1</p></title><p>Текст.</p></section>'
+          '<section><title><p>Глава 2</p></title><p>Ещё.</p></section>'
+          '<section><image l:href="#b"/></section>',
+          {'a': png(40, 40), 'b': png(50, 50)},
+        ),
+        title: 'x',
+      );
+      expect(book.sections, hasLength(2));
+      expect(blocksOf(book), [
+        'image',
+        '#1 Глава 1',
+        'Текст.',
+        '#1 Глава 2',
+        'Ещё.',
+        'image',
+      ]);
+      expect(
+        [for (final t in book.toc) (t.title, t.sectionIndex)],
+        [('Глава 1', 0), ('Глава 2', 1)],
+      );
+    });
+
+    test('pictures in titles and without a picture are dropped', () {
+      final book = parseFb2String(
+        withBinaries(
+          '<section><title><p>Глава<image l:href="#a"/></p></title>'
+          '<image l:href="#none"/><image/><p>Текст.</p></section>',
+          {'a': png(40, 40)},
+        ),
+        title: 'x',
+      );
+      expect(blocksOf(book), ['#1 Глава', 'Текст.']);
+    });
+  });
+
+  group('footnotes', () {
+    final book = parseFile('notes_basic.fb2');
+    final paragraphs = [
+      for (final s in book.sections) ...s.blocks.whereType<ParagraphBlock>(),
+    ];
+
+    test('labels in the text, without brackets', () {
+      expect(
+        [for (final p in paragraphs) ...marksOf(p)],
+        [
+          ('1', 'n1'),
+          ('2', 'n2'),
+          ('*', 'n3'),
+          ('*', 'n4'),
+          ('1', 'c1'),
+          ('9', 'nowhere'),
+          ('1', 'n1'),
+          ('?', ''),
+          ('5', 'n5'),
+        ],
+      );
+      expect(
+        paragraphs[0].text,
+        startsWith('Первая сноска стоит после слова1 и'),
+      );
+      expect(paragraphs[3].text, contains('Ссылка наружу не сноска'));
+    });
+
+    test('notes and comments bodies become notes, not text', () {
+      expect(book.notes.keys, ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'c1']);
+      expect(book.notes['n1']!.label, '1');
+      expect(book.notes['n3']!.label, isNull);
+      expect(book.notes['n2']!.blocks, hasLength(2));
+      expect(
+        (book.notes['n2']!.blocks[1] as ParagraphBlock).text,
+        'Второй абзац второй сноски.',
+      );
+      expect(marksOf(book.notes['n5']!.blocks.single), [('6', 'n6')]);
+      expect(marksOf(book.notes['n6']!.blocks.single), [('5', 'n5')]);
+      expect([for (final t in book.toc) t.title], ['Глава 1', 'Глава 2']);
+      expect(blocksOf(book).where((b) => b.contains('Примечания')), isEmpty);
+    });
+
+    test('labels are not words and do not split words', () {
+      final tokens = tokenize(book);
+      final words = [for (var i = 0; i < tokens.length; i++) tokens.textOf(i)];
+      expect(words, containsAllInOrder(['слова', 'и', 'скобок,', 'с']));
+      // Only the numbers of `Глава 1`, `Глава 2`.
+      expect(words.where((w) => RegExp(r'[0-9*?]').hasMatch(w)), ['1', '2']);
+    });
+
+    test('a label in a title stays out of the contents', () {
+      final book = parse(
+        '<section><title><p>Глава<a l:href="#n1" type="note">1</a></p></title>'
+        '<p>Текст.</p></section>',
+      );
+      expect(book.toc.single.title, 'Глава');
+      expect(marksOf(book.sections[0].blocks[0]), [('1', 'n1')]);
+    });
+
+    test('the model with notes survives a JSON round trip', () {
+      final again = BookContent.fromJson(
+        jsonDecode(jsonEncode(book.toJson())) as Map<String, Object?>,
+      );
+      expect(jsonEncode(again.toJson()), jsonEncode(book.toJson()));
     });
   });
 }

@@ -13,8 +13,11 @@ List<int> be(int value, int length) => le(value, length).reversed.toList();
 Uint8List png(int width, int height) => Uint8List.fromList([
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, //
   ...be(13, 4), ...'IHDR'.codeUnits, ...be(width, 4), ...be(height, 4),
-  8, 6, 0, 0, 0,
+  8, 6, 0, 0, 0, //
+  ...pngEnd,
 ]);
+
+const pngEnd = [0, 0, 0, 0, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82];
 
 /// APP0, a DQT and then the frame header.
 Uint8List jpeg(int width, int height, {int sof = 0xC0}) => Uint8List.fromList([
@@ -24,6 +27,7 @@ Uint8List jpeg(int width, int height, {int sof = 0xC0}) => Uint8List.fromList([
   0xFF, 0xDB, ...be(3, 2), 0,
   0xFF, sof, ...be(17, 2), 8, ...be(height, 2), ...be(width, 2), 3,
   ...List.filled(9, 0),
+  0xFF, 0xD9,
 ]);
 
 void main() {
@@ -156,6 +160,19 @@ void main() {
       expect(sink.files.keys, ['1.png']);
     });
 
+    test('a picture cut short is skipped', () {
+      final images = BookImages();
+      final full = png(100, 50);
+      final cut = Uint8List.sublistView(full, 0, full.length - pngEnd.length);
+      expect(images.add('png', () => cut), isNull);
+      final jpg = jpeg(100, 50);
+      expect(
+        images.add('jpg', () => Uint8List.sublistView(jpg, 0, jpg.length - 2)),
+        isNull,
+      );
+      expect(images.add('whole', () => full), isNotNull);
+    });
+
     test('a book keeps at most $maxBookImages pictures', () {
       final images = BookImages();
       for (var i = 0; i < maxBookImages; i++) {
@@ -166,7 +183,9 @@ void main() {
 
     test('and at most ${maxBookImageBytes ~/ (1024 * 1024)} MB', () {
       final images = BookImages();
-      Uint8List big() => Uint8List(maxImageBytes)..setAll(0, png(100, 100));
+      Uint8List big() => Uint8List(maxImageBytes)
+        ..setAll(0, png(100, 100))
+        ..setAll(maxImageBytes - pngEnd.length, pngEnd);
       var added = 0;
       for (var i = 0; images.add('$i', big) != null; i++) {
         added++;

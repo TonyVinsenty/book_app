@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "title": "Книга с картинками",
+    "authors": [
+      "Анна Тестова"
+    ],
+    "lang": "ru",
+    "coverAssetId": "1.jpg",
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Глава 1",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Глава 2",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Глава 1",
+      "blocks": [
+        {
+          "type": "image",
+          "assetId": "1.jpg",
+          "width": 120,
+          "height": 160
+        },
+        {
+          "type": "heading",
+          "text": "Книга с картинками",
+          "level": 1
+        },
+        {
+          "type": "heading",
+          "text": "Глава 1",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Перед первой картинкой идёт обычный текст из нескольких слов.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 200,
+          "height": 120
+        },
+        {
+          "type": "paragraph",
+          "text": "После картинки текст продолжается, и ещё одна фраза для длины.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Строка с виньеткой:",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "3.gif",
+          "width": 40,
+          "height": 30
+        },
+        {
+          "type": "paragraph",
+          "text": "Хвост главы.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Глава 2",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 2",
+          "level": 1
+        },
+        {
+          "type": "image",
+          "assetId": "4.jpg",
+          "width": 160,
+          "height": 100
+        },
+        {
+          "type": "paragraph",
+          "text": "Картинка в начале главы, а ниже она же повторена.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 200,
+          "height": 120
+        },
+        {
+          "type": "paragraph",
+          "text": "Конец.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

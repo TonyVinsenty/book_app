@@ -68,6 +68,7 @@ final class BookImages {
         }
         final header = readPictureHeader(bytes);
         if (header == null ||
+            !_isComplete(header.extension, bytes) ||
             header.width * header.height > maxImagePixels ||
             (header.width < minImageSide && header.height < minImageSide)) {
           return null;
@@ -132,6 +133,31 @@ PictureHeader? readPictureHeader(Uint8List b) {
         : sized('bmp', i32(18), i32(22).abs());
   }
   return null;
+}
+
+/// False for a picture cut short (a broken download or base64): its end
+/// marker is not near the end of the data.
+bool _isComplete(String extension, Uint8List b) {
+  bool near(List<int> sign, int within) {
+    final from = b.length - within < 0 ? 0 : b.length - within;
+    outer:
+    for (var i = b.length - sign.length; i >= from; i--) {
+      for (var j = 0; j < sign.length; j++) {
+        if (b[i + j] != sign[j]) continue outer;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  return switch (extension) {
+    'png' => near('IEND'.codeUnits, 1024),
+    'jpg' => near(const [0xFF, 0xD9], 1024),
+    'gif' => near(const [0x3B], 16),
+    'webp' =>
+      ByteData.sublistView(b).getUint32(4, Endian.little) + 8 <= b.length,
+    _ => true,
+  };
 }
 
 /// Size from the first frame header (SOF) before the image data.

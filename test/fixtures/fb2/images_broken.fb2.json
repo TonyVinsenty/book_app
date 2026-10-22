@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "title": "Битые картинки",
+    "authors": [
+      "Анна Тестова"
+    ],
+    "lang": "ru",
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Глава с битыми картинками",
+      "level": 0,
+      "section": 0
+    }
+  ],
+  "sections": [
+    {
+      "title": "Глава с битыми картинками",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава с битыми картинками",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст до первой картинки.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "1.png",
+          "width": 80,
+          "height": 60
+        },
+        {
+          "type": "paragraph",
+          "text": "Дальше идут картинки, которые показать нельзя.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Картинка с битым base64 пропущена, текст цел.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Картинка без binary пропущена.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Огромные по размеру картинки не показываются.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 30,
+          "height": 30
+        },
+        {
+          "type": "paragraph",
+          "text": "Последний абзац главы.",
+          "style": "normal"
+        }
+      ]
+    }
+  ]
+}

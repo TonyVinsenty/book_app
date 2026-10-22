@@ -1,0 +1,240 @@
+{
+  "meta": {
+    "title": "Книга со сносками",
+    "authors": [
+      "Анна Тестова"
+    ],
+    "lang": "ru",
+    "sourceFormat": "fb2"
+  },
+  "toc": [
+    {
+      "title": "Глава 1",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Глава 2",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Глава 1",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Книга со сносками",
+          "level": 1
+        },
+        {
+          "type": "heading",
+          "text": "Глава 1",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Первая сноска стоит после слова1 и идёт дальше. Вторая — без скобок2, с запятой сразу после метки.",
+          "style": "normal",
+          "spans": [
+            [
+              31,
+              32,
+              "noteRef",
+              "n1"
+            ],
+            [
+              67,
+              68,
+              "noteRef",
+              "n2"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Звёздочка* и пустая метка* тоже сноски.",
+          "style": "normal",
+          "spans": [
+            [
+              9,
+              10,
+              "noteRef",
+              "n3"
+            ],
+            [
+              25,
+              26,
+              "noteRef",
+              "n4"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Комментарий1 лежит в другом теле. Метка без цели9 и ссылка без type1 на ту же сноску.",
+          "style": "normal",
+          "spans": [
+            [
+              11,
+              12,
+              "noteRef",
+              "c1"
+            ],
+            [
+              48,
+              49,
+              "noteRef",
+              "nowhere"
+            ],
+            [
+              67,
+              68,
+              "noteRef",
+              "n1"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Ссылка наружу не сноска и ссылка без адреса?.",
+          "style": "normal",
+          "spans": [
+            [
+              43,
+              44,
+              "noteRef",
+              ""
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Глава 2",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 2",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Сноска со вложенной5.",
+          "style": "normal",
+          "spans": [
+            [
+              19,
+              20,
+              "noteRef",
+              "n5"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "n1": {
+      "label": "1",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Первая сноска.",
+          "style": "normal"
+        }
+      ]
+    },
+    "n2": {
+      "label": "2",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Вторая сноска из двух абзацев.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Второй абзац второй сноски.",
+          "style": "normal"
+        }
+      ]
+    },
+    "n3": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Сноска без заголовка.",
+          "style": "normal"
+        }
+      ]
+    },
+    "n4": {
+      "label": "Пустая метка",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Сноска для пустой метки.",
+          "style": "normal"
+        }
+      ]
+    },
+    "n5": {
+      "label": "5",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Сноска, которая ссылается на другую6.",
+          "style": "normal",
+          "spans": [
+            [
+              35,
+              36,
+              "noteRef",
+              "n6"
+            ]
+          ]
+        }
+      ]
+    },
+    "n6": {
+      "label": "6",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Вложенная сноска5 (и обратно на пятую).",
+          "style": "normal",
+          "spans": [
+            [
+              16,
+              17,
+              "noteRef",
+              "n5"
+            ]
+          ]
+        }
+      ]
+    },
+    "n7": {
+      "label": "7",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Сноска, на которую никто не ссылается.",
+          "style": "normal"
+        }
+      ]
+    },
+    "c1": {
+      "label": "1",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Комментарий читателя.",
+          "style": "normal"
+        }
+      ]
+    }
+  }
+}
