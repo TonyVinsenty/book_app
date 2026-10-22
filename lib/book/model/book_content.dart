@@ -117,7 +117,9 @@ final class Section {
 /// Kind of inline markup.
 enum SpanKind { emphasis, strong, noteRef }
 
-/// Inline markup over `text[start, end)` of a text block.
+/// Inline markup over `text[start, end)` of a text block. A
+/// [SpanKind.noteRef] covers the label of a note in the text (`12`, `*`):
+/// those chars are not words (ADR 0008).
 final class Span {
   const Span(this.start, this.end, this.kind, {this.noteId})
     : assert(start <= end),
@@ -244,12 +246,38 @@ final class SeparatorBlock extends Block {
   Map<String, Object?> toJson() => {'type': 'separator'};
 }
 
+/// A footnote (ADR 0008): opened from a [SpanKind.noteRef] label, never part
+/// of the reading flow, the contents or the word count.
+final class Note {
+  const Note({this.label, required this.blocks});
+
+  factory Note.fromJson(Map<String, Object?> json) => Note(
+    label: json['label'] as String?,
+    blocks: [
+      for (final b in json['blocks']! as List<Object?>)
+        Block.fromJson(b! as Map<String, Object?>),
+    ],
+  );
+
+  /// Title of the note in the book (`1`, `*`), if any.
+  final String? label;
+
+  /// May hold labels of nested notes.
+  final List<Block> blocks;
+
+  Map<String, Object?> toJson() => {
+    'label': ?label,
+    'blocks': [for (final b in blocks) b.toJson()],
+  };
+}
+
 /// A whole parsed book.
 final class BookContent {
   const BookContent({
     required this.meta,
     this.toc = const [],
     required this.sections,
+    this.notes = const {},
   });
 
   factory BookContent.fromJson(Map<String, Object?> json) => BookContent(
@@ -262,15 +290,25 @@ final class BookContent {
       for (final s in json['sections']! as List<Object?>)
         Section.fromJson(s! as Map<String, Object?>),
     ],
+    notes: {
+      for (final MapEntry(:key, :value)
+          in ((json['notes'] as Map<String, Object?>?) ?? const {}).entries)
+        key: Note.fromJson(value! as Map<String, Object?>),
+    },
   );
 
   final BookMeta meta;
   final List<TocEntry> toc;
   final List<Section> sections;
 
+  /// Footnotes by [Span.noteId].
+  final Map<String, Note> notes;
+
   Map<String, Object?> toJson() => {
     'meta': meta.toJson(),
     'toc': [for (final t in toc) t.toJson()],
     'sections': [for (final s in sections) s.toJson()],
+    if (notes.isNotEmpty)
+      'notes': {for (final e in notes.entries) e.key: e.value.toJson()},
   };
 }

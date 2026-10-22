@@ -37,6 +37,7 @@ BookContent splitLongSections(BookContent content) {
         ),
     ],
     sections: sections,
+    notes: content.notes,
   );
 }
 

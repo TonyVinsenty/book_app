@@ -127,11 +127,35 @@ void main() {
           ],
         ),
       ],
+      notes: {
+        'n1': Note(
+          label: '1',
+          blocks: [
+            ParagraphBlock(
+              text: 'См. 2',
+              style: ParagraphStyle.note,
+              spans: [Span(4, 5, SpanKind.noteRef, noteId: 'n2')],
+            ),
+          ],
+        ),
+        'n2': Note(blocks: [ParagraphBlock(text: 'Вложенная.')]),
+      },
     );
     final json = jsonEncode(content.toJson());
     final decoded = BookContent.fromJson(
       jsonDecode(json) as Map<String, Object?>,
     );
     expect(jsonEncode(decoded.toJson()), json);
+    expect(decoded.notes['n1']!.label, '1');
+    expect(decoded.notes['n2']!.label, isNull);
+  });
+
+  test('a book without notes stores no notes key', () {
+    const content = BookContent(
+      meta: BookMeta(title: 't', sourceFormat: SourceFormat.txt),
+      sections: [],
+    );
+    expect(content.toJson().containsKey('notes'), isFalse);
+    expect(BookContent.fromJson(content.toJson()).notes, isEmpty);
   });
 }

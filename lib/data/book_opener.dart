@@ -19,7 +19,8 @@ final class OpenedBook {
 
 /// Loads a book for the reader: the stored model, or a fresh parse of the
 /// source file when the parser changed. Words are rebuilt on every open; a
-/// position saved by another tokenizer or parser moves by its anchor.
+/// position saved by another tokenizer or parser moves by its anchor (after
+/// a reparse that kept the word count — by its word index).
 final class BookOpener {
   BookOpener(this._books);
 
@@ -52,7 +53,11 @@ final class BookOpener {
       _books.sourceFile(book).path,
       book.sourceName,
     );
-    final word = tokens.resolve(book.position);
+    // Note labels and pictures shift blocks and offsets but add no words
+    // (ADR 0008): the same number of words means the same words.
+    final word = tokens.length == book.wordCount
+        ? tokens.positionOf(book.positionWord).wordIndex
+        : tokens.resolve(book.position);
     await _books.replaceContent(
       id,
       content: parsed.content,

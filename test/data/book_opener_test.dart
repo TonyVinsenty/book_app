@@ -107,6 +107,47 @@ void main() {
     expect(repo.coverFile(reparsed)!.readAsBytesSync(), png);
   });
 
+  test('a reparse with the same word count keeps the word index', () async {
+    // Labels and pictures move blocks and offsets, not words (ADR 0008).
+    final source = File('${temp.path}/Книга.fb2')
+      ..writeAsStringSync(
+        '<FictionBook><body><section><p>Раз</p><p>два три четыре.</p>'
+        '</section></body></FictionBook>',
+      );
+    const text = 'Раз два три четыре.';
+    final row = await repo.addBook(
+      content: const BookContent(
+        meta: BookMeta(title: 'Книга', sourceFormat: SourceFormat.fb2),
+        sections: [
+          Section(blocks: [ParagraphBlock(text: text)]),
+        ],
+      ),
+      source: source,
+      sourceName: 'Книга.fb2',
+      sourceHash: 'hash',
+      parserVersion: fb2ParserVersion - 1,
+      wordCount: 4,
+    );
+    // By its anchor «три» would land on «два» of the new blocks.
+    await repo.savePosition(
+      row.id,
+      ReadingPosition(
+        wordIndex: 2,
+        anchor: TextAnchor(
+          sectionIndex: 0,
+          blockIndex: 0,
+          charOffset: text.indexOf('три'),
+        ),
+      ),
+    );
+
+    final opened = await BookOpener(repo).open(row.id);
+
+    expect(opened.wordIndex, 2);
+    expect(opened.tokens.textOf(2), 'три');
+    expect((await repo.findById(row.id))!.position.anchor.blockIndex, 1);
+  });
+
   test('a position from an older tokenizer moves by its anchor', () async {
     const text = 'Вот полуавтоматы-получеловеки идут домой.';
     const content = BookContent(

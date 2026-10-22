@@ -287,6 +287,72 @@ void main() {
     });
   });
 
+  group('note labels', () {
+    /// Words of [marked], where `{12}` is a note label `12`.
+    BookTokens notedTokens(String marked) {
+      final text = StringBuffer();
+      final spans = <Span>[];
+      for (final part in RegExp(r'\{([^}]*)\}|[^{]+').allMatches(marked)) {
+        final label = part[1];
+        if (label == null) {
+          text.write(part[0]);
+          continue;
+        }
+        spans.add(
+          Span(
+            text.length,
+            text.length + label.length,
+            SpanKind.noteRef,
+            noteId: 'n',
+          ),
+        );
+        text.write(label);
+      }
+      return tokenize(
+        BookContent(
+          meta: const BookMeta(title: 't', sourceFormat: SourceFormat.txt),
+          sections: [
+            Section(
+              blocks: [ParagraphBlock(text: text.toString(), spans: spans)],
+            ),
+          ],
+        ),
+      );
+    }
+
+    List<String> notedTexts(String marked) {
+      final t = notedTokens(marked);
+      return [for (var i = 0; i < t.length; i++) t.textOf(i)];
+    }
+
+    const cases = <String, List<String>>{
+      'Он сказал{1}, и ушёл.': ['Он', 'сказал,', 'и', 'ушёл.'],
+      'Слово{12}': ['Слово'],
+      '{*} Текст сноски': ['Текст', 'сноски'],
+      'Раз {2} два': ['Раз', 'два'],
+      'полу{3}слово': ['полуслово'],
+      '«Да{4}», — сказал он.': ['«Да», —', 'сказал', 'он.'],
+      '{5}': [],
+    };
+    cases.forEach((input, words) {
+      test(input, () => expect(notedTexts(input), words));
+    });
+
+    test('a label keeps the sentence end and the ORP', () {
+      final t = notedTokens('Конец.{7} Начало');
+      expect(t.flagsOf(0) & TokenFlags.sentenceEnd, isNot(0));
+      final w = notedTokens('сказал{1},')[0];
+      expect(w.text, 'сказал,');
+      expect(w.text[w.orp], 'а');
+    });
+
+    test('offsets cover the word in the block, not a label after it', () {
+      final t = notedTokens('Слово{12} и{3},');
+      expect([t[0].charStart, t[0].charEnd], [0, 5]);
+      expect([t[1].charStart, t[1].charEnd], [8, 11]); // `и3,`
+    });
+  });
+
   test('token text matches block text and offsets', () {
     const text = '«Да», — сказал он. — Кто-то!';
     final t = tokensOf([text]);

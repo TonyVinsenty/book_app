@@ -34,7 +34,8 @@ final class Token {
   /// Index of the text block inside its section.
   final int blockIndex;
 
-  /// `text == block.text.substring(charStart, charEnd)`.
+  /// `text == block.text.substring(charStart, charEnd)` without the note
+  /// labels inside.
   final int charStart;
   final int charEnd;
   final String text;

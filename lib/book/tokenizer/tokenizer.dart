@@ -13,8 +13,8 @@ import 'package:book_app/book/tokenizer/token.dart';
 
 /// Not stored: words are rebuilt on every open and the saved position is
 /// found by its anchor (`BookTokens.resolve`). 2 — long hyphenated words
-/// split into parts.
-const tokenizerVersion = 2;
+/// split into parts; 3 — note labels are not words (ADR 0008).
+const tokenizerVersion = 3;
 
 /// Long chapters come out in parts (`splitLongSections`): the tokens'
 /// content is then not [content] itself.
@@ -27,7 +27,7 @@ BookTokens tokenize(BookContent book) {
     for (var b = 0; b < blocks.length; b++) {
       final block = blocks[b];
       if (block is! TextBlock) continue;
-      final added = _tokenizeBlock(block.text, s, b, out, sectionStart);
+      final added = _tokenizeBlock(block, s, b, out, sectionStart);
       if (added > 0) sectionStart = false;
     }
   }
@@ -68,13 +68,16 @@ int _orp(String text, int s, int e) {
 // ---------------------------------------------------------------------------
 
 /// Tokens of one block, appended to [out]; returns how many were added.
+/// Note labels are cut out first, so they neither make words nor break
+/// them (`сказал¹,` → `сказал,`); offsets then map back to the block.
 int _tokenizeBlock(
-  String text,
+  TextBlock textBlock,
   int section,
   int block,
   _Builder out,
   bool sectionStart,
 ) {
+  final (text, origin) = _withoutNotes(textBlock);
   final starts = <int>[];
   final ends = <int>[];
   final dashes = <bool>[];
@@ -178,10 +181,48 @@ int _tokenizeBlock(
     }
     previousIsNumber = _isNumber(text, start, end);
     if (previousIsNumber) flags |= TokenFlags.isNumber;
+    // Counted in the shown word, which has no labels either.
     final orp = _orp(text, start, end);
-    out.add(section, block, start, end, orp > 0xFFFF ? 0xFFFF : orp, flags);
+    out.add(
+      section,
+      block,
+      origin == null ? start : origin[start],
+      origin == null ? end : origin[end - 1] + 1,
+      orp > 0xFFFF ? 0xFFFF : orp,
+      flags,
+    );
   }
   return starts.length;
+}
+
+/// Text of [block] without its note labels, and the block offset of each of
+/// its chars; `(text, null)` when there are no labels.
+(String, Int32List?) _withoutNotes(TextBlock block) {
+  final text = block.text;
+  if (!block.spans.any((s) => s.kind == SpanKind.noteRef)) return (text, null);
+  final hidden = _noteChars(block);
+  final kept = StringBuffer();
+  final origin = _IntBuffer();
+  for (var i = 0; i < text.length; i++) {
+    if (hidden[i]) continue;
+    kept.writeCharCode(text.codeUnitAt(i));
+    origin.add(i);
+  }
+  return (kept.toString(), origin.toInt32());
+}
+
+/// `[i]` is true for the chars of [block] under a note label.
+List<bool> _noteChars(TextBlock block) {
+  final hidden = List.filled(block.text.length, false);
+  for (final s in block.spans) {
+    if (s.kind != SpanKind.noteRef) continue;
+    hidden.fillRange(
+      s.start.clamp(0, hidden.length),
+      s.end.clamp(0, hidden.length),
+      true,
+    );
+  }
+  return hidden;
 }
 
 /// Long hyphenated words are shown in parts, the hyphen stays with the

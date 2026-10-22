@@ -62,10 +62,29 @@ final class BookTokens {
     );
   }
 
-  String textOf(int i) => _blockText(i).substring(_starts[i], _ends[i]);
+  /// The word as shown: its chars in the block without note labels.
+  String textOf(int i) {
+    final block = _block(i);
+    final s = _starts[i];
+    final e = _ends[i];
+    final labels = [
+      for (final span in block.spans)
+        if (span.kind == SpanKind.noteRef && span.start < e && span.end > s)
+          span,
+    ];
+    if (labels.isEmpty) return block.text.substring(s, e);
+    final out = StringBuffer();
+    for (var j = s; j < e; j++) {
+      if (labels.any((l) => l.start <= j && j < l.end)) continue;
+      out.writeCharCode(block.text.codeUnitAt(j));
+    }
+    return out.toString();
+  }
 
-  String _blockText(int i) =>
-      (content.sections[_sections[i]].blocks[_blocks[i]] as TextBlock).text;
+  TextBlock _block(int i) =>
+      content.sections[_sections[i]].blocks[_blocks[i]] as TextBlock;
+
+  String _blockText(int i) => _block(i).text;
 
   /// Offset of the first letter of word [i], after glued dashes and quotes:
   /// the anchor stays on the word even if the gluing rules change.
