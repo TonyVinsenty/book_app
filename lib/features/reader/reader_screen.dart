@@ -19,6 +19,7 @@ import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
 import 'package:book_app/features/reader/image_viewer.dart';
+import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
@@ -510,7 +511,29 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _show(section, _layoutOf(section).pageOfWord(word));
   }
 
+  /// The note of the label at [position] (in the tap area), if any.
+  String? _noteAt(Offset position) =>
+      layout.noteAt(_page, position - _margin.topLeft);
+
+  /// A footnote over the page (ADR 0008 п. 8); the page stays as it was.
+  void _openNote(String id) => unawaited(
+    openNote(
+      context,
+      NoteBook(
+        notes: widget.opened.tokens.content.notes,
+        style: _style!,
+        side: _margin.left,
+        imagesDir: _imagesDir,
+      ),
+      id,
+    ),
+  );
+
   Future<void> _onLongPress(LongPressStartDetails details) async {
+    // A label is above long presses too (ADR 0008 п. 8).
+    if (_guide?.isPlaying != true && !_panelsShown) {
+      if (_noteAt(details.localPosition) case final id?) return _openNote(id);
+    }
     final word = layout.wordAt(_page, details.localPosition - _margin.topLeft);
     if (word == null) return;
     unawaited(HapticFeedback.selectionClick());
@@ -779,6 +802,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
       setState(() => _settingsShown = false);
     } else if (guide != null && guide.isPlaying) {
       _pauseGuide();
+    } else if (_noteAt(details.localPosition) case final id?
+        when !_panelsShown) {
+      // A label is above turning pages (ADR 0008 п. 8).
+      _openNote(id);
     } else if (guide != null && !_panelsShown) {
       // On a pause the sides turn pages, the middle goes on.
       if (x < width / 3) {
@@ -844,6 +871,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       settings,
       system: MediaQuery.textScalerOf(context),
       color: colors.text,
+      noteColor: colors.accent,
       hyphenation: ref.watch(hyphenationProvider),
     );
     final side = settings.margins.side;

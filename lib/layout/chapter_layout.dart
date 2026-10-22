@@ -226,6 +226,37 @@ final class ChapterLayout {
     return boxes;
   }
 
+  /// The note of the label on page [index] nearest to [point] within a
+  /// finger's reach (ADR 0008 п. 8); null if none, or the book lacks it.
+  String? noteAt(int index, Offset point) {
+    String? best;
+    var bestDistance = double.infinity;
+    for (final slice in pages[index].slices) {
+      final layout = _blocks[slice.blockIndex]!;
+      final block = layout.metrics;
+      final shift = Offset(block.dx, slice.top - block.tops[slice.firstLine]);
+      for (final label in layout.labelsOf(style, _tokens.content.notes)) {
+        if (!label.active ||
+            label.line < slice.firstLine ||
+            label.line >= slice.endLine) {
+          continue;
+        }
+        final rect = label.rect.shift(shift);
+        final zone = Rect.fromCenter(
+          center: rect.center,
+          width: math.max(rect.width, labelTouchSize),
+          height: math.max(rect.height, labelTouchSize),
+        );
+        final distance = (rect.center - point).distance;
+        if (zone.contains(point) && distance < bestDistance) {
+          best = label.noteId;
+          bestDistance = distance;
+        }
+      }
+    }
+    return best;
+  }
+
   /// Boxes of a word in its block painter's coordinates.
   Iterable<Rect> _boxesOf(_BlockLayout layout, int wordIndex) {
     final token = _tokens[wordIndex];
@@ -264,6 +295,11 @@ final class ChapterLayout {
         );
       painter.paint(canvas, shift);
       layout.paintHyphens(canvas, shift, slice.firstLine, slice.endLine);
+      for (final label in layout.labelsOf(style, _tokens.content.notes)) {
+        if (label.line >= slice.firstLine && label.line < slice.endLine) {
+          label.painter.paint(canvas, shift + label.rect.topLeft);
+        }
+      }
       canvas.restore();
     }
   }
@@ -479,6 +515,28 @@ const _separatorText = '* * *';
 /// ones (and letter spacing on them breaks justified lines).
 const _indent = '  ';
 
+/// A footnote label is this much of the text size, raised by [_labelRaise]
+/// of it (ADR 0008 п. 8): drawn by the app in the book font, as Lora and
+/// PT Serif have no superscript digits.
+const _labelScale = 0.62;
+const _labelRaise = 0.38;
+
+/// The side of a label's touch zone, in points.
+const labelTouchSize = 44.0;
+
+/// A footnote label in a block's text: `text[start, end)`.
+typedef _Label = ({int start, int end, String text, String noteId});
+
+/// A label drawn over its blank place: [rect] in the block painter's
+/// coordinates, on line [line].
+typedef _LabelMark = ({
+  TextPainter painter,
+  Rect rect,
+  int line,
+  String noteId,
+  bool active,
+});
+
 /// A block laid out at the page width by its painter.
 final class _BlockLayout {
   _BlockLayout(
@@ -492,6 +550,7 @@ final class _BlockLayout {
     double spaceAfter = 0,
     bool keepTogether = false,
     double keepWithNext = 0,
+    this.labels = const [],
   }) : metrics = _BlockMetrics(
          painter,
          hyphens: hyphens,
@@ -510,6 +569,7 @@ final class _BlockLayout {
   _BlockLayout._image(Size this.imageSize, double width, double space)
     : painter = null,
       hyphens = _SoftHyphens.none,
+      labels = const [],
       metrics = _BlockMetrics.box(
         imageSize.height,
         dx: (width - imageSize.width) / 2,
@@ -633,10 +693,23 @@ final class _BlockLayout {
       spaceAfter: spaceAfter,
       keepTogether: keepTogether,
       keepWithNext: keepWithNext,
+      labels: [
+        for (final s in block.spans)
+          if (s.kind == SpanKind.noteRef &&
+              s.start < s.end &&
+              s.end <= block.text.length)
+            (
+              start: s.start,
+              end: s.end,
+              text: block.text.substring(s.start, s.end),
+              noteId: s.noteId!,
+            ),
+      ],
     );
   }
 
-  /// The block text after [prefix], italic and bold where its spans say.
+  /// The block text after [prefix], italic and bold where its spans say;
+  /// footnote labels leave a blank place of their size ([labelsOf]).
   static TextSpan _span(
     TextBlock block,
     TextStyle style,
@@ -646,12 +719,11 @@ final class _BlockLayout {
     final text = hyphens.insertInto(block.text);
     final marks = [
       for (final s in block.spans)
-        if (s.kind != SpanKind.noteRef)
-          (
-            hyphens.toPainter(math.min(s.start, block.text.length)),
-            hyphens.toPainter(math.min(s.end, block.text.length)),
-            s.kind,
-          ),
+        (
+          hyphens.toPainter(math.min(s.start, block.text.length)),
+          hyphens.toPainter(math.min(s.end, block.text.length)),
+          s.kind,
+        ),
     ];
     if (marks.isEmpty) return TextSpan(text: '$prefix$text', style: style);
     final cuts = {
@@ -665,7 +737,7 @@ final class _BlockLayout {
         if (prefix.isNotEmpty) TextSpan(text: prefix),
         for (var i = 0; i + 1 < cuts.length; i++)
           if (cuts[i] < cuts[i + 1])
-            _segment(text, cuts[i], cuts[i + 1], marks),
+            _segment(text, cuts[i], cuts[i + 1], marks, style.fontSize!),
       ],
     );
   }
@@ -675,17 +747,21 @@ final class _BlockLayout {
     int start,
     int end,
     List<(int, int, SpanKind)> marks,
+    double fontSize,
   ) {
     bool marked(SpanKind kind) =>
         marks.any((m) => m.$3 == kind && m.$1 <= start && end <= m.$2);
     final italic = marked(SpanKind.emphasis);
     final bold = marked(SpanKind.strong);
+    final label = marked(SpanKind.noteRef);
     return TextSpan(
       text: text.substring(start, end),
-      style: italic || bold
+      style: italic || bold || label
           ? TextStyle(
               fontStyle: italic ? FontStyle.italic : null,
               fontWeight: bold ? FontWeight.w700 : null,
+              fontSize: label ? fontSize * _labelScale : null,
+              color: label ? const Color(0x00000000) : null,
             )
           : null,
     );
@@ -698,6 +774,64 @@ final class _BlockLayout {
 
   /// The size a picture is shown at; null for text.
   final Size? imageSize;
+
+  final List<_Label> labels;
+  List<_LabelMark>? _labelMarks;
+
+  /// The labels drawn in [style]'s colors, grey where [notes] lack the note.
+  List<_LabelMark> labelsOf(PageStyle style, Map<String, Note> notes) =>
+      _labelMarks ??= _placeLabels(style, notes);
+
+  List<_LabelMark> _placeLabels(PageStyle style, Map<String, Note> notes) {
+    final painter = this.painter;
+    if (painter == null || labels.isEmpty) return const [];
+    final root = painter.text! as TextSpan;
+    final size = root.style!.fontSize!;
+    final lines = painter.computeLineMetrics();
+    final marks = <_LabelMark>[];
+    for (final label in labels) {
+      final boxes = painter.getBoxesForSelection(
+        TextSelection(
+          baseOffset: metrics.prefix + hyphens.toPainter(label.start),
+          extentOffset: metrics.prefix + hyphens.toPainter(label.end),
+        ),
+      );
+      if (boxes.isEmpty) continue;
+      final box = boxes.first.toRect();
+      var line = 0;
+      while (line + 1 < lines.length &&
+          metrics.tops[line + 1] <= box.center.dy) {
+        line++;
+      }
+      if (line >= lines.length) continue;
+      final active = notes.containsKey(label.noteId);
+      final mark = TextPainter(
+        text: TextSpan(
+          text: label.text,
+          style: root.style!.copyWith(
+            fontSize: size * _labelScale,
+            color: active ? style.activeLabel : style.inactiveLabel,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: painter.textScaler,
+      )..layout();
+      final baseline = mark.computeDistanceToActualBaseline(
+        TextBaseline.alphabetic,
+      );
+      final raise = painter.textScaler.scale(size) * _labelRaise;
+      marks.add((
+        painter: mark,
+        rect:
+            Offset(box.left, lines[line].baseline - raise - baseline) &
+            mark.size,
+        line: line,
+        noteId: label.noteId,
+        active: active,
+      ));
+    }
+    return marks;
+  }
 
   /// Lines that end at a soft hyphen: line → its «-» and where it goes.
   Map<int, (TextPainter, Offset)> get _hyphenMarks => _marks ??= _findHyphens();
@@ -748,6 +882,9 @@ final class _BlockLayout {
     painter?.dispose();
     for (final (mark, _) in _marks?.values ?? const <(TextPainter, Offset)>[]) {
       mark.dispose();
+    }
+    for (final label in _labelMarks ?? const <_LabelMark>[]) {
+      label.painter.dispose();
     }
   }
 }

@@ -1258,8 +1258,7 @@ final class _Xhtml extends _Walker {
           _nextBlockNote = null;
           _startCapture(depth, id);
         }
-      case _
-          when attributes['class']?.toLowerCase().contains('note') ?? false:
+      case _ when attributes['class']?.toLowerCase().contains('note') ?? false:
         element.noteClass = true;
         _noteLikeLinks();
     }
@@ -1601,11 +1600,9 @@ TextBlock? _withoutMarks(TextBlock block, bool Function(Span mark) drop) {
       if (s.kind == SpanKind.noteRef && drop(s)) s,
   ];
   if (cuts.isEmpty) return block;
-  return _cut(
-    block,
-    [for (final s in cuts) (s.start, s.end)],
-    keep: (s) => !cuts.contains(s),
-  );
+  return _cut(block, [
+    for (final s in cuts) (s.start, s.end),
+  ], keep: (s) => !cuts.contains(s));
 }
 
 /// `1 (return)` of Gutenberg books once the link is dropped: `1 ()`.

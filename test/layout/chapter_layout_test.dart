@@ -521,6 +521,101 @@ void main() {
     });
   });
 
+  group('footnote labels (ADR 0008 п. 8)', () {
+    // Labels: «1» → n1, «[2]» → a note the book lacks.
+    const text = 'Он сказал1, и ушёл[2] домой.';
+    const labels = [
+      Span(9, 10, SpanKind.noteRef, noteId: 'n1'),
+      Span(18, 21, SpanKind.noteRef, noteId: 'lost'),
+    ];
+    BookTokens book(List<Block> blocks) => tokenize(
+      BookContent(
+        meta: const BookMeta(title: 'Сноски', sourceFormat: SourceFormat.fb2),
+        sections: [Section(blocks: blocks)],
+        notes: const {
+          'n1': Note(
+            label: '1',
+            blocks: [ParagraphBlock(text: 'Сноска.')],
+          ),
+        },
+      ),
+    );
+    const size = Size(300, 500);
+
+    test('a tap near a label finds its note; a lost note is not active', () {
+      final layout = build(
+        book(const [ParagraphBlock(text: text, spans: labels)]),
+        0,
+        size,
+        style(),
+      );
+      // «сказал,» holds its label: a box per run, the word first.
+      final said = layout.wordBoxes(0, 1).first;
+      final left = layout.wordBoxes(0, 3).single;
+      expect(layout.noteAt(0, said.topRight + const Offset(4, 0)), 'n1');
+      expect(
+        layout.noteAt(0, said.centerRight + const Offset(4, 14)),
+        'n1',
+        reason: 'a finger-wide zone',
+      );
+      expect(layout.noteAt(0, said.centerLeft), isNull);
+      expect(layout.noteAt(0, left.topRight + const Offset(8, 0)), isNull);
+      // The label takes no word: «сказал» is a word before it.
+      expect(layout.wordAt(0, said.center), 1);
+      layout.dispose();
+    });
+
+    test('labels are drawn over a smaller blank place', () {
+      final tokens = book(const [ParagraphBlock(text: text, spans: labels)]);
+      final plain = book(const [ParagraphBlock(text: text)]);
+      final layout = build(tokens, 0, size, style());
+      final without = build(plain, 0, size, style());
+      expect(
+        layout.wordBoxes(0, 2).single.left,
+        lessThan(without.wordBoxes(0, 2).single.left),
+      );
+      final canvas = _CountingCanvas();
+      layout.paintPage(canvas, 0);
+      expect(canvas.paragraphs, 3, reason: 'the text and two labels');
+      layout.dispose();
+      without.dispose();
+    });
+
+    test('pages with many labels split exactly', () {
+      final buffer = StringBuffer();
+      final spans = <Span>[];
+      for (var i = 0; i < 300; i++) {
+        buffer.write('слово');
+        if (i % 4 == 0) {
+          final label = '${i + 1}';
+          spans.add(
+            Span(
+              buffer.length,
+              buffer.length + label.length,
+              SpanKind.noteRef,
+              noteId: 'n1',
+            ),
+          );
+          buffer.write(label);
+        }
+        buffer.write(' ');
+      }
+      final tokens = book([
+        ParagraphBlock(text: buffer.toString(), spans: spans),
+      ]);
+      expect(tokens.length, 300);
+      for (final size in _sizes) {
+        for (final mix in mixes) {
+          final layout = build(tokens, 0, size, mix);
+          expectExactSplit(tokens, layout);
+          expectWordsTouchable(layout);
+          expectSameAsPaginator(tokens, layout);
+          layout.dispose();
+        }
+      }
+    });
+  });
+
   // Big real books live outside the repository (ADR 0006): set
   // BOOKAPP_HARD_BOOKS to their folder to check them too.
   final hardBooks = Platform.environment['BOOKAPP_HARD_BOOKS'];

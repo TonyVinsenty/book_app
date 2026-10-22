@@ -337,6 +337,15 @@
     "description": "Bottom of the reader page: the page label (readerPageOfBook) and the percent of the book read, to a tenth (owner, 2026-10-22)",
     "placeholders": {"page": {"type": "String"}, "percent": {"type": "double", "format": "decimalPatternDigits", "optionalParameters": {"decimalDigits": 1}}}
   },
+  "noteTitle": "Сноска {label}",
+  "@noteTitle": {
+    "description": "Title of a footnote panel or screen; label is the note's mark in the book (1, *)",
+    "placeholders": {"label": {"type": "String"}}
+  },
+  "noteTitleBare": "Сноска",
+  "@noteTitleBare": {
+    "description": "Title of a footnote panel or screen when the note has no mark of its own"
+  },
   "readerBookPages": "Страницы книги",
   "@readerBookPages": {
     "description": "Reader bottom panel: name of the slider over the pages of the whole book, for screen readers"

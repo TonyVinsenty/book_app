@@ -22,6 +22,7 @@ import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
 import 'package:book_app/features/reader/image_viewer.dart';
+import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
@@ -1510,6 +1511,58 @@ void main() {
 
     await tapAt(tester, 0.5);
     await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 12: a tap on a footnote label opens the note, not a '
+      'page turn or the panels; the page stays', (tester) async {
+    final base = sampleBook(sections: 2, paragraphs: 14);
+    final first = base.sections.first;
+    final book = BookContent(
+      meta: base.meta,
+      sections: [
+        Section(
+          title: first.title,
+          blocks: [
+            const ParagraphBlock(
+              text: 'Он отозвался1, и ушёл.',
+              spans: [Span(12, 13, SpanKind.noteRef, noteId: 'n1')],
+            ),
+            ...first.blocks,
+          ],
+        ),
+        ...base.sections.skip(1),
+      ],
+      notes: const {
+        'n1': Note(label: '1', blocks: [ParagraphBlock(text: 'Сноска.')]),
+      },
+    );
+    await pumpApp(tester, book: book);
+    await openBook(tester);
+    final state = reader(tester);
+    final tokens = state.widget.opened.tokens;
+    final said = [
+      for (var i = 0; i < tokens.length; i++)
+        if (tokens.textOf(i).startsWith('отозвался')) i,
+    ].single;
+    final page = state.page;
+    final box = state.layout.wordBoxes(state.layout.pageOfWord(said), said);
+    final origin = tester.getTopLeft(
+      find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.size == state.layout.pageSize,
+      ),
+    );
+    await tester.tapAt(origin + box.first.topRight + const Offset(4, 0));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(NoteSheet), findsOneWidget);
+    expect(find.text('Сноска.', findRichText: true), findsOneWidget);
+    expect(reader(tester).panelsShown, isFalse);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(NoteSheet), findsNothing);
+    expect(reader(tester).page, same(page));
+    expect(reader(tester).panelsShown, isFalse);
     await closeApp(tester);
   });
 

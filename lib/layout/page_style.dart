@@ -15,6 +15,7 @@ final class PageStyle {
     this.textScaler = TextScaler.noScaling,
     this.align = TextAlign.left,
     this.hyphenation,
+    this.noteColor,
   });
 
   final String fontFamily;
@@ -30,6 +31,14 @@ final class PageStyle {
 
   /// Breaks words of paragraphs at line ends; null — whole words only.
   final Hyphenation? hyphenation;
+
+  /// Footnote labels (ADR 0008 п. 8); [color] if null. Not a layout change.
+  final Color? noteColor;
+
+  Color get activeLabel => noteColor ?? color;
+
+  /// A label whose note the book does not have.
+  Color get inactiveLabel => color.withValues(alpha: 0.4);
 
   /// Height of one body line on the page.
   double get bodyLine => textScaler.scale(fontSize) * lineHeight;
@@ -79,7 +88,10 @@ final class PageStyle {
 
   @override
   bool operator ==(Object other) =>
-      other is PageStyle && sameLayoutAs(other) && other.color == color;
+      other is PageStyle &&
+      sameLayoutAs(other) &&
+      other.color == color &&
+      other.noteColor == noteColor;
 
   @override
   int get hashCode => Object.hash(
@@ -90,5 +102,6 @@ final class PageStyle {
     textScaler,
     align,
     hyphenation,
+    noteColor,
   );
 }

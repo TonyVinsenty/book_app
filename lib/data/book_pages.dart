@@ -16,6 +16,7 @@ PageStyle pageStyleOf(
   ReadingSettings settings, {
   required TextScaler system,
   required Color color,
+  Color? noteColor,
   Hyphenation? hyphenation,
 }) => PageStyle(
   fontFamily: settings.font.family,
@@ -27,6 +28,7 @@ PageStyle pageStyleOf(
     BookAlign.justify => TextAlign.justify,
   },
   hyphenation: settings.hyphenate ? hyphenation : null,
+  noteColor: noteColor,
 );
 
 /// The reader's space above the text and its footer under it.
