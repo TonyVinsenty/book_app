@@ -246,6 +246,22 @@ void main() {
       expect(marksOf(book.sections[0].blocks[0]), [('2', 'n2')]);
     });
 
+    test('italic inside a link to #id stays italic', () {
+      final book = parse(
+        '<section><p>См. <a l:href="#ch2">главу <emphasis>вторую</emphasis>'
+        '</a> дальше.</p></section>',
+      );
+      final block = book.sections[0].blocks[0] as TextBlock;
+      expect(block.text, 'См. главу вторую дальше.');
+      expect(
+        [
+          for (final s in block.spans)
+            (s.kind, block.text.substring(s.start, s.end)),
+        ],
+        [(SpanKind.emphasis, 'вторую')],
+      );
+    });
+
     test('a title with a trailing period joins with a space', () {
       final book = parse(
         '<section><title><p>Глава 1.</p><p>Начало</p></title><p>т</p>'

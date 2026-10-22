@@ -380,6 +380,8 @@ final class _Reader {
         _text = _Text(_Kind.paragraph, _style(), depth);
       case 'td' || 'th':
         _text?.gap();
+      case 'strong' || 'emphasis' when _link != null:
+        _link!.spans.add((_link!.text.length, _spanKind(name), true));
       case 'strong' || 'emphasis':
         _implicitText(depth - 1).openSpan(_spanKind(name));
       case 'a' when _link == null:
@@ -466,7 +468,15 @@ final class _Reader {
             (bracketed != null && inside.length <= 8))) {
       text.mark(inside, link.noteId);
     } else {
-      text.add(link.text.toString());
+      // The words as they are, italic and bold inside the link too.
+      final words = link.text.toString();
+      var at = 0;
+      for (final (offset, kind, open) in link.spans) {
+        if (offset > at) text.add(words.substring(at, offset));
+        at = offset;
+        open ? text.openSpan(kind) : text.closeSpan(kind);
+      }
+      if (at < words.length) text.add(words.substring(at));
     }
   }
 
@@ -510,6 +520,8 @@ final class _Reader {
     }
     if (!_inBody && !_inNotes) return;
     switch (name) {
+      case 'strong' || 'emphasis' when _link != null:
+        _link!.spans.add((_link!.text.length, _spanKind(name), false));
       case 'strong' || 'emphasis':
         _text?.closeSpan(_spanKind(name));
       case 'a' when _link?.depth == depth:
@@ -790,4 +802,7 @@ final class _Link {
   /// `type="note"`: a label whatever its text.
   final bool isNote;
   final text = StringBuffer();
+
+  /// Italic and bold opened (true) and closed inside: offset in [text].
+  final spans = <(int, SpanKind, bool)>[];
 }
