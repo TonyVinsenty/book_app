@@ -126,10 +126,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// there without [dispose]).
   late final AppLifecycleListener _lifecycle;
 
-  /// The word whose line goes where speed reading showed it, on the next
-  /// build (it knows the screen size then).
-  int? _shiftTo;
-
   late int _section;
   int _page = 0;
 
@@ -397,7 +393,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
     bool turned = false,
   }) {
     final shown = _layoutOf(section).pages[pageIndex];
-    _leaveSection(section);
     final guide = _guide;
     if (guide != null && !guide.isPlaying) guide.pageTurned(shown.firstWord);
     _readOn();
@@ -537,7 +532,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
     if (!mounted || last == null) return;
     if (last.mode == SpeedMode.guide) {
-      // On a pause on the page of the word, its line where it was shown.
+      // On a pause on the page of the word.
       _showWord(last.word, last.end, lit: false);
       return _startGuide(last.word);
     }
@@ -720,25 +715,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (lit) unawaited(_lit.forward(from: 0));
   }
 
-  /// The current chapter goes back to the normal split when the reader
-  /// moves to [section] (ADR 0003, addendum 1).
-  void _leaveSection(int section) {
-    final current = _layouts[_section];
-    if (section != _section && current != null) {
-      _layouts[_section] = current.unshifted();
-      _guide?.relayout();
-    }
-  }
-
-  /// Opens the page with [word], its line where speed reading showed it,
-  /// lights it with the rest of its phrase (up to [end]) and keeps the place
-  /// on it.
+  /// Opens the page with [word], lights it with the rest of its phrase (up
+  /// to [end]) and keeps the place on it.
   void _showWord(int word, int end, {bool lit = true}) {
     final section = widget.opened.tokens[word].sectionIndex;
-    _leaveSection(section);
+    final page = _layoutOf(section).pageOfWord(word);
     setState(() {
       _section = section;
-      _shiftTo = word;
+      _page = page;
       _word = word;
       _litWord = lit ? word : null;
       _litEnd = end;
@@ -754,19 +738,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
             widget.opened.tokens.positionOf(word),
           ),
     );
-  }
-
-  /// Shifts the chapter so that the line of [_shiftTo] is [centerY] down
-  /// the safe area, where the word was in speed reading.
-  void _applyShift(double centerY) {
-    final word = _shiftTo;
-    if (word == null) return;
-    _shiftTo = null;
-    final shifted = _layoutOf(_section)
-        .shifted(word: word, lineCenterY: centerY - _margin.top);
-    _layouts[_section] = shifted;
-    _page = shifted.pageOfWord(word);
-    _guide?.relayout();
   }
 
   /// As a tap on the page: from the panels all of them go, from the
@@ -881,14 +852,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
             final area = insets.deflateSize(constraints.biggest);
             final pageSize = readerPageOf(area, side);
             _relayoutIfNeeded(pageSize, style);
-            // Speed reading shows the word in the middle of a plain safe
-            // area: without the status bar, unlike the page's [insets].
-            final padding = MediaQuery.paddingOf(context);
-            final wordY =
-                padding.top +
-                (constraints.maxHeight - padding.vertical) / 2 -
-                insets.top;
-            _applyShift(wordY);
             final chapter = layout;
             final guide = _guide;
             final numbers = _pageNumbers(l10n);
@@ -1030,15 +993,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   /// The page across the book and the pages in it, for «стр. N / M»;
-  /// «≈» marks a number not known exactly yet (chapters still being split,
-  /// or a shifted page).
+  /// «≈» marks a number not known exactly yet (chapters still being split).
   ({String page, String total}) _pageNumbers(AppLocalizations l10n) {
     final pagination = _pagination!;
     final before = pagination.pagesBefore(_section);
     final total = pagination.pageCount;
     final page = before.value + _page + 1;
     return (
-      page: _number(l10n, page, exact: before.exact && !layout.isShifted),
+      page: _number(l10n, page, exact: before.exact),
       total: _number(l10n, max(total.value, page), exact: total.exact),
     );
   }

@@ -10,8 +10,7 @@ enum GuideChange { none, word, page }
 /// The guide (ADR 0004, addendum for stage 10 п. 6–8): a highlight goes
 /// word by word over the reader's page and turns it right after the last
 /// word. Pure Dart: pages come from [pageOf] (the reader asks its layouts,
-/// normal or shifted, laying out a section if needed), time from outside, as
-/// in [RsvpEngine].
+/// laying out a section if needed), time from outside, as in [RsvpEngine].
 final class GuideSession {
   GuideSession({
     required int wordCount,

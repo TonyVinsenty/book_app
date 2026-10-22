@@ -333,7 +333,7 @@
   },
   "readerApproxNumber": "≈ {number}",
   "@readerApproxNumber": {
-    "description": "A page number not known exactly yet: the book is still being split into pages, or pages go from a shifted page after speed reading",
+    "description": "A page number not known exactly yet: the book is still being split into pages",
     "placeholders": {"number": {"type": "int"}}
   },
   "readerPagesLeftInChapter": "{count, plural, =0{последняя страница главы} other{до конца главы {count} стр.}}",

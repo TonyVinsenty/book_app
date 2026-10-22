@@ -162,19 +162,6 @@ void main() {
         expectExactSplit(tokens, layout);
         expectWordsTouchable(layout);
         expectSameAsPaginator(tokens, layout);
-        // Shifted after speed reading, with the word mid-page.
-        final start = tokens.firstWordOfSection(s);
-        final end = tokens.firstWordOfSection(s + 1);
-        final step = ((end - start) ~/ 7).clamp(1, 1 << 30);
-        for (var word = start; word < end; word += step) {
-          final shifted = layout.shifted(
-            word: word,
-            lineCenterY: size.height / 2,
-          );
-          expectExactSplit(tokens, shifted);
-          final page = shifted.pages[shifted.pageOfWord(word)];
-          expect(word, inInclusiveRange(page.firstWord, page.endWord - 1));
-        }
         layout.dispose();
       }
     }
@@ -317,88 +304,6 @@ void main() {
     for (final layout in layouts) {
       layout.dispose();
     }
-  });
-
-  /// Pages as their slices' line ranges, to compare splits.
-  List<List<(int, int, int)>> linesOf(ChapterLayout layout) => [
-    for (final page in layout.pages)
-      [for (final s in page.slices) (s.blockIndex, s.firstLine, s.endLine)],
-  ];
-
-  test('a shifted split puts the word line at the height asked', () {
-    final content = sampleBook(sections: 2, paragraphs: 50);
-    final tokens = tokenize(content);
-    final st = style();
-    var shiftedCount = 0;
-    for (final size in _sizes) {
-      for (var s = 0; s < content.sections.length; s++) {
-        final layout = build(tokens, s, size, st);
-        final start = tokens.firstWordOfSection(s);
-        final end = tokens.firstWordOfSection(s + 1);
-        for (final target in [size.height / 2 + 8, 0.0, size.height]) {
-          for (var word = start; word < end; word += 13) {
-            final shifted = layout.shifted(word: word, lineCenterY: target);
-            if (shifted.isShifted) shiftedCount++;
-            expectExactSplit(tokens, shifted);
-            final blocks = content.sections[s].blocks;
-            for (final page in shifted.pages) {
-              expect(
-                blocks[page.slices.last.blockIndex],
-                isNot(isA<HeadingBlock>()),
-                reason: 'heading alone at the bottom',
-              );
-            }
-            final box = shifted.wordBoxes(shifted.pageOfWord(word), word).first;
-            final line = st.bodyLine;
-            final asked = target.clamp(line / 2, size.height - line / 2);
-            final off = box.center.dy - asked;
-            // Near the chapter start the line is as close as the chapter
-            // start and its heading allow: the normal split, or a shifted
-            // page right after the first one with the line higher.
-            final nearStart =
-                !shifted.isShifted ||
-                (off < 0 && shifted.pageOfWord(word) == 1);
-            // Pages start with whole lines; a separator with its spacing
-            // is a step of about two lines.
-            if (!nearStart) {
-              expect(
-                off.abs(),
-                lessThanOrEqualTo(line * 1.25),
-                reason: 'word $word',
-              );
-            }
-          }
-        }
-        layout.dispose();
-      }
-    }
-    expect(shiftedCount, greaterThan(100));
-  });
-
-  test('shifted pages are touchable and shifts do not stack', () {
-    final tokens = tokenize(sampleBook(sections: 2, paragraphs: 40));
-    final layout = build(tokens, 0, _sizes.first, style());
-    final normal = linesOf(layout);
-    final word = layout.pages[3].firstWord + 7;
-    final once = layout.shifted(word: word, lineCenterY: 268);
-    expect(once.isShifted, isTrue);
-    expectWordsTouchable(once);
-    final again = once.shifted(word: word + 40, lineCenterY: 100);
-    expect(
-      linesOf(again),
-      linesOf(once.unshifted().shifted(word: word + 40, lineCenterY: 100)),
-    );
-    final back = again.unshifted();
-    expect(back.isShifted, isFalse);
-    expect(linesOf(back), normal);
-    expect(back.unshifted(), same(back));
-    // A word of another chapter keeps the normal split.
-    final other = back.shifted(
-      word: tokens.firstWordOfSection(1),
-      lineCenterY: 268,
-    );
-    expect(other.isShifted, isFalse);
-    other.dispose();
   });
 
   test('test books split exactly', () {

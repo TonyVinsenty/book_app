@@ -761,14 +761,6 @@ void main() {
     final stopped = engine.wordIndex;
     expect(stopped, greaterThan(last));
 
-    // The word is painted in the middle of its painter's area.
-    final wordY = tester
-        .getCenter(
-          find.byWidgetPredicate(
-            (w) => w is CustomPaint && w.painter is RsvpWordPainter,
-          ),
-        )
-        .dy;
     await tester.tap(find.byTooltip('Выйти из скорочтения'));
     await tester.pumpAndSettle();
     expect(find.byType(RsvpScreen), findsNothing);
@@ -779,25 +771,11 @@ void main() {
     expect(reader(tester).litWord, stopped);
     expect(await tester.runAsync(savedWord), stopped);
 
-    // The word's line is where speed reading showed the word; the page
-    // number is approximate and pages go on from the shifted one.
+    // The normal page of the word, no shift (owner, 2026-10-22).
     final layout = reader(tester).layout;
-    expect(layout.isShifted, isTrue);
-    final box = layout.wordBoxes(layout.pageOfWord(stopped), stopped).first;
-    final pageTop = tester
-        .getTopLeft(
-          find.byWidgetPredicate(
-            (w) => w is CustomPaint && w.size == layout.pageSize,
-          ),
-        )
-        .dy;
-    // Pages start at whole lines: within a line of it.
-    expect(
-      (pageTop + box.center.dy - wordY).abs(),
-      lessThanOrEqualTo(layout.style.bodyLine),
-    );
-    expect(find.textContaining('≈ '), findsOneWidget);
-    // Forward and back from the shifted page: no words lost or repeated.
+    expect(page.firstWord, layout.pages[layout.pageOfWord(stopped)].firstWord);
+    expect(find.textContaining('≈ '), findsNothing);
+    // Forward and back from there: no words lost or repeated.
     final firstWords = [page.firstWord];
     for (var i = 0; i < 3; i++) {
       final before = reader(tester).page;
@@ -805,7 +783,7 @@ void main() {
       expect(reader(tester).page.firstWord, before.endWord);
       firstWords.add(before.endWord);
     }
-    // Back to the book start, past the shifted page.
+    // Back to the book start.
     for (var i = 0; reader(tester).page.firstWord > 0; i++) {
       final before = reader(tester).page;
       if (i < 3) expect(before.firstWord, firstWords[3 - i]);
@@ -1448,8 +1426,10 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('stage 10: a shifted page after words, then back and forward '
-      'on a pause: the first word of a page lasts longer', (tester) async {
+  testWidgets('stage 10: the page of the word after words, then back and '
+      'forward on a pause: the first word of a page lasts longer', (
+    tester,
+  ) async {
     tester.view.viewPadding = const FakeViewPadding(top: 144);
     tester.view.padding = FakeViewPadding.zero;
     addTearDown(tester.view.reset);
@@ -1473,10 +1453,9 @@ void main() {
     await tester.pumpAndSettle();
     await settle(tester);
 
-    // The guide starts on the stopped word, on its (shifted) page.
+    // The guide starts on the stopped word, on its page.
     final guide = reader(tester).guide!;
     expect(guide.word, stopped);
-    expect(reader(tester).layout.isShifted, isTrue);
     expect(reader(tester).page.firstWord, lessThanOrEqualTo(stopped));
     expect(reader(tester).page.endWord, greaterThan(stopped));
     expect(guide.page.first, reader(tester).page.firstWord);
@@ -1492,7 +1471,6 @@ void main() {
     for (var i = 0; i < 60 && reader(tester).page.firstWord <= stopped; i++) {
       await tapAt(tester, 0.95);
     }
-    expect(reader(tester).layout.isShifted, isFalse);
     final page = reader(tester).page;
     expect(page.firstWord, greaterThan(stopped));
     expect(guide.isPlaying, isFalse);
