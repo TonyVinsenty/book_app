@@ -92,6 +92,7 @@ Future<FolderListing> _listFolder(String ref) async {
           name: file['name'] as String?,
           size: (file['size'] as int?) ?? 0,
           modified: (file['modified'] as int?) ?? 0,
+          waiting: file['waiting'] == true,
         ),
     ],
     ref: answer?['ref'] as String?,

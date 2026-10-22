@@ -8,6 +8,7 @@ import 'package:book_app/data/folders/folder_scanner.dart';
 import 'package:book_app/data/import_queue.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,19 +20,33 @@ final class _FakeSource implements FolderSource {
 
   final Directory copies;
   final files = <String, int>{};
+
+  /// Keys still in iCloud.
+  final waiting = <String>{};
+
+  /// Keys whose copy comes back as a path with nothing there.
+  final uncopyable = <String>{};
   bool lost = false;
+  Error? failure;
 
   @override
   Future<List<FolderEntry>> list() async {
     if (lost) throw const FolderLostException();
+    if (failure case final failure?) throw failure;
     return [
       for (final MapEntry(:key, :value) in files.entries)
-        FolderEntry(key: key, size: value, modified: 0),
+        FolderEntry(
+          key: key,
+          size: value,
+          modified: 0,
+          waiting: waiting.contains(key),
+        ),
     ];
   }
 
   @override
   Future<String> copy(String key) async {
+    if (uncopyable.contains(key)) return '${copies.path}/missing';
     final file = File('${copies.path}/${key.split('/').last}')
       ..writeAsStringSync('x');
     return file.path;
@@ -193,5 +208,78 @@ void main() {
     expect(await first, isTrue);
     expect(scanner.busy, isFalse);
     expect(importer.calls, ['a.fb2']);
+  });
+
+  test('a scan asked for while one is on runs right after it', () async {
+    importer.hold = true;
+    source.files['a.fb2'] = 1;
+    final first = scanner.scanAll([(folder, source)]);
+    await Future<void>.delayed(Duration.zero);
+    final other = await folders.addPicked(ref: 'r2', name: 'Новая');
+    final otherSource = _FakeSource(temp)..files['b.fb2'] = 1;
+    expect(
+      await scanner.scanAll([(folder, source), (other, otherSource)]),
+      isFalse,
+    );
+    await importer.release();
+    await importer.release();
+    expect(await first, isTrue);
+    expect(importer.calls, ['a.fb2', 'b.fb2']);
+    expect((await folders.knownFiles(other.id)).keys, ['b.fb2']);
+  });
+
+  test('a file that could not be copied is tried again next time', () async {
+    source.files['a.fb2'] = 1;
+    source.uncopyable.add('a.fb2');
+    await scan();
+    expect(await folders.knownFiles(folder.id), isEmpty);
+    source.uncopyable.clear();
+    await scan();
+    expect((await folders.knownFiles(folder.id)).keys, ['a.fb2']);
+  });
+
+  test('a file still in iCloud is kept in mind, not taken', () async {
+    source.files['a.fb2'] = 1;
+    await scan();
+    source.waiting.add('a.fb2');
+    source.files['b.fb2'] = 1;
+    source.waiting.add('b.fb2');
+    await scan();
+    // a.fb2 isn't forgotten, so a deleted book doesn't come back.
+    expect((await folders.knownFiles(folder.id)).keys, ['a.fb2']);
+    expect(importer.calls, ['a.fb2']);
+  });
+
+  test('a folder that fails does not stop the others', () async {
+    final errors = <FlutterErrorDetails>[];
+    final report = FlutterError.onError;
+    FlutterError.onError = errors.add;
+    addTearDown(() => FlutterError.onError = report);
+    final broken = await folders.addPicked(ref: 'r2', name: 'Битая');
+    final brokenSource = _FakeSource(temp)..failure = StateError('odd');
+    source.files['a.fb2'] = 1;
+    expect(
+      await scanner.scanAll([(broken, brokenSource), (folder, source)]),
+      isTrue,
+    );
+    expect(importer.calls, ['a.fb2']);
+    expect(errors.single.exception, isA<StateError>());
+  });
+
+  test('a folder disconnected midway: the scan ends quietly', () async {
+    final errors = <FlutterErrorDetails>[];
+    final report = FlutterError.onError;
+    FlutterError.onError = errors.add;
+    addTearDown(() => FlutterError.onError = report);
+    importer.hold = true;
+    source.files.addAll({'a.fb2': 1, 'b.fb2': 1});
+    final scan = scanner.scanAll([(folder, source)]);
+    await Future<void>.delayed(Duration.zero);
+    await folders.remove(folder.id);
+    await importer.release();
+    await importer.release();
+    expect(await scan, isTrue);
+    expect(scanner.busy, isFalse);
+    expect(await folders.folders(), isEmpty);
   });
 }

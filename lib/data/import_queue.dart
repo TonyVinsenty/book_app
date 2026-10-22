@@ -33,8 +33,9 @@ final class ImportQueueState {
 
 /// One queue for every way books come in: the picker, incoming files and
 /// folders. Files are imported strictly one at a time (memory); ones
-/// added while it works go to the tail. The queue owns the files given to
-/// it and deletes each one when done.
+/// added while it works go to the tail, except that files the owner brings
+/// go ahead of folder books. The queue owns the files given to it and
+/// deletes each one when done.
 class ImportQueue extends Notifier<ImportQueueState> {
   final _jobs = Queue<_Job>();
   var _results = <ImportResult>[];
@@ -59,7 +60,15 @@ class ImportQueue extends Notifier<ImportQueueState> {
 
   Future<List<ImportResult>> _add(List<_Job> jobs) async {
     if (jobs.isEmpty) return const [];
-    _jobs.addAll(jobs);
+    if (jobs.first.touch) {
+      final quiet = [..._jobs.where((job) => !job.touch)];
+      _jobs
+        ..removeWhere((job) => !job.touch)
+        ..addAll(jobs)
+        ..addAll(quiet);
+    } else {
+      _jobs.addAll(jobs);
+    }
     if (state.busy) {
       state = ImportQueueState(
         total: state.total + jobs.length,

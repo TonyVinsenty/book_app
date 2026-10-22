@@ -283,10 +283,20 @@ class _PickedFolder extends ConsumerWidget {
 
   /// The access is back with a new handle; the seen files are kept.
   Future<void> _reconnect(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final chosen = await _pick(context, ref);
     if (chosen == null) return;
+    final repo = ref.read(folderRepositoryProvider);
+    if ((await repo.folders()).any(
+      (f) => f.id != folder.id && f.ref == chosen.ref,
+    )) {
+      // Another folder row: sharing the handle, one disconnect would cut
+      // the other off.
+      if (context.mounted) showNotice(context, l10n.foldersAlready);
+      return;
+    }
     final old = folder.ref;
-    await ref.read(folderRepositoryProvider).setRef(folder.id, chosen.ref);
+    await repo.setRef(folder.id, chosen.ref);
     if (old != null && old != chosen.ref) {
       await ref.read(releaseFolderProvider)(old);
     }

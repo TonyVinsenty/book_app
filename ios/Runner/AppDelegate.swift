@@ -333,7 +333,7 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
   // as in Dart); hidden files and folders are skipped. The key is the path
   // inside the folder, which is what copy takes. A stale bookmark comes
   // back renewed as "ref". A file still in iCloud starts downloading and
-  // is left for the next scan.
+  // comes as "waiting": Dart keeps it in mind and takes it next scan.
   private static func listTree(_ ref: String) -> [String: Any]? {
     guard let resolved = resolve(ref) else { return nil }
     let folder = resolved.url
@@ -358,8 +358,10 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
         if name.hasSuffix(".icloud") {
           let real = String(name.dropFirst().dropLast(".icloud".count))
           if isBookName(real) {
-            let dir = folder.appendingPathComponent((key as NSString).deletingLastPathComponent)
-            try? fm.startDownloadingUbiquitousItem(at: dir.appendingPathComponent(real))
+            let realKey = ((key as NSString).deletingLastPathComponent as NSString)
+              .appendingPathComponent(real)
+            try? fm.startDownloadingUbiquitousItem(at: folder.appendingPathComponent(realKey))
+            files.append(["key": realKey, "name": real, "waiting": true])
           }
         }
         continue
@@ -370,6 +372,7 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
         .ubiquitousItemDownloadingStatus
       if let status = status, status != .current {
         try? fm.startDownloadingUbiquitousItem(at: file)
+        files.append(["key": key, "name": name, "waiting": true])
         continue
       }
       let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0

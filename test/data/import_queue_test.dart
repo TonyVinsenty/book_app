@@ -153,4 +153,21 @@ void main() {
     expect(results.single.fileName, 'gone.fb2');
     expect(await queue().add([file('a.txt')]), hasLength(1));
   });
+
+  test('files the owner brings go ahead of folder books', () async {
+    importer.hold = true;
+    final folder = [
+      for (final name in ['f1', 'f2', 'f3'])
+        queue().addLater(name, () async => file(name), touch: false),
+    ];
+    await Future<void>.delayed(Duration.zero);
+    final mine = queue().add([file('m1'), file('m2')]);
+    for (var i = 0; i < 5; i++) {
+      await importer.release();
+    }
+    await mine;
+    await Future.wait(folder);
+    // f1 was already on when the owner's files came.
+    expect(importer.calls, ['f1', 'm1', 'm2', 'f2', 'f3']);
+  });
 }

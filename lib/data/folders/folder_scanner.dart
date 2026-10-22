@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:book_app/book/import/book_importer.dart'
     show ImportAdded, ImportDuplicate, fileNameOf;
 import 'package:book_app/data/db/app_database.dart';
@@ -6,6 +8,7 @@ import 'package:book_app/data/folders/folder_scan.dart';
 import 'package:book_app/data/import_queue.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/platform/files_channel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Takes new books from folders into the library (ADR 0007): quietly — no
@@ -16,17 +19,35 @@ final class FolderScanner {
   final FolderRepository _folders;
   final ImportQueue _queue;
   var _busy = false;
+  Iterable<(FolderRow, FolderSource)>? _next;
 
   bool get busy => _busy;
 
-  /// Scans [folders] one after another; false, doing nothing, while a scan
-  /// is still on.
+  /// Scans [folders] one after another. While a scan is on, returns false
+  /// and keeps [folders] to scan right after it (the latest call wins), so
+  /// a folder connected meanwhile isn't missed.
   Future<bool> scanAll(Iterable<(FolderRow, FolderSource)> folders) async {
-    if (_busy) return false;
+    if (_busy) {
+      _next = folders;
+      return false;
+    }
     _busy = true;
     try {
-      for (final (folder, source) in folders) {
-        await _scan(folder, source);
+      Iterable<(FolderRow, FolderSource)>? batch = folders;
+      while (batch != null) {
+        _next = null;
+        for (final (folder, source) in batch) {
+          try {
+            await _scan(folder, source);
+          } on Object catch (error, stack) {
+            // A folder disconnected midway, an odd answer from the
+            // platform: the other folders still go.
+            FlutterError.reportError(
+              FlutterErrorDetails(exception: error, stack: stack),
+            );
+          }
+        }
+        batch = _next;
       }
       return true;
     } finally {
@@ -49,25 +70,31 @@ final class FolderScanner {
     }
     // Each file is remembered once it has a result, whatever it is: an app
     // closed midway takes the rest next time. Added books and duplicates
-    // go to the folder's collection first, so that is redone too.
+    // go to the folder's collection first, so that is redone too. A file
+    // that couldn't be copied (access gone for a moment) isn't remembered:
+    // it is tried again next time.
     await Future.wait([
       for (final entry in plan.toImport)
-        _queue
-            .addLater(
-              entry.name ?? fileNameOf(entry.key),
-              () => source.copy(entry.key),
-              touch: false,
-            )
-            .then((results) async {
-              await _folders.collect(folder.id, [
-                for (final result in results)
-                  if (result
-                      case ImportAdded(:final book) ||
-                          ImportDuplicate(:final book))
-                    book.id,
-              ]);
-              await _folders.remember(folder.id, entry);
-            }),
+        () async {
+          var copied = false;
+          final results = await _queue.addLater(
+            entry.name ?? fileNameOf(entry.key),
+            () async {
+              final path = await source.copy(entry.key);
+              copied = File(path).existsSync();
+              return path;
+            },
+            touch: false,
+          );
+          if (!copied) return;
+          await _folders.collect(folder.id, [
+            for (final result in results)
+              if (result
+                  case ImportAdded(:final book) || ImportDuplicate(:final book))
+                book.id,
+          ]);
+          await _folders.remember(folder.id, entry);
+        }(),
     ]);
     await _folders.markScanned(folder.id, tooBig: plan.tooBig);
   }
@@ -80,7 +107,8 @@ final folderScannerProvider = Provider<FolderScanner>(
   ),
 );
 
-/// Scans all folders of the library; false while a scan is on.
+/// Scans all folders of the library; false while a scan is on (it is then
+/// done again right after).
 typedef ScanFolders = Future<bool> Function();
 
 /// The own folder always; picked folders where the platform can list them
@@ -89,7 +117,6 @@ typedef ScanFolders = Future<bool> Function();
 final scanFoldersProvider = Provider<ScanFolders>(
   (ref) => () async {
     final scanner = ref.read(folderScannerProvider);
-    if (scanner.busy) return false;
     final repo = ref.read(folderRepositoryProvider);
     final own = ref.read(ownFolderProvider);
     if (own != null) await repo.ensureOwn();

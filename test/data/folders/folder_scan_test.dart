@@ -56,6 +56,19 @@ void main() {
       expect(plan.forgotten, ['b', 'c']);
     });
 
+    test('files still in iCloud are neither taken nor forgotten', () {
+      const waiting = FolderEntry(
+        key: 'b',
+        size: 0,
+        modified: 0,
+        waiting: true,
+      );
+      const fresh = FolderEntry(key: 'c', size: 0, modified: 0, waiting: true);
+      final plan = planScan([_e('a'), waiting, fresh], _known([_e('b')]));
+      expect(_keys(plan.toImport), ['a']);
+      expect(plan.forgotten, isEmpty);
+    });
+
     test('too large files are remembered, not taken', () {
       final plan = planScan(
         [_e('big', size: 101), _e('small', size: 100)],

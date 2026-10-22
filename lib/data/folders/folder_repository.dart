@@ -8,6 +8,7 @@ final class FolderEntry {
     required this.size,
     required this.modified,
     this.name,
+    this.waiting = false,
   });
 
   final String key;
@@ -18,6 +19,10 @@ final class FolderEntry {
 
   /// Milliseconds; 0 — unknown.
   final int modified;
+
+  /// Still in iCloud, not downloaded: the file is there, but is taken only
+  /// once it is.
+  final bool waiting;
 }
 
 /// The own folder can't be disconnected.

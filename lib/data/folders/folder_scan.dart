@@ -37,7 +37,8 @@ final class ScanPlan {
 
 /// Compares a folder listing with the files seen before. A file is new or
 /// changed when it is not known or its size or time differ; an unknown
-/// time (0) compares by size only.
+/// time (0) compares by size only. A [FolderEntry.waiting] file is
+/// neither taken nor forgotten.
 ScanPlan planScan(
   List<FolderEntry> entries,
   Map<String, FolderFileRow> known, {
@@ -49,6 +50,7 @@ ScanPlan planScan(
   final toImport = <FolderEntry>[];
   final tooLarge = <FolderEntry>[];
   for (final e in sorted.take(maxFiles)) {
+    if (e.waiting) continue;
     final seen = known[e.key];
     final changed =
         seen == null ||
@@ -169,10 +171,20 @@ final class LocalFolderSource implements FolderSource {
             continue;
           }
           if (depth < maxFolderDepth) {
-            await walk(entity, '$prefix$name/', depth + 1);
+            try {
+              await walk(entity, '$prefix$name/', depth + 1);
+            } on FileSystemException {
+              // An unreadable subfolder: the rest of the folder still goes.
+            }
           }
         } else if (entity is File && isBookFileName(name)) {
-          final stat = entity.statSync();
+          final FileStat stat;
+          try {
+            stat = entity.statSync();
+          } on FileSystemException {
+            continue; // Gone while the folder was walked.
+          }
+          if (stat.type == FileSystemEntityType.notFound) continue;
           entries.add(
             FolderEntry(
               key: '$prefix$name',
