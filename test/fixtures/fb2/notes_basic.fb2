@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+<description><title-info><genre>prose_classic</genre><author><first-name>Анна</first-name><last-name>Тестова</last-name></author><book-title>Книга со сносками</book-title><lang>ru</lang></title-info></description>
+<body>
+  <title><p>Книга со сносками</p></title>
+  <section>
+    <title><p>Глава 1</p></title>
+    <p>Первая сноска стоит после слова<a l:href="#n1" type="note">[1]</a> и
+       идёт дальше. Вторая — без скобок<a l:href="#n2" type="note">2</a>, с
+       запятой сразу после метки.</p>
+    <p>Звёздочка<a l:href="#n3" type="note">*</a> и пустая
+       метка<a l:href="#n4" type="note"></a> тоже сноски.</p>
+    <p>Комментарий<a l:href="#c1" type="note">{1}</a> лежит в другом теле.
+       Метка без цели<a l:href="#nowhere" type="note">[9]</a> и ссылка без
+       type<a l:href="#n1">[1]</a> на ту же сноску.</p>
+    <p>Ссылка наружу <a l:href="https://example.com/">не сноска</a> и
+       ссылка без адреса<a type="note">[?]</a>.</p>
+  </section>
+  <section>
+    <title><p>Глава 2</p></title>
+    <p>Сноска со вложенной<a l:href="#n5" type="note">[5]</a>.</p>
+  </section>
+</body>
+<body name="notes">
+  <title><p>Примечания</p></title>
+  <section id="n1"><title><p>1</p></title><p>Первая сноска.</p></section>
+  <section id="n2"><title><p>2</p></title>
+    <p>Вторая сноска из двух абзацев.</p><p>Второй абзац второй сноски.</p>
+  </section>
+  <section id="n3"><p>Сноска без заголовка.</p></section>
+  <section id="n4"><title><p>Пустая метка</p></title><p>Сноска для пустой метки.</p></section>
+  <section id="n5"><title><p>5</p></title>
+    <p>Сноска, которая ссылается на другую<a l:href="#n6" type="note">[6]</a>.</p>
+  </section>
+  <section id="n6"><title><p>6</p></title>
+    <p>Вложенная сноска<a l:href="#n5" type="note">[5]</a> (и обратно на пятую).</p>
+  </section>
+  <section id="n7"><title><p>7</p></title><p>Сноска, на которую никто не ссылается.</p></section>
+</body>
+<body name="comments">
+  <section id="c1"><title><p>1</p></title><p>Комментарий читателя.</p></section>
+</body>
+
+</FictionBook>

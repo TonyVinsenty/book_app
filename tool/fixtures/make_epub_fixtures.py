@@ -6,6 +6,8 @@ The texts are written for the tests, no copyright."""
 import pathlib
 import zipfile
 
+import fixture_images as img
+
 OUT = pathlib.Path('test/fixtures/epub')
 
 CONTAINER = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -412,6 +414,207 @@ def calibre_split():
     ] + [(f, xhtml(b)) for f, b in zip(files, bodies)])
 
 
+# --- Stage 12: images and footnotes (no snapshots until 12.5) ---
+
+SVG_NS = ('xmlns="http://www.w3.org/2000/svg" '
+          'xmlns:xlink="http://www.w3.org/1999/xlink"')
+
+
+def simple_opf(title, manifest, spine, version='3.0', extra=''):
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="{version}" unique-identifier="uid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="uid">urn:uuid:00000000-0000-0000-0000-000000000012</dc:identifier>
+    <dc:title>{title}</dc:title><dc:language>ru</dc:language>{extra}
+  </metadata>
+  <manifest>
+{manifest}
+  </manifest>
+  <spine>{spine}</spine>
+</package>'''
+
+
+def item(id_, href, mime='application/xhtml+xml', props=''):
+    p = f' properties="{props}"' if props else ''
+    return f'    <item id="{id_}" href="{href}" media-type="{mime}"{p}/>'
+
+
+def epub_images():
+    """Pictures in every shape: a cover page (svg wrapper), a page with
+    only a picture, <img> inside a paragraph (text before and after), a
+    lone <img>, an svg wrapper in a chapter, a pure svg drawing, a broken
+    and a missing picture, huge sizes, the same picture twice, and a
+    picture-only page at the very end of the book."""
+    manifest = '\n'.join([
+        item('nav', 'nav.xhtml', props='nav'),
+        item('cover', 'cover.xhtml'),
+        item('cover-img', 'img/cover.jpg', 'image/jpeg', 'cover-image'),
+        item('plate', 'plate.xhtml'),
+        item('ch1', 'ch1.xhtml'),
+        item('ch2', 'ch2.xhtml'),
+        item('endpage', 'endpage.xhtml'),
+        item('i1', 'img/p1.png', 'image/png'),
+        item('i2', 'img/p2.gif', 'image/gif'),
+        item('i3', 'img/p3.jpg', 'image/jpeg'),
+        item('ibroken', 'img/broken.png', 'image/png'),
+        item('ihuge', 'img/huge.png', 'image/png'),
+        item('ihugej', 'img/huge.jpg', 'image/jpeg'),
+        item('ispacer', 'img/spacer.png', 'image/png'),
+    ])
+    spine = ''.join(f'<itemref idref="{i}"/>'
+                    for i in ['cover', 'plate', 'ch1', 'ch2', 'endpage'])
+    nav = xhtml('''<nav epub:type="toc"><ol>
+  <li><a href="ch1.xhtml">Глава 1</a></li>
+  <li><a href="ch2.xhtml">Глава 2</a></li></ol></nav>''')
+    cover = xhtml(f'''<div class="cover"><svg {SVG_NS} version="1.1"
+  viewBox="0 0 120 160" preserveAspectRatio="xMidYMid meet">
+  <image width="120" height="160" xlink:href="img/cover.jpg"/></svg></div>''')
+    plate = xhtml('<div><img src="img/p1.png" alt="Фронтиспис"/></div>')
+    ch1 = xhtml('''<h1>Глава 1</h1>
+<p>Текст до картинки <img src="img/p2.gif" alt="значок"/> и после неё в том же
+   абзаце, чтобы абзац пришлось разрезать на две части.</p>
+<p><img src="img/p3.jpg" alt="Одинокая"/></p>
+<p>Абзац между картинками.</p>
+<p>Картинка в начале абзаца: <img src="img/p1.png"/></p>
+<p><img src="img/p1.png"/> и в начале, повторная.</p>
+<div class="fig"><img src="img/p3.jpg" alt=""/><p class="cap">Подпись под рисунком.</p></div>
+<p>Спейсер <img src="img/spacer.png" alt=""/> внутри слова не картинка-страница.</p>''',
+                title='Глава 1')
+    ch2 = xhtml(f'''<h1>Глава 2</h1>
+<p>Обёртка svg в середине главы:</p>
+<div><svg {SVG_NS} viewBox="0 0 200 120"><image width="200" height="120"
+  xlink:href="img/p1.png"/></svg></div>
+<p>Чистый svg-рисунок (его показать нельзя, пропускается):</p>
+<svg {SVG_NS} viewBox="0 0 100 100" width="100" height="100">
+  <rect x="10" y="10" width="80" height="80" fill="#c33"/>
+  <circle cx="50" cy="50" r="30" fill="#fff"/><text x="30" y="55">SVG</text></svg>
+<p>Битая и пропавшая картинки:</p>
+<p><img src="img/broken.png" alt="битая"/></p>
+<p><img src="img/nothere.png" alt="нет файла"/></p>
+<p>Огромные размеры:</p>
+<p><img src="img/huge.png" alt="20000 на 20000"/></p>
+<p><img src="img/huge.jpg" alt="12000 на 9000"/></p>
+<p>Внешняя картинка: <img src="https://example.com/x.png" alt="внешняя"/> и
+   картинка без src: <img alt="пусто"/> и data-ссылка:
+   <img src="data:image/png;base64,AAAA" alt="data"/>.</p>
+<p>Конец главы 2.</p>''', title='Глава 2')
+    endpage = xhtml('<p><img src="img/p3.jpg" alt="Послесловие-картинка"/></p>')
+    write('epub_images.epub', [
+        ('META-INF/container.xml', CONTAINER.format(path='OEBPS/content.opf')),
+        ('OEBPS/content.opf', simple_opf('Книга с картинками', manifest, spine)),
+        ('OEBPS/nav.xhtml', nav),
+        ('OEBPS/cover.xhtml', cover),
+        ('OEBPS/plate.xhtml', plate),
+        ('OEBPS/ch1.xhtml', ch1),
+        ('OEBPS/ch2.xhtml', ch2),
+        ('OEBPS/endpage.xhtml', endpage),
+        ('OEBPS/img/cover.jpg', img.jpeg(120, 160)),
+        ('OEBPS/img/p1.png', img.png(200, 120, 1)),
+        ('OEBPS/img/p2.gif', img.gif(40, 30)),
+        ('OEBPS/img/p3.jpg', img.jpeg(160, 100)),
+        ('OEBPS/img/broken.png', b'\x89PNG\r\n\x1a\n' + bytes(range(40))),
+        ('OEBPS/img/huge.png', img.png_header_only(20000, 20000)),
+        ('OEBPS/img/huge.jpg', img.jpeg_header_only(12000, 9000)),
+        ('OEBPS/img/spacer.png', img.png(1, 1)),
+    ])
+
+
+def epub_images_only():
+    """A book made almost only of pictures (a comic or a photo album):
+    every spine file has a picture and one has a short caption; one chapter
+    must not be created for a file without words."""
+    files = ['cover', 'a1', 'a2', 'a3']
+    manifest = '\n'.join(
+        [item(f, f'{f}.xhtml') for f in files]
+        + [item('p1', 'p1.png', 'image/png'), item('p2', 'p2.jpg', 'image/jpeg')])
+    spine = ''.join(f'<itemref idref="{f}"/>' for f in files)
+    write('epub_images_only.epub', [
+        ('META-INF/container.xml', CONTAINER.format(path='content.opf')),
+        ('content.opf', simple_opf('Только картинки', manifest, spine,
+                                   version='2.0')),
+        ('cover.xhtml', xhtml('<img src="p2.jpg" alt=""/>')),
+        ('a1.xhtml', xhtml('<p><img src="p1.png"/></p>')),
+        ('a2.xhtml', xhtml('<p><img src="p2.jpg"/></p><p>Подпись.</p>')),
+        ('a3.xhtml', xhtml('<p><img src="p1.png"/></p>')),
+        ('p1.png', img.png(160, 100, 2)),
+        ('p2.jpg', img.jpeg(120, 160)),
+    ])
+
+
+def epub_notes_aside():
+    """Notes in the chapter itself: <aside epub:type=footnote|endnote>,
+    doc-noteref role, a back-link, a nested note, a link to nowhere."""
+    manifest = '\n'.join([item('ch1', 'ch1.xhtml'), item('ch2', 'ch2.xhtml')])
+    ch1 = xhtml('''<h1>Сноски в главе</h1>
+<p>Первая сноска<a epub:type="noteref" href="#fn1" id="r1">1</a> рядом со
+   словом, вторая<a role="doc-noteref" href="#fn2" id="r2"><sup>2</sup></a>,
+   третья через звёздочку<a epub:type="noteref" href="#fn3" id="r3">*</a>.</p>
+<p>Метка без цели<a epub:type="noteref" href="#nope">[7]</a> и метка на
+   другой файл без файла<a epub:type="noteref" href="gone.xhtml#x">8</a>.</p>
+<aside epub:type="footnote" id="fn1"><p>Текст первой сноски.
+  <a href="#r1">↩</a></p></aside>
+<aside epub:type="footnote" id="fn2"><p>Вторая сноска из двух абзацев.</p>
+  <p>Второй абзац, и вложенная сноска<a epub:type="noteref" href="#fn4">4</a>.
+  <a href="#r2" class="backlink">↩︎</a></p></aside>
+<aside epub:type="endnote" id="fn3"><p>3) Третья, в стиле endnote.</p></aside>
+<aside epub:type="footnote" id="fn4"><p>Вложенная, она ссылается обратно на
+  вторую<a epub:type="noteref" href="#fn2">2</a>.</p></aside>
+<p>Текст после сносок продолжается.</p>''', title='Глава 1')
+    ch2 = xhtml('''<h1>Вторая глава</h1>
+<p>Сноска в другой главе, но с целью в первой<a epub:type="noteref"
+   href="ch1.xhtml#fn1">1</a>.</p>
+<p>Конец.</p>''', title='Глава 2')
+    write('epub_notes_aside.epub', [
+        ('META-INF/container.xml', CONTAINER.format(path='content.opf')),
+        ('content.opf', simple_opf('Сноски aside', manifest,
+                                   '<itemref idref="ch1"/><itemref idref="ch2"/>')),
+        ('ch1.xhtml', ch1),
+        ('ch2.xhtml', ch2),
+    ])
+
+
+def epub_notes_files():
+    """Notes in separate files, the Gutenberg/Calibre way: one notes file
+    in the spine, one only in the manifest; targets are <p>, <li>, <dd>,
+    <div>; back-links as a symbol and as '1)'; a nested note; a link to a
+    file that is not there."""
+    manifest = '\n'.join([
+        item('ch1', 'text/ch1.xhtml'),
+        item('notes', 'text/notes.xhtml'),
+        item('hidden', 'text/hidden_notes.xhtml'),
+    ])
+    spine = ('<itemref idref="ch1"/><itemref idref="notes"/>')
+    ch1 = xhtml('''<h1>Сноски в файлах</h1>
+<p id="t1">Сноска в файле из spine<a href="notes.xhtml#n1" id="b1"><sup>1</sup></a>
+   и вторая<a href="notes.xhtml#n2" id="b2">[2]</a>.</p>
+<p>Сноска в файле вне spine<a href="hidden_notes.xhtml#h1">3</a>, в
+   стиле dd<a href="hidden_notes.xhtml#h2">4</a>, в div<a
+   href="hidden_notes.xhtml#h3">5</a> и в li<a href="hidden_notes.xhtml#h4">6</a>.</p>
+<p>Вложенная цепочка<a href="notes.xhtml#n3">7</a> и цель без элемента<a
+   href="notes.xhtml#missing">8</a> и файл не найден<a
+   href="text/zzz.xhtml#a">9</a>.</p>
+<p>Обычная ссылка <a href="notes.xhtml">на файл</a> и на
+   <a href="https://example.com/">сайт</a> — не сноски.</p>''', title='Глава')
+    notes = xhtml('''<h2>Примечания</h2>
+<p id="n1"><a href="ch1.xhtml#b1">1)</a> Первое примечание в spine.</p>
+<p id="n2">Второе примечание. <a href="ch1.xhtml#b2">↩</a></p>
+<p id="n3"><a href="ch1.xhtml#t1">[7]</a> Примечание со ссылкой на
+   другое<a href="hidden_notes.xhtml#h1">3</a>.</p>''', title='Примечания')
+    hidden = xhtml('''<h2>Скрытые примечания</h2>
+<p id="h1">Скрытое примечание, один абзац. <a href="ch1.xhtml">↑</a></p>
+<dl><dt>4</dt><dd id="h2">Определение-примечание.</dd></dl>
+<div id="h3"><p>Примечание в div, абзац первый.</p><p>Абзац второй.</p></div>
+<ol><li id="h4">Примечание в li. <a href="ch1.xhtml">↩︎</a></li></ol>''',
+                   title='Скрытые')
+    write('epub_notes_files.epub', [
+        ('META-INF/container.xml', CONTAINER.format(path='content.opf')),
+        ('content.opf', simple_opf('Сноски в файлах', manifest, spine)),
+        ('text/ch1.xhtml', ch1),
+        ('text/notes.xhtml', notes),
+        ('text/hidden_notes.xhtml', hidden),
+    ])
+
+
 if __name__ == '__main__':
     epub3()
     epub2()
@@ -420,3 +623,7 @@ if __name__ == '__main__':
     empty_spine()
     one_file()
     calibre_split()
+    epub_images()
+    epub_images_only()
+    epub_notes_aside()
+    epub_notes_files()

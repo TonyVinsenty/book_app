@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+<description><title-info><genre>prose_classic</genre><author><first-name>Анна</first-name><last-name>Тестова</last-name></author><book-title>Битые картинки</book-title><coverpage><image l:href="#no-cover.jpg"/></coverpage><lang>ru</lang></title-info></description>
+<binary id="ok.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAIAAAB+RarbAAABhklEQVR42u3PoUtYQQDH8bNYxLJy5ZAHlrFisVks48qVhQcWy27FsiaMlXHFMrhgsQzLyjh4WOTBsKyMlRUZBxbLsTIeyC6smPwHvn/AY/zg8w98zDtzjSZzi5p5QNZsoWCeo2Reotm8Rov5gAbzCY3mKzIKK6ywwgorvKawv0eTf0TNW2T9Pgr+FUr+LZr9R7T4L2jw39HoG1JYYYUVVljhVYXzJpryLmr5ENl8jEJ+j1K+QHO+Rku+RUN+QGPeQgorrLDCCiu8qnDdQ1MNqNUTZOsZCvUzSvUbmus9WuojGqpFY91HCiussMIKK7yqsDtCkztFzZ0j665QcD9Rcn/Q7DbR4nbR4A7R6I6RwgorrLDCCq8qHBOa4iVq8QbZeIdC/IdSfIbmuIeWGNAQT9AYz5DCCiussMIKrypcCprKD9TKb2TLBgplB6VygOZyhJZyioZyjsZyhRRWWGGFFVZ4VeH+C039L2p9G9n+AoXuUepv0NwTWvolGvoNGvsdUljh/yz8BDvE7UcupSNQAAAAAElFTkSuQmCC</binary><binary id="broken.png" content-type="image/png">@@@@ not base64 !!!!</binary><binary id="cut.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAIAAAB+RarbAAABjElEQVR42u3P</binary><binary id="huge.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAATiAAAE4gCAAAAADGGxnlAAAACUlEQVR4nGMAAAABAAFe/335AAAAAElFTkSuQmCC</binary><binary id="huge.jpg" content-type="image/jpeg">/9j/4AAQSkZJRgABAQAAAQABAAD/wAALCCMoLuABAREA/9k=</binary><binary id="text.jpg" content-type="image/jpeg">0K3RgtC+INC90LUg0LrQsNGA0YLQuNC90LrQsCwg0LAg0YLQtdC60YHRgi4=</binary><binary id="empty.png" content-type="image/png"></binary><binary id="dup.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAIAAAC0Ujn1AAAAa0lEQVR42u3MoQ2AUAxF0S7CAAxQwwDUYxgAV8MAGAYg1bhqBmARku6Dbx76J6Q3R1+ij5g6SGmAnOaEal3rdmvpIZYRUlkglz2pda0brm2C2FZI7YDcrqTWtW64jg3iOCGNG/J4klr/Yv0CL6a7BnCU1UcAAAAASUVORK5CYII=</binary><binary id="dup.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAFoAAABaCAIAAAC3ytZVAAACpElEQVR42u3QQWfYAACG4VBjSixjSjSjxuxSY3qJ2ZRpRI3opcaUqTBjekiNWsxyiDE9ZEaV6WXGMqIWtcsuNaZClekll2aXEjWqh9SoXmq5jvea28fzCx7jnvEYRcYKyo011BhbyDJ+Ic84RrFxGZXGTdQaD5BtPEGB8QqlxoeeoQ51qEMd6lCHOobs8FMU+R9R7m+jxj9Aln+GPP8aiv07qPQD1PrPke2/RYH/GaX+z5461KEOdahDHeoYtCPbRFG2i/LsCDXZCLKyCeRl91GcPUZltoLabA3Z2RYKsl8ozY576lCHOtShDnWoY9COukZRfYry+gpq6klk1bPIq5+iuE5RWX9Ebb2N7PoABfUZSutrPXWoQx3qUIc61DFoh3OBImcc5Y6LGmceWc4y8px3KHY2UensotY5QrYzggJnAqXO/Z461KEOdahDHeoYtCO8haJwBuXhImrC18gKN5AXfkdxWKMyPEVteAXZ4SQKwlmUhk976lCHOtShDnWoY9COYg5FxRLKi1XUFF+QVewgrzhEcXGBymIctYWL7GIeBcUySot3PXWoQx3qUIc61DFoR/cSRd06yrtvqOn2kdWdIK8bRXF3C5XdDGq7RWR3r1HQbaC0+95ThzrUoQ51qEMdg3a4n1Dk/kC5+xs17jmy3DHkuVModudQ6S6h1l1FtvsFBe4OSt3DnjrUoQ51qEMd6hi0I9lDUfIH5ckl1CQ3kJVMIy9ZQHHyEpXJOmqTb8hO9lGQnKA0Ge2pQx3qUIc61KGOQTuqvyiqrqK8uo2a6iGyqmfIq96guPqEyuoHaqvfyK7OUVCNobSa6qlDHepQhzrUoY5BO8zrKDLvotx8hBrzBbLM98gzv6LY3EOl+Qe15iVkmzdQYE6j1FzoqeO/jn9CIEKU/+4IcwAAAABJRU5ErkJggg==</binary><body>
+  <section>
+    <title><p>Глава с битыми картинками</p></title>
+    <p>Текст до первой картинки.</p>
+    <image l:href="#ok.png"/>
+    <p>Дальше идут картинки, которые показать нельзя.</p>
+    <image l:href="#broken.png"/>
+    <p>Картинка с битым base64 пропущена, текст цел.</p>
+    <image l:href="#cut.png"/>
+    <image l:href="#missing.png"/>
+    <p>Картинка без binary пропущена.</p>
+    <image l:href="#huge.png"/>
+    <image l:href="#huge.jpg"/>
+    <p>Огромные по размеру картинки не показываются.</p>
+    <image l:href="#text.jpg"/>
+    <image l:href="#empty.png"/>
+    <image l:href="#dup.png"/>
+    <image/>
+    <image l:href="not-a-local-ref"/>
+    <p>Последний абзац главы.</p>
+  </section>
+</body>
+
+</FictionBook>
