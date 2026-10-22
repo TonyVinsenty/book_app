@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// ADR 0006: `lib/book/` and `lib/speed/` are pure Dart, so they can run in
-/// isolates and be tested without widgets.
+/// ADR 0006, 0009: `lib/book/`, `lib/speed/` and `lib/stats/` are pure Dart,
+/// so they can run in isolates and be tested without widgets.
 void main() {
-  const pureDirs = ['lib/book', 'lib/speed'];
+  const pureDirs = ['lib/book', 'lib/speed', 'lib/stats'];
   final flutterImport = RegExp(r'''import\s+['"]package:flutter(_test)?/''');
   final dartUiImport = RegExp(r'''import\s+['"]dart:ui['"]''');
 

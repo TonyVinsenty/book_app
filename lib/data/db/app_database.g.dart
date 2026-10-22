@@ -2959,6 +2959,931 @@ class FolderFilesCompanion extends UpdateCompanion<FolderFileRow> {
   }
 }
 
+class $ReadingDaysTable extends ReadingDays
+    with TableInfo<$ReadingDaysTable, ReadingDayRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReadingDaysTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _dayMeta = const VerificationMeta('day');
+  @override
+  late final GeneratedColumn<int> day = GeneratedColumn<int>(
+    'day',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bookIdMeta = const VerificationMeta('bookId');
+  @override
+  late final GeneratedColumn<int> bookId = GeneratedColumn<int>(
+    'book_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ReadingMode, String> mode =
+      GeneratedColumn<String>(
+        'mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ReadingMode>($ReadingDaysTable.$convertermode);
+  static const VerificationMeta _dayPartMeta = const VerificationMeta(
+    'dayPart',
+  );
+  @override
+  late final GeneratedColumn<int> dayPart = GeneratedColumn<int>(
+    'day_part',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _activeMsMeta = const VerificationMeta(
+    'activeMs',
+  );
+  @override
+  late final GeneratedColumn<int> activeMs = GeneratedColumn<int>(
+    'active_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wordsMeta = const VerificationMeta('words');
+  @override
+  late final GeneratedColumn<int> words = GeneratedColumn<int>(
+    'words',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Map<int, int>, String>
+  pageSpeedHist = GeneratedColumn<String>(
+    'page_speed_hist',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  ).withConverter<Map<int, int>>($ReadingDaysTable.$converterpageSpeedHist);
+  @override
+  List<GeneratedColumn> get $columns => [
+    day,
+    bookId,
+    mode,
+    dayPart,
+    activeMs,
+    words,
+    pageSpeedHist,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reading_days';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReadingDayRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('day')) {
+      context.handle(
+        _dayMeta,
+        day.isAcceptableOrUnknown(data['day']!, _dayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayMeta);
+    }
+    if (data.containsKey('book_id')) {
+      context.handle(
+        _bookIdMeta,
+        bookId.isAcceptableOrUnknown(data['book_id']!, _bookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bookIdMeta);
+    }
+    if (data.containsKey('day_part')) {
+      context.handle(
+        _dayPartMeta,
+        dayPart.isAcceptableOrUnknown(data['day_part']!, _dayPartMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayPartMeta);
+    }
+    if (data.containsKey('active_ms')) {
+      context.handle(
+        _activeMsMeta,
+        activeMs.isAcceptableOrUnknown(data['active_ms']!, _activeMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_activeMsMeta);
+    }
+    if (data.containsKey('words')) {
+      context.handle(
+        _wordsMeta,
+        words.isAcceptableOrUnknown(data['words']!, _wordsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {day, bookId, mode, dayPart};
+  @override
+  ReadingDayRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReadingDayRow(
+      day: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}day'],
+      )!,
+      bookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}book_id'],
+      )!,
+      mode: $ReadingDaysTable.$convertermode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}mode'],
+        )!,
+      ),
+      dayPart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}day_part'],
+      )!,
+      activeMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}active_ms'],
+      )!,
+      words: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}words'],
+      )!,
+      pageSpeedHist: $ReadingDaysTable.$converterpageSpeedHist.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}page_speed_hist'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $ReadingDaysTable createAlias(String alias) {
+    return $ReadingDaysTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<ReadingMode, String, String> $convertermode =
+      const EnumNameConverter<ReadingMode>(ReadingMode.values);
+  static TypeConverter<Map<int, int>, String> $converterpageSpeedHist =
+      const BucketCountsConverter();
+}
+
+class ReadingDayRow extends DataClass implements Insertable<ReadingDayRow> {
+  /// `yyyymmdd`, see `dayKey`.
+  final int day;
+
+  /// No foreign key: minutes of a deleted book stay in the totals.
+  final int bookId;
+  final ReadingMode mode;
+
+  /// See `dayPartOf`.
+  final int dayPart;
+  final int activeMs;
+  final int words;
+
+  /// Only for `page`: pages by speed bucket, sparse JSON `{"23":4}`.
+  final Map<int, int> pageSpeedHist;
+  const ReadingDayRow({
+    required this.day,
+    required this.bookId,
+    required this.mode,
+    required this.dayPart,
+    required this.activeMs,
+    required this.words,
+    required this.pageSpeedHist,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['day'] = Variable<int>(day);
+    map['book_id'] = Variable<int>(bookId);
+    {
+      map['mode'] = Variable<String>(
+        $ReadingDaysTable.$convertermode.toSql(mode),
+      );
+    }
+    map['day_part'] = Variable<int>(dayPart);
+    map['active_ms'] = Variable<int>(activeMs);
+    map['words'] = Variable<int>(words);
+    {
+      map['page_speed_hist'] = Variable<String>(
+        $ReadingDaysTable.$converterpageSpeedHist.toSql(pageSpeedHist),
+      );
+    }
+    return map;
+  }
+
+  ReadingDaysCompanion toCompanion(bool nullToAbsent) {
+    return ReadingDaysCompanion(
+      day: Value(day),
+      bookId: Value(bookId),
+      mode: Value(mode),
+      dayPart: Value(dayPart),
+      activeMs: Value(activeMs),
+      words: Value(words),
+      pageSpeedHist: Value(pageSpeedHist),
+    );
+  }
+
+  factory ReadingDayRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReadingDayRow(
+      day: serializer.fromJson<int>(json['day']),
+      bookId: serializer.fromJson<int>(json['bookId']),
+      mode: $ReadingDaysTable.$convertermode.fromJson(
+        serializer.fromJson<String>(json['mode']),
+      ),
+      dayPart: serializer.fromJson<int>(json['dayPart']),
+      activeMs: serializer.fromJson<int>(json['activeMs']),
+      words: serializer.fromJson<int>(json['words']),
+      pageSpeedHist: serializer.fromJson<Map<int, int>>(json['pageSpeedHist']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'day': serializer.toJson<int>(day),
+      'bookId': serializer.toJson<int>(bookId),
+      'mode': serializer.toJson<String>(
+        $ReadingDaysTable.$convertermode.toJson(mode),
+      ),
+      'dayPart': serializer.toJson<int>(dayPart),
+      'activeMs': serializer.toJson<int>(activeMs),
+      'words': serializer.toJson<int>(words),
+      'pageSpeedHist': serializer.toJson<Map<int, int>>(pageSpeedHist),
+    };
+  }
+
+  ReadingDayRow copyWith({
+    int? day,
+    int? bookId,
+    ReadingMode? mode,
+    int? dayPart,
+    int? activeMs,
+    int? words,
+    Map<int, int>? pageSpeedHist,
+  }) => ReadingDayRow(
+    day: day ?? this.day,
+    bookId: bookId ?? this.bookId,
+    mode: mode ?? this.mode,
+    dayPart: dayPart ?? this.dayPart,
+    activeMs: activeMs ?? this.activeMs,
+    words: words ?? this.words,
+    pageSpeedHist: pageSpeedHist ?? this.pageSpeedHist,
+  );
+  ReadingDayRow copyWithCompanion(ReadingDaysCompanion data) {
+    return ReadingDayRow(
+      day: data.day.present ? data.day.value : this.day,
+      bookId: data.bookId.present ? data.bookId.value : this.bookId,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      dayPart: data.dayPart.present ? data.dayPart.value : this.dayPart,
+      activeMs: data.activeMs.present ? data.activeMs.value : this.activeMs,
+      words: data.words.present ? data.words.value : this.words,
+      pageSpeedHist: data.pageSpeedHist.present
+          ? data.pageSpeedHist.value
+          : this.pageSpeedHist,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReadingDayRow(')
+          ..write('day: $day, ')
+          ..write('bookId: $bookId, ')
+          ..write('mode: $mode, ')
+          ..write('dayPart: $dayPart, ')
+          ..write('activeMs: $activeMs, ')
+          ..write('words: $words, ')
+          ..write('pageSpeedHist: $pageSpeedHist')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(day, bookId, mode, dayPart, activeMs, words, pageSpeedHist);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReadingDayRow &&
+          other.day == this.day &&
+          other.bookId == this.bookId &&
+          other.mode == this.mode &&
+          other.dayPart == this.dayPart &&
+          other.activeMs == this.activeMs &&
+          other.words == this.words &&
+          other.pageSpeedHist == this.pageSpeedHist);
+}
+
+class ReadingDaysCompanion extends UpdateCompanion<ReadingDayRow> {
+  final Value<int> day;
+  final Value<int> bookId;
+  final Value<ReadingMode> mode;
+  final Value<int> dayPart;
+  final Value<int> activeMs;
+  final Value<int> words;
+  final Value<Map<int, int>> pageSpeedHist;
+  final Value<int> rowid;
+  const ReadingDaysCompanion({
+    this.day = const Value.absent(),
+    this.bookId = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.dayPart = const Value.absent(),
+    this.activeMs = const Value.absent(),
+    this.words = const Value.absent(),
+    this.pageSpeedHist = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReadingDaysCompanion.insert({
+    required int day,
+    required int bookId,
+    required ReadingMode mode,
+    required int dayPart,
+    required int activeMs,
+    required int words,
+    this.pageSpeedHist = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : day = Value(day),
+       bookId = Value(bookId),
+       mode = Value(mode),
+       dayPart = Value(dayPart),
+       activeMs = Value(activeMs),
+       words = Value(words);
+  static Insertable<ReadingDayRow> custom({
+    Expression<int>? day,
+    Expression<int>? bookId,
+    Expression<String>? mode,
+    Expression<int>? dayPart,
+    Expression<int>? activeMs,
+    Expression<int>? words,
+    Expression<String>? pageSpeedHist,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (day != null) 'day': day,
+      if (bookId != null) 'book_id': bookId,
+      if (mode != null) 'mode': mode,
+      if (dayPart != null) 'day_part': dayPart,
+      if (activeMs != null) 'active_ms': activeMs,
+      if (words != null) 'words': words,
+      if (pageSpeedHist != null) 'page_speed_hist': pageSpeedHist,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReadingDaysCompanion copyWith({
+    Value<int>? day,
+    Value<int>? bookId,
+    Value<ReadingMode>? mode,
+    Value<int>? dayPart,
+    Value<int>? activeMs,
+    Value<int>? words,
+    Value<Map<int, int>>? pageSpeedHist,
+    Value<int>? rowid,
+  }) {
+    return ReadingDaysCompanion(
+      day: day ?? this.day,
+      bookId: bookId ?? this.bookId,
+      mode: mode ?? this.mode,
+      dayPart: dayPart ?? this.dayPart,
+      activeMs: activeMs ?? this.activeMs,
+      words: words ?? this.words,
+      pageSpeedHist: pageSpeedHist ?? this.pageSpeedHist,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (day.present) {
+      map['day'] = Variable<int>(day.value);
+    }
+    if (bookId.present) {
+      map['book_id'] = Variable<int>(bookId.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(
+        $ReadingDaysTable.$convertermode.toSql(mode.value),
+      );
+    }
+    if (dayPart.present) {
+      map['day_part'] = Variable<int>(dayPart.value);
+    }
+    if (activeMs.present) {
+      map['active_ms'] = Variable<int>(activeMs.value);
+    }
+    if (words.present) {
+      map['words'] = Variable<int>(words.value);
+    }
+    if (pageSpeedHist.present) {
+      map['page_speed_hist'] = Variable<String>(
+        $ReadingDaysTable.$converterpageSpeedHist.toSql(pageSpeedHist.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReadingDaysCompanion(')
+          ..write('day: $day, ')
+          ..write('bookId: $bookId, ')
+          ..write('mode: $mode, ')
+          ..write('dayPart: $dayPart, ')
+          ..write('activeMs: $activeMs, ')
+          ..write('words: $words, ')
+          ..write('pageSpeedHist: $pageSpeedHist, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PaceDaysTable extends PaceDays
+    with TableInfo<$PaceDaysTable, PaceDayRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PaceDaysTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _dayMeta = const VerificationMeta('day');
+  @override
+  late final GeneratedColumn<int> day = GeneratedColumn<int>(
+    'day',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<SpeedMode, String> mode =
+      GeneratedColumn<String>(
+        'mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<SpeedMode>($PaceDaysTable.$convertermode);
+  static const VerificationMeta _wpmMeta = const VerificationMeta('wpm');
+  @override
+  late final GeneratedColumn<int> wpm = GeneratedColumn<int>(
+    'wpm',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wordsMeta = const VerificationMeta('words');
+  @override
+  late final GeneratedColumn<int> words = GeneratedColumn<int>(
+    'words',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _activeMsMeta = const VerificationMeta(
+    'activeMs',
+  );
+  @override
+  late final GeneratedColumn<int> activeMs = GeneratedColumn<int>(
+    'active_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _backsMeta = const VerificationMeta('backs');
+  @override
+  late final GeneratedColumn<int> backs = GeneratedColumn<int>(
+    'backs',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pausesMeta = const VerificationMeta('pauses');
+  @override
+  late final GeneratedColumn<int> pauses = GeneratedColumn<int>(
+    'pauses',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    day,
+    mode,
+    wpm,
+    words,
+    activeMs,
+    backs,
+    pauses,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pace_days';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PaceDayRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('day')) {
+      context.handle(
+        _dayMeta,
+        day.isAcceptableOrUnknown(data['day']!, _dayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayMeta);
+    }
+    if (data.containsKey('wpm')) {
+      context.handle(
+        _wpmMeta,
+        wpm.isAcceptableOrUnknown(data['wpm']!, _wpmMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wpmMeta);
+    }
+    if (data.containsKey('words')) {
+      context.handle(
+        _wordsMeta,
+        words.isAcceptableOrUnknown(data['words']!, _wordsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordsMeta);
+    }
+    if (data.containsKey('active_ms')) {
+      context.handle(
+        _activeMsMeta,
+        activeMs.isAcceptableOrUnknown(data['active_ms']!, _activeMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_activeMsMeta);
+    }
+    if (data.containsKey('backs')) {
+      context.handle(
+        _backsMeta,
+        backs.isAcceptableOrUnknown(data['backs']!, _backsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_backsMeta);
+    }
+    if (data.containsKey('pauses')) {
+      context.handle(
+        _pausesMeta,
+        pauses.isAcceptableOrUnknown(data['pauses']!, _pausesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pausesMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {day, mode, wpm};
+  @override
+  PaceDayRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PaceDayRow(
+      day: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}day'],
+      )!,
+      mode: $PaceDaysTable.$convertermode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}mode'],
+        )!,
+      ),
+      wpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}wpm'],
+      )!,
+      words: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}words'],
+      )!,
+      activeMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}active_ms'],
+      )!,
+      backs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backs'],
+      )!,
+      pauses: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pauses'],
+      )!,
+    );
+  }
+
+  @override
+  $PaceDaysTable createAlias(String alias) {
+    return $PaceDaysTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<SpeedMode, String, String> $convertermode =
+      const EnumNameConverter<SpeedMode>(SpeedMode.values);
+}
+
+class PaceDayRow extends DataClass implements Insertable<PaceDayRow> {
+  final int day;
+  final SpeedMode mode;
+  final int wpm;
+  final int words;
+  final int activeMs;
+  final int backs;
+  final int pauses;
+  const PaceDayRow({
+    required this.day,
+    required this.mode,
+    required this.wpm,
+    required this.words,
+    required this.activeMs,
+    required this.backs,
+    required this.pauses,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['day'] = Variable<int>(day);
+    {
+      map['mode'] = Variable<String>($PaceDaysTable.$convertermode.toSql(mode));
+    }
+    map['wpm'] = Variable<int>(wpm);
+    map['words'] = Variable<int>(words);
+    map['active_ms'] = Variable<int>(activeMs);
+    map['backs'] = Variable<int>(backs);
+    map['pauses'] = Variable<int>(pauses);
+    return map;
+  }
+
+  PaceDaysCompanion toCompanion(bool nullToAbsent) {
+    return PaceDaysCompanion(
+      day: Value(day),
+      mode: Value(mode),
+      wpm: Value(wpm),
+      words: Value(words),
+      activeMs: Value(activeMs),
+      backs: Value(backs),
+      pauses: Value(pauses),
+    );
+  }
+
+  factory PaceDayRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PaceDayRow(
+      day: serializer.fromJson<int>(json['day']),
+      mode: $PaceDaysTable.$convertermode.fromJson(
+        serializer.fromJson<String>(json['mode']),
+      ),
+      wpm: serializer.fromJson<int>(json['wpm']),
+      words: serializer.fromJson<int>(json['words']),
+      activeMs: serializer.fromJson<int>(json['activeMs']),
+      backs: serializer.fromJson<int>(json['backs']),
+      pauses: serializer.fromJson<int>(json['pauses']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'day': serializer.toJson<int>(day),
+      'mode': serializer.toJson<String>(
+        $PaceDaysTable.$convertermode.toJson(mode),
+      ),
+      'wpm': serializer.toJson<int>(wpm),
+      'words': serializer.toJson<int>(words),
+      'activeMs': serializer.toJson<int>(activeMs),
+      'backs': serializer.toJson<int>(backs),
+      'pauses': serializer.toJson<int>(pauses),
+    };
+  }
+
+  PaceDayRow copyWith({
+    int? day,
+    SpeedMode? mode,
+    int? wpm,
+    int? words,
+    int? activeMs,
+    int? backs,
+    int? pauses,
+  }) => PaceDayRow(
+    day: day ?? this.day,
+    mode: mode ?? this.mode,
+    wpm: wpm ?? this.wpm,
+    words: words ?? this.words,
+    activeMs: activeMs ?? this.activeMs,
+    backs: backs ?? this.backs,
+    pauses: pauses ?? this.pauses,
+  );
+  PaceDayRow copyWithCompanion(PaceDaysCompanion data) {
+    return PaceDayRow(
+      day: data.day.present ? data.day.value : this.day,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      wpm: data.wpm.present ? data.wpm.value : this.wpm,
+      words: data.words.present ? data.words.value : this.words,
+      activeMs: data.activeMs.present ? data.activeMs.value : this.activeMs,
+      backs: data.backs.present ? data.backs.value : this.backs,
+      pauses: data.pauses.present ? data.pauses.value : this.pauses,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PaceDayRow(')
+          ..write('day: $day, ')
+          ..write('mode: $mode, ')
+          ..write('wpm: $wpm, ')
+          ..write('words: $words, ')
+          ..write('activeMs: $activeMs, ')
+          ..write('backs: $backs, ')
+          ..write('pauses: $pauses')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(day, mode, wpm, words, activeMs, backs, pauses);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PaceDayRow &&
+          other.day == this.day &&
+          other.mode == this.mode &&
+          other.wpm == this.wpm &&
+          other.words == this.words &&
+          other.activeMs == this.activeMs &&
+          other.backs == this.backs &&
+          other.pauses == this.pauses);
+}
+
+class PaceDaysCompanion extends UpdateCompanion<PaceDayRow> {
+  final Value<int> day;
+  final Value<SpeedMode> mode;
+  final Value<int> wpm;
+  final Value<int> words;
+  final Value<int> activeMs;
+  final Value<int> backs;
+  final Value<int> pauses;
+  final Value<int> rowid;
+  const PaceDaysCompanion({
+    this.day = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.wpm = const Value.absent(),
+    this.words = const Value.absent(),
+    this.activeMs = const Value.absent(),
+    this.backs = const Value.absent(),
+    this.pauses = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PaceDaysCompanion.insert({
+    required int day,
+    required SpeedMode mode,
+    required int wpm,
+    required int words,
+    required int activeMs,
+    required int backs,
+    required int pauses,
+    this.rowid = const Value.absent(),
+  }) : day = Value(day),
+       mode = Value(mode),
+       wpm = Value(wpm),
+       words = Value(words),
+       activeMs = Value(activeMs),
+       backs = Value(backs),
+       pauses = Value(pauses);
+  static Insertable<PaceDayRow> custom({
+    Expression<int>? day,
+    Expression<String>? mode,
+    Expression<int>? wpm,
+    Expression<int>? words,
+    Expression<int>? activeMs,
+    Expression<int>? backs,
+    Expression<int>? pauses,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (day != null) 'day': day,
+      if (mode != null) 'mode': mode,
+      if (wpm != null) 'wpm': wpm,
+      if (words != null) 'words': words,
+      if (activeMs != null) 'active_ms': activeMs,
+      if (backs != null) 'backs': backs,
+      if (pauses != null) 'pauses': pauses,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PaceDaysCompanion copyWith({
+    Value<int>? day,
+    Value<SpeedMode>? mode,
+    Value<int>? wpm,
+    Value<int>? words,
+    Value<int>? activeMs,
+    Value<int>? backs,
+    Value<int>? pauses,
+    Value<int>? rowid,
+  }) {
+    return PaceDaysCompanion(
+      day: day ?? this.day,
+      mode: mode ?? this.mode,
+      wpm: wpm ?? this.wpm,
+      words: words ?? this.words,
+      activeMs: activeMs ?? this.activeMs,
+      backs: backs ?? this.backs,
+      pauses: pauses ?? this.pauses,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (day.present) {
+      map['day'] = Variable<int>(day.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(
+        $PaceDaysTable.$convertermode.toSql(mode.value),
+      );
+    }
+    if (wpm.present) {
+      map['wpm'] = Variable<int>(wpm.value);
+    }
+    if (words.present) {
+      map['words'] = Variable<int>(words.value);
+    }
+    if (activeMs.present) {
+      map['active_ms'] = Variable<int>(activeMs.value);
+    }
+    if (backs.present) {
+      map['backs'] = Variable<int>(backs.value);
+    }
+    if (pauses.present) {
+      map['pauses'] = Variable<int>(pauses.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PaceDaysCompanion(')
+          ..write('day: $day, ')
+          ..write('mode: $mode, ')
+          ..write('wpm: $wpm, ')
+          ..write('words: $words, ')
+          ..write('activeMs: $activeMs, ')
+          ..write('backs: $backs, ')
+          ..write('pauses: $pauses, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2970,6 +3895,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $FoldersTable folders = $FoldersTable(this);
   late final $FolderFilesTable folderFiles = $FolderFilesTable(this);
+  late final $ReadingDaysTable readingDays = $ReadingDaysTable(this);
+  late final $PaceDaysTable paceDays = $PaceDaysTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2981,6 +3908,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     bookCollections,
     folders,
     folderFiles,
+    readingDays,
+    paceDays,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5345,6 +6274,501 @@ typedef $$FolderFilesTableProcessedTableManager =
       FolderFileRow,
       PrefetchHooks Function({bool folderId})
     >;
+typedef $$ReadingDaysTableCreateCompanionBuilder =
+    ReadingDaysCompanion Function({
+      required int day,
+      required int bookId,
+      required ReadingMode mode,
+      required int dayPart,
+      required int activeMs,
+      required int words,
+      Value<Map<int, int>> pageSpeedHist,
+      Value<int> rowid,
+    });
+typedef $$ReadingDaysTableUpdateCompanionBuilder =
+    ReadingDaysCompanion Function({
+      Value<int> day,
+      Value<int> bookId,
+      Value<ReadingMode> mode,
+      Value<int> dayPart,
+      Value<int> activeMs,
+      Value<int> words,
+      Value<Map<int, int>> pageSpeedHist,
+      Value<int> rowid,
+    });
+
+class $$ReadingDaysTableFilterComposer
+    extends Composer<_$AppDatabase, $ReadingDaysTable> {
+  $$ReadingDaysTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bookId => $composableBuilder(
+    column: $table.bookId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ReadingMode, ReadingMode, String> get mode =>
+      $composableBuilder(
+        column: $table.mode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get dayPart => $composableBuilder(
+    column: $table.dayPart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get activeMs => $composableBuilder(
+    column: $table.activeMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get words => $composableBuilder(
+    column: $table.words,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Map<int, int>, Map<int, int>, String>
+  get pageSpeedHist => $composableBuilder(
+    column: $table.pageSpeedHist,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+}
+
+class $$ReadingDaysTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReadingDaysTable> {
+  $$ReadingDaysTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bookId => $composableBuilder(
+    column: $table.bookId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dayPart => $composableBuilder(
+    column: $table.dayPart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get activeMs => $composableBuilder(
+    column: $table.activeMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get words => $composableBuilder(
+    column: $table.words,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pageSpeedHist => $composableBuilder(
+    column: $table.pageSpeedHist,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReadingDaysTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReadingDaysTable> {
+  $$ReadingDaysTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get day =>
+      $composableBuilder(column: $table.day, builder: (column) => column);
+
+  GeneratedColumn<int> get bookId =>
+      $composableBuilder(column: $table.bookId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ReadingMode, String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<int> get dayPart =>
+      $composableBuilder(column: $table.dayPart, builder: (column) => column);
+
+  GeneratedColumn<int> get activeMs =>
+      $composableBuilder(column: $table.activeMs, builder: (column) => column);
+
+  GeneratedColumn<int> get words =>
+      $composableBuilder(column: $table.words, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Map<int, int>, String> get pageSpeedHist =>
+      $composableBuilder(
+        column: $table.pageSpeedHist,
+        builder: (column) => column,
+      );
+}
+
+class $$ReadingDaysTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReadingDaysTable,
+          ReadingDayRow,
+          $$ReadingDaysTableFilterComposer,
+          $$ReadingDaysTableOrderingComposer,
+          $$ReadingDaysTableAnnotationComposer,
+          $$ReadingDaysTableCreateCompanionBuilder,
+          $$ReadingDaysTableUpdateCompanionBuilder,
+          (
+            ReadingDayRow,
+            BaseReferences<_$AppDatabase, $ReadingDaysTable, ReadingDayRow>,
+          ),
+          ReadingDayRow,
+          PrefetchHooks Function()
+        > {
+  $$ReadingDaysTableTableManager(_$AppDatabase db, $ReadingDaysTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReadingDaysTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReadingDaysTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReadingDaysTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> day = const Value.absent(),
+                Value<int> bookId = const Value.absent(),
+                Value<ReadingMode> mode = const Value.absent(),
+                Value<int> dayPart = const Value.absent(),
+                Value<int> activeMs = const Value.absent(),
+                Value<int> words = const Value.absent(),
+                Value<Map<int, int>> pageSpeedHist = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReadingDaysCompanion(
+                day: day,
+                bookId: bookId,
+                mode: mode,
+                dayPart: dayPart,
+                activeMs: activeMs,
+                words: words,
+                pageSpeedHist: pageSpeedHist,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int day,
+                required int bookId,
+                required ReadingMode mode,
+                required int dayPart,
+                required int activeMs,
+                required int words,
+                Value<Map<int, int>> pageSpeedHist = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReadingDaysCompanion.insert(
+                day: day,
+                bookId: bookId,
+                mode: mode,
+                dayPart: dayPart,
+                activeMs: activeMs,
+                words: words,
+                pageSpeedHist: pageSpeedHist,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ReadingDaysTable, ReadingDayRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ReadingDaysTable,
+                    ReadingDayRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReadingDaysTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReadingDaysTable,
+      ReadingDayRow,
+      $$ReadingDaysTableFilterComposer,
+      $$ReadingDaysTableOrderingComposer,
+      $$ReadingDaysTableAnnotationComposer,
+      $$ReadingDaysTableCreateCompanionBuilder,
+      $$ReadingDaysTableUpdateCompanionBuilder,
+      (
+        ReadingDayRow,
+        BaseReferences<_$AppDatabase, $ReadingDaysTable, ReadingDayRow>,
+      ),
+      ReadingDayRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PaceDaysTableCreateCompanionBuilder = PaceDaysCompanion Function({
+  required int day,
+  required SpeedMode mode,
+  required int wpm,
+  required int words,
+  required int activeMs,
+  required int backs,
+  required int pauses,
+  Value<int> rowid,
+});
+typedef $$PaceDaysTableUpdateCompanionBuilder = PaceDaysCompanion Function({
+  Value<int> day,
+  Value<SpeedMode> mode,
+  Value<int> wpm,
+  Value<int> words,
+  Value<int> activeMs,
+  Value<int> backs,
+  Value<int> pauses,
+  Value<int> rowid,
+});
+
+class $$PaceDaysTableFilterComposer
+    extends Composer<_$AppDatabase, $PaceDaysTable> {
+  $$PaceDaysTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SpeedMode, SpeedMode, String> get mode =>
+      $composableBuilder(
+        column: $table.mode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get wpm => $composableBuilder(
+    column: $table.wpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get words => $composableBuilder(
+    column: $table.words,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get activeMs => $composableBuilder(
+    column: $table.activeMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backs => $composableBuilder(
+    column: $table.backs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pauses => $composableBuilder(
+    column: $table.pauses,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PaceDaysTableOrderingComposer
+    extends Composer<_$AppDatabase, $PaceDaysTable> {
+  $$PaceDaysTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get wpm => $composableBuilder(
+    column: $table.wpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get words => $composableBuilder(
+    column: $table.words,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get activeMs => $composableBuilder(
+    column: $table.activeMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backs => $composableBuilder(
+    column: $table.backs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pauses => $composableBuilder(
+    column: $table.pauses,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PaceDaysTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PaceDaysTable> {
+  $$PaceDaysTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get day =>
+      $composableBuilder(column: $table.day, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SpeedMode, String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<int> get wpm =>
+      $composableBuilder(column: $table.wpm, builder: (column) => column);
+
+  GeneratedColumn<int> get words =>
+      $composableBuilder(column: $table.words, builder: (column) => column);
+
+  GeneratedColumn<int> get activeMs =>
+      $composableBuilder(column: $table.activeMs, builder: (column) => column);
+
+  GeneratedColumn<int> get backs =>
+      $composableBuilder(column: $table.backs, builder: (column) => column);
+
+  GeneratedColumn<int> get pauses =>
+      $composableBuilder(column: $table.pauses, builder: (column) => column);
+}
+
+class $$PaceDaysTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PaceDaysTable,
+          PaceDayRow,
+          $$PaceDaysTableFilterComposer,
+          $$PaceDaysTableOrderingComposer,
+          $$PaceDaysTableAnnotationComposer,
+          $$PaceDaysTableCreateCompanionBuilder,
+          $$PaceDaysTableUpdateCompanionBuilder,
+          (
+            PaceDayRow,
+            BaseReferences<_$AppDatabase, $PaceDaysTable, PaceDayRow>,
+          ),
+          PaceDayRow,
+          PrefetchHooks Function()
+        > {
+  $$PaceDaysTableTableManager(_$AppDatabase db, $PaceDaysTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PaceDaysTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PaceDaysTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PaceDaysTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> day = const Value.absent(),
+                Value<SpeedMode> mode = const Value.absent(),
+                Value<int> wpm = const Value.absent(),
+                Value<int> words = const Value.absent(),
+                Value<int> activeMs = const Value.absent(),
+                Value<int> backs = const Value.absent(),
+                Value<int> pauses = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PaceDaysCompanion(
+                day: day,
+                mode: mode,
+                wpm: wpm,
+                words: words,
+                activeMs: activeMs,
+                backs: backs,
+                pauses: pauses,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int day,
+                required SpeedMode mode,
+                required int wpm,
+                required int words,
+                required int activeMs,
+                required int backs,
+                required int pauses,
+                Value<int> rowid = const Value.absent(),
+              }) => PaceDaysCompanion.insert(
+                day: day,
+                mode: mode,
+                wpm: wpm,
+                words: words,
+                activeMs: activeMs,
+                backs: backs,
+                pauses: pauses,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PaceDaysTable, PaceDayRow>(table),
+                  BaseReferences<_$AppDatabase, $PaceDaysTable, PaceDayRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PaceDaysTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PaceDaysTable,
+      PaceDayRow,
+      $$PaceDaysTableFilterComposer,
+      $$PaceDaysTableOrderingComposer,
+      $$PaceDaysTableAnnotationComposer,
+      $$PaceDaysTableCreateCompanionBuilder,
+      $$PaceDaysTableUpdateCompanionBuilder,
+      (PaceDayRow, BaseReferences<_$AppDatabase, $PaceDaysTable, PaceDayRow>),
+      PaceDayRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5361,4 +6785,8 @@ class $AppDatabaseManager {
       $$FoldersTableTableManager(_db, _db.folders);
   $$FolderFilesTableTableManager get folderFiles =>
       $$FolderFilesTableTableManager(_db, _db.folderFiles);
+  $$ReadingDaysTableTableManager get readingDays =>
+      $$ReadingDaysTableTableManager(_db, _db.readingDays);
+  $$PaceDaysTableTableManager get paceDays =>
+      $$PaceDaysTableTableManager(_db, _db.paceDays);
 }

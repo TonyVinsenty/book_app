@@ -12,6 +12,7 @@ import 'package:book_app/data/db/open_app_database.dart';
 import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/data/speed_settings.dart';
+import 'package:book_app/data/stats_repository.dart';
 import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/platform/share_channel.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -64,6 +65,11 @@ final collectionsProvider = StreamProvider<List<CollectionRow>>(
 /// Which book is in which collection.
 final collectionLinksProvider = StreamProvider<List<BookCollectionRow>>(
   (ref) => ref.watch(collectionRepositoryProvider).watchLinks(),
+);
+
+/// Reading statistics by day (ADR 0009).
+final statsRepositoryProvider = Provider<StatsRepository>(
+  (ref) => StatsRepository(ref.watch(appDatabaseProvider)),
 );
 
 /// Folders the library takes books from (ADR 0007).

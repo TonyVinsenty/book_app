@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/model/reading_position.dart';
+import 'package:book_app/speed/speed_mode.dart';
+import 'package:book_app/stats/stats_records.dart';
 import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';
@@ -132,6 +134,46 @@ class FolderFiles extends Table {
   Set<Column> get primaryKey => {folderId, key};
 }
 
+/// Reading by day, book, mode and part of the day: sums only, no single
+/// pages (schema v6, ADR 0009 п. 2).
+@DataClassName('ReadingDayRow')
+class ReadingDays extends Table {
+  /// `yyyymmdd`, see `dayKey`.
+  IntColumn get day => integer()();
+
+  /// No foreign key: minutes of a deleted book stay in the totals.
+  IntColumn get bookId => integer()();
+  TextColumn get mode => textEnum<ReadingMode>()();
+
+  /// See `dayPartOf`.
+  IntColumn get dayPart => integer()();
+  IntColumn get activeMs => integer()();
+  IntColumn get words => integer()();
+
+  /// Only for `page`: pages by speed bucket, sparse JSON `{"23":4}`.
+  TextColumn get pageSpeedHist => text()
+      .map(const BucketCountsConverter())
+      .withDefault(const Constant('{}'))();
+
+  @override
+  Set<Column> get primaryKey => {day, bookId, mode, dayPart};
+}
+
+/// Speed reading by day, mode and set pace (schema v6, ADR 0009 п. 4).
+@DataClassName('PaceDayRow')
+class PaceDays extends Table {
+  IntColumn get day => integer()();
+  TextColumn get mode => textEnum<SpeedMode>()();
+  IntColumn get wpm => integer()();
+  IntColumn get words => integer()();
+  IntColumn get activeMs => integer()();
+  IntColumn get backs => integer()();
+  IntColumn get pauses => integer()();
+
+  @override
+  Set<Column> get primaryKey => {day, mode, wpm};
+}
+
 /// App settings as key → value text; typed access lives in the settings
 /// code that owns each key.
 @DataClassName('SettingRow')
@@ -156,6 +198,23 @@ class StringListConverter extends TypeConverter<List<String>, String> {
   String toSql(List<String> value) => jsonEncode(value);
 }
 
+/// Stores counts by bucket as a JSON object with number keys.
+class BucketCountsConverter extends TypeConverter<Map<int, int>, String> {
+  const BucketCountsConverter();
+
+  @override
+  Map<int, int> fromSql(String fromDb) => {
+    for (final MapEntry(:key, :value)
+        in (jsonDecode(fromDb) as Map<String, Object?>).entries)
+      int.parse(key): value! as int,
+  };
+
+  @override
+  String toSql(Map<int, int> value) => jsonEncode({
+    for (final MapEntry(:key, :value) in value.entries) '$key': value,
+  });
+}
+
 /// App database. The executor is a parameter: a file in the app, memory in
 /// tests (`NativeDatabase.memory()`).
 @DriftDatabase(
@@ -166,13 +225,15 @@ class StringListConverter extends TypeConverter<List<String>, String> {
     BookCollections,
     Folders,
     FolderFiles,
+    ReadingDays,
+    PaceDays,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -214,6 +275,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await m.createTable(folders);
         await m.createTable(folderFiles);
+      }
+      if (from < 6) {
+        await m.createTable(readingDays);
+        await m.createTable(paceDays);
       }
     },
     beforeOpen: (details) async {
