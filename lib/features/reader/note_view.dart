@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/page_style.dart';
 import 'package:flutter/material.dart';
@@ -136,11 +137,22 @@ class NoteText extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: w.toDouble()),
           child: AspectRatio(
             aspectRatio: w / h,
-            child: Image.file(
-              File('${book.imagesDir.path}/$assetId'),
-              color: night ? const Color(0x2E000000) : null,
-              colorBlendMode: night ? BlendMode.darken : null,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            // Decoded no larger than shown, as on the page (ADR 0008 п. 6).
+            child: LayoutBuilder(
+              builder: (context, box) => Image(
+                image: ResizeImage(
+                  FileImage(File('${book.imagesDir.path}/$assetId')),
+                  width: min(
+                    w,
+                    (box.maxWidth * MediaQuery.devicePixelRatioOf(context))
+                        .ceil(),
+                  ),
+                ),
+                fit: BoxFit.fill,
+                color: night ? nightImageDim : null,
+                colorBlendMode: night ? BlendMode.srcATop : null,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
