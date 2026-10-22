@@ -272,7 +272,10 @@ class _AnnotationState extends State<_Annotation> {
                 TextButton(
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 40),
+                    // The short «Ещё» starts at the text's edge too, not
+                    // in the middle of the tap area.
+                    minimumSize: const Size(48, 40),
+                    alignment: Alignment.centerLeft,
                   ),
                   onPressed: () => setState(() => _open = !_open),
                   child: Text(
