@@ -240,7 +240,9 @@ class _AnnotationState extends State<_Annotation> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final style = theme.textTheme.bodyMedium;
+    // As the Text below paints it, so "Ещё" shows exactly when it cuts.
+    final style = DefaultTextStyle.of(context).style
+        .merge(theme.textTheme.bodyMedium);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

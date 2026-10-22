@@ -856,7 +856,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             final chapter = layout;
             final guide = _guide;
             final numbers = _pageNumbers(l10n);
-            // The share read is always shown by the page (owner, 11а.3).
+            // The percent read is always shown by the page (owner, 11а.3).
             final pageLabel = l10n.readerPageAndPercent(
               l10n.readerPageOfBook(numbers.page, numbers.total),
               percentOf(_word, widget.opened.tokens.length),

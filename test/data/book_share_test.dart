@@ -56,6 +56,11 @@ void main() {
         'Н. В. Гоголь — Что делать Роман часть 1.fb2',
       );
       expect(shareNameOf(_book(authors: [], title: ' ?? ')), 'book.fb2');
+      expect(
+        shareNameOf(_book(authors: [], title: '...и пришла весна')),
+        'и пришла весна.fb2',
+        reason: 'not a hidden file',
+      );
       final long = shareNameOf(_book(authors: [], title: 'Я' * 300));
       expect(long, '${'Я' * 100}.fb2');
     });
@@ -68,8 +73,8 @@ void main() {
     });
   });
 
-  test('a copy under the readable name goes to the share sheet; earlier '
-      'copies are removed', () async {
+  test('a copy under the readable name goes to the share sheet; copies '
+      'older than a day are removed', () async {
     final temp = Directory.systemTemp.createTempSync('book_share_');
     addTearDown(() => temp.deleteSync(recursive: true));
     final db = AppDatabase(NativeDatabase.memory());
@@ -80,7 +85,11 @@ void main() {
       ..createSync(recursive: true)
       ..writeAsStringSync('<FictionBook/>');
     final dir = Directory('${temp.path}/share');
-    final old = File('${dir.path}/old.fb2')..createSync(recursive: true);
+    final old = File('${dir.path}/old.fb2')
+      ..createSync(recursive: true)
+      ..setLastModifiedSync(DateTime.now().subtract(const Duration(days: 2)));
+    // An app may still be reading a recent one.
+    final recent = File('${dir.path}/recent.fb2')..createSync();
     final calls = <(String, String)>[];
     final sharer = BookSharer(BookRepository(db, store), dir, (
       path,
@@ -93,13 +102,19 @@ void main() {
 
     expect(calls, hasLength(1));
     final (path, mime) = calls.single;
+    expect(File(path).parent.parent.path, dir.path);
     expect(
       path,
-      '${dir.path}${Platform.pathSeparator}Н. В. Гоголь — Шинель.fb2',
+      endsWith('${Platform.pathSeparator}Н. В. Гоголь — Шинель.fb2'),
     );
     expect(mime, 'application/x-fictionbook+xml');
     expect(File(path).readAsStringSync(), '<FictionBook/>');
     expect(old.existsSync(), isFalse);
+    expect(recent.existsSync(), isTrue);
+
+    // Twice at once: each in its own folder.
+    await Future.wait([sharer.share(book), sharer.share(book)]);
+    expect(calls.skip(1).map((c) => c.$1).toSet(), hasLength(2));
     expect(source.existsSync(), isTrue, reason: 'the book keeps its file');
   });
 }

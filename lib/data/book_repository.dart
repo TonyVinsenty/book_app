@@ -133,8 +133,9 @@ final class BookRepository {
         parserVersion: Value(parserVersion),
         wordCount: Value(wordCount),
         coverFile: Value(coverFile),
-        // Books added before a parser learned the annotation get it here.
-        annotation: Value(content.meta.annotation),
+        // Books added before a parser learned the annotation get it here;
+        // a reparse that finds none keeps the old one.
+        annotation: Value.absentIfNull(content.meta.annotation),
       ),
     );
   }

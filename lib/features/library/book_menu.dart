@@ -106,10 +106,12 @@ Future<void> shareBook(
 ) async {
   try {
     await ref.read(bookSharerProvider).share(book);
-  } on Object {
-    if (!context.mounted) rethrow;
-    showNotice(context, AppLocalizations.of(context).bookShareFailed);
-    rethrow;
+  } on Object catch (e) {
+    // Shown to the reader; nothing else to do with it.
+    debugPrint('Share failed: $e');
+    if (context.mounted) {
+      showNotice(context, AppLocalizations.of(context).bookShareFailed);
+    }
   }
 }
 
