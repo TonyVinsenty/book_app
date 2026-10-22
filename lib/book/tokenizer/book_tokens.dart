@@ -71,17 +71,21 @@ final class BookTokens {
     final block = _block(i);
     final s = _starts[i];
     final e = _ends[i];
-    final labels = [
-      for (final span in block.spans)
-        if (span.kind == SpanKind.noteRef && span.start < e && span.end > s)
-          span,
-    ];
-    if (labels.isEmpty) return block.text.substring(s, e);
-    final out = StringBuffer();
-    for (var j = s; j < e; j++) {
-      if (labels.any((l) => l.start <= j && j < l.end)) continue;
-      out.writeCharCode(block.text.codeUnitAt(j));
+    // On hot paths (phrases, RSVP): nothing is allocated without labels.
+    StringBuffer? out;
+    var from = s;
+    for (final span in block.spans) {
+      if (span.kind != SpanKind.noteRef ||
+          span.end <= from ||
+          span.start >= e) {
+        continue;
+      }
+      out ??= StringBuffer();
+      if (span.start > from) out.write(block.text.substring(from, span.start));
+      from = span.end < e ? span.end : e;
     }
+    if (out == null) return block.text.substring(s, e);
+    out.write(block.text.substring(from, e));
     return out.toString();
   }
 
