@@ -84,7 +84,13 @@ BookContent sampleBook({int sections = 3, int paragraphs = 40, int seed = 1}) {
             ParagraphBlock(text: sentence(8), style: ParagraphStyle.subtitle),
           );
         case 11:
-          blocks.add(const ImageBlock(assetId: 'pic'));
+          // A vignette, a wide picture, a tall one; one of unknown size.
+          blocks.add(switch (p ~/ 13 % 4) {
+            0 => const ImageBlock(assetId: 'v.png', width: 40, height: 24),
+            1 => const ImageBlock(assetId: 'w.jpg', width: 1200, height: 800),
+            2 => const ImageBlock(assetId: 't.jpg', width: 600, height: 3000),
+            _ => const ImageBlock(assetId: 'pic'),
+          });
           blocks.add(
             ParagraphBlock(text: sentence(25), style: ParagraphStyle.quote),
           );

@@ -21,6 +21,7 @@ import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
+import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
@@ -1507,6 +1508,49 @@ void main() {
     expect(elapsed, greaterThan(plain + 20));
 
     await tapAt(tester, 0.5);
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 12: a new book opens on its cover; a lost picture is a '
+      'frame with an icon', (tester) async {
+    final base = sampleBook(sections: 2, paragraphs: 14);
+    final book = BookContent(
+      meta: base.meta,
+      sections: [
+        Section(
+          title: base.sections.first.title,
+          blocks: [
+            const ImageBlock(assetId: '1.jpg', width: 600, height: 900),
+            ...base.sections.first.blocks,
+          ],
+        ),
+        ...base.sections.skip(1),
+      ],
+    );
+    await pumpApp(tester, book: book);
+    await openBook(tester);
+    expect(reader(tester).page.hasWords, isFalse, reason: 'the cover');
+    expect(find.byType(PageImages), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    for (
+      var i = 0;
+      i < 50 && find.byIcon(Icons.broken_image_outlined).evaluate().isEmpty;
+      i++
+    ) {
+      await settle(tester);
+    }
+    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // On to the text: the place is its first word; back to the cover.
+    await tapAt(tester, 0.95);
+    expect(reader(tester).page.hasWords, isTrue);
+    expect(reader(tester).page.firstWord, 0);
+    expect(find.byType(Image), findsNothing);
+    await tapAt(tester, 0.05);
+    expect(reader(tester).page.hasWords, isFalse);
+    expect(tester.takeException(), isNull);
     await tester.pumpAndSettle();
     await closeApp(tester);
   });

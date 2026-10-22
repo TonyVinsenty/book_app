@@ -42,6 +42,10 @@ final class ChapterPage {
   bool get hasWords => endWord > firstWord;
 }
 
+/// A picture on a page: its rectangle in page coordinates and its size in
+/// pixels (the screen decodes it no larger than shown).
+typedef PageImage = ({String assetId, Rect rect, int width, int height});
+
 /// A chapter split into pages of [pageSize] (ADR 0003): every block is laid
 /// out whole by a [TextPainter], pages take whole lines, and a page paints
 /// the same painters shifted and clipped, so line breaks match exactly.
@@ -67,7 +71,7 @@ final class ChapterLayout {
     final section = tokens.content.sections[sectionIndex];
     final blocks = [
       for (final block in section.blocks)
-        _BlockLayout.of(block, style, pageSize.width),
+        _BlockLayout.of(block, style, pageSize),
     ];
     final metrics = [for (final block in blocks) block?.metrics];
     final pages = _withWords(
@@ -116,14 +120,30 @@ final class ChapterLayout {
   /// Text of page [index], for screen readers.
   String pageText(int index) => [
     for (final slice in pages[index].slices)
-      switch (_section.blocks[slice.blockIndex]) {
+      ?switch (_section.blocks[slice.blockIndex]) {
         TextBlock(:final text) => text.substring(
           slice.charStart,
           slice.charEnd,
         ),
-        _ => _separatorText,
+        SeparatorBlock() => _separatorText,
+        ImageBlock() => null,
       },
   ].join('\n');
+
+  /// Pictures on page [index], top to bottom.
+  List<PageImage> pageImages(int index) => [
+    for (final slice in pages[index].slices)
+      if ((_section.blocks[slice.blockIndex], _blocks[slice.blockIndex]) case (
+        ImageBlock(:final assetId, :final width?, :final height?),
+        _BlockLayout(:final imageSize?, :final metrics),
+      ))
+        (
+          assetId: assetId,
+          rect: Offset(metrics.dx, slice.top) & imageSize,
+          width: width,
+          height: height,
+        ),
+  ];
 
   /// The word on page [index] under [point] (page coordinates), or null if
   /// no word is within about a letter of it (ADR 0003 п. 3).
@@ -143,7 +163,7 @@ final class ChapterLayout {
       while (line + 1 < slice.endLine && block.tops[line + 1] <= local.dy) {
         line++;
       }
-      final caret = layout.painter.getPositionForOffset(local).offset;
+      final caret = layout.painter!.getPositionForOffset(local).offset;
       final char = layout.hyphens
           .toText(caret - block.prefix)
           .clamp(0, block.textLength);
@@ -210,7 +230,7 @@ final class ChapterLayout {
   Iterable<Rect> _boxesOf(_BlockLayout layout, int wordIndex) {
     final token = _tokens[wordIndex];
     final prefix = layout.metrics.prefix;
-    return layout.painter
+    return layout.painter!
         .getBoxesForSelection(
           TextSelection(
             baseOffset: layout.hyphens.toPainter(token.charStart) + prefix,
@@ -220,9 +240,13 @@ final class ChapterLayout {
         .map((box) => box.toRect());
   }
 
+  /// Paints the text of page [index]; its pictures are widgets on top
+  /// ([pageImages]).
   void paintPage(Canvas canvas, int index) {
     for (final slice in pages[index].slices) {
       final layout = _blocks[slice.blockIndex]!;
+      final painter = layout.painter;
+      if (painter == null) continue;
       final block = layout.metrics;
       final top = block.tops[slice.firstLine];
       final height = block.tops[slice.endLine] - top;
@@ -238,7 +262,7 @@ final class ChapterLayout {
             slice.top + height,
           ),
         );
-      layout.painter.paint(canvas, shift);
+      painter.paint(canvas, shift);
       layout.paintHyphens(canvas, shift, slice.firstLine, slice.endLine);
       canvas.restore();
     }
@@ -335,14 +359,14 @@ final class ChapterPaginator {
     required this.sectionIndex,
     required this._style,
     required Size pageSize,
-  }) : _width = pageSize.width,
+  }) : _pageSize = pageSize,
        _source = _tokens.content.sections[sectionIndex].blocks,
        _splitter = _Splitter(pageSize.height);
 
   final int sectionIndex;
   final BookTokens _tokens;
   final PageStyle _style;
-  final double _width;
+  final Size _pageSize;
   final List<Block> _source;
   final _Splitter _splitter;
   final _metrics = <_BlockMetrics?>[];
@@ -361,7 +385,7 @@ final class ChapterPaginator {
     final watch = Stopwatch()..start();
     while (_metrics.length < _source.length) {
       final b = _metrics.length;
-      final layout = _BlockLayout.of(_source[b], _style, _width);
+      final layout = _BlockLayout.of(_source[b], _style, _pageSize);
       layout?.dispose();
       final block = layout?.metrics;
       _metrics.add(block);
@@ -458,7 +482,7 @@ const _indent = '  ';
 /// A block laid out at the page width by its painter.
 final class _BlockLayout {
   _BlockLayout(
-    this.painter, {
+    TextPainter this.painter, {
     this.hyphens = _SoftHyphens.none,
     required int prefix,
     required int textLength,
@@ -479,10 +503,23 @@ final class _BlockLayout {
          spaceAfter: spaceAfter,
          keepTogether: keepTogether,
          keepWithNext: keepWithNext,
-       );
+       ),
+       imageSize = null;
 
-  /// Null for blocks not shown yet (pictures come in a later stage).
-  static _BlockLayout? of(Block block, PageStyle style, double width) {
+  /// A picture: one unbreakable "line" of its height (ADR 0008 п. 6).
+  _BlockLayout._image(Size this.imageSize, double width, double space)
+    : painter = null,
+      hyphens = _SoftHyphens.none,
+      metrics = _BlockMetrics.box(
+        imageSize.height,
+        dx: (width - imageSize.width) / 2,
+        spaceBefore: space,
+        spaceAfter: space,
+      );
+
+  /// Null for blocks that show nothing (a picture of unknown size).
+  static _BlockLayout? of(Block block, PageStyle style, Size page) {
+    final width = page.width;
     final em = style.textScaler.scale(style.fontSize);
     final line = style.bodyLine;
     switch (block) {
@@ -548,6 +585,11 @@ final class _BlockLayout {
           spaceAfter: line / 2,
           keepTogether: true,
         );
+      case ImageBlock(width: final w?, height: final h?) when w > 0 && h > 0:
+        // The text width at most, a pixel per point (small vignettes stay
+        // small), and no taller than the page.
+        final scale = math.min(1.0, math.min(width / w, page.height / h));
+        return _BlockLayout._image(Size(w * scale, h * scale), width, line / 2);
       case ImageBlock():
         return null;
     }
@@ -649,9 +691,13 @@ final class _BlockLayout {
     );
   }
 
-  final TextPainter painter;
+  /// Null for a picture.
+  final TextPainter? painter;
   final _SoftHyphens hyphens;
   final _BlockMetrics metrics;
+
+  /// The size a picture is shown at; null for text.
+  final Size? imageSize;
 
   /// Lines that end at a soft hyphen: line → its «-» and where it goes.
   Map<int, (TextPainter, Offset)> get _hyphenMarks => _marks ??= _findHyphens();
@@ -659,6 +705,8 @@ final class _BlockLayout {
 
   Map<int, (TextPainter, Offset)> _findHyphens() {
     // Soft hyphens may come from the book itself, with hyphenation off too.
+    final painter = this.painter;
+    if (painter == null) return const {};
     final text = painter.plainText;
     if (hyphens.isEmpty && !text.contains(softHyphen)) return const {};
     final root = painter.text! as TextSpan;
@@ -697,7 +745,7 @@ final class _BlockLayout {
   }
 
   void dispose() {
-    painter.dispose();
+    painter?.dispose();
     for (final (mark, _) in _marks?.values ?? const <(TextPainter, Offset)>[]) {
       mark.dispose();
     }
@@ -801,6 +849,21 @@ final class _BlockMetrics {
           .toText(offset - prefix)
           .clamp(lineStarts[i - 1], textLength);
     }
+  }
+
+  /// One unbreakable line of [height] without text (a picture).
+  _BlockMetrics.box(
+    double height, {
+    required this.dx,
+    required this.spaceBefore,
+    required this.spaceAfter,
+  }) : prefix = 0,
+       textLength = 0,
+       isText = false,
+       keepTogether = true,
+       keepWithNext = 0 {
+    tops = [0, height];
+    lineStarts = const [0, 0];
   }
 
   /// Characters added before the block text (the first-line indent).

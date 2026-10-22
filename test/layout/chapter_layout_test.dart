@@ -436,6 +436,91 @@ void main() {
     layout.dispose();
   });
 
+  group('pictures (ADR 0008 п. 6)', () {
+    BookTokens book(List<Block> blocks) => tokenize(
+      BookContent(
+        meta: const BookMeta(title: 'Картинки', sourceFormat: SourceFormat.fb2),
+        sections: [Section(blocks: blocks)],
+      ),
+    );
+    const size = Size(300, 500);
+    final long = ParagraphBlock(text: List.filled(40, 'слово').join(' '));
+
+    test('a picture is centred, a pixel per point, not wider or taller '
+        'than the page', () {
+      final tokens = book(const [
+        ImageBlock(assetId: '1.png', width: 40, height: 20),
+        ImageBlock(assetId: '2.jpg', width: 1200, height: 600),
+        ImageBlock(assetId: '3.jpg', width: 600, height: 3000),
+      ]);
+      final layout = build(tokens, 0, size, style());
+      final rects = [
+        for (var p = 0; p < layout.pages.length; p++)
+          for (final image in layout.pageImages(p)) image.rect,
+      ];
+      expect(rects.map((r) => r.size), [
+        const Size(40, 20),
+        const Size(300, 150),
+        const Size(100, 500),
+      ]);
+      for (final rect in rects) {
+        expect(rect.center.dx, closeTo(size.width / 2, 0.01));
+        expect(rect.bottom, lessThanOrEqualTo(size.height + 0.01));
+      }
+      expect(layout.pages.last.slices.single.top, 0, reason: 'own page');
+      layout.dispose();
+    });
+
+    test('a picture is not cut: it moves to the next page whole', () {
+      final tokens = book([
+        long,
+        long,
+        const ImageBlock(assetId: '1.jpg', width: 300, height: 400),
+        long,
+      ]);
+      for (final size in _sizes) {
+        final layout = build(tokens, 0, size, style());
+        var pictures = 0;
+        for (var p = 0; p < layout.pages.length; p++) {
+          for (final image in layout.pageImages(p)) {
+            pictures++;
+            expect(image.rect.top, greaterThanOrEqualTo(0));
+            expect(image.rect.bottom, lessThanOrEqualTo(size.height + 0.01));
+          }
+        }
+        expect(pictures, 1, reason: 'one slice at $size');
+        expectExactSplit(tokens, layout);
+        expectWordsTouchable(layout);
+        expectSameAsPaginator(tokens, layout);
+        layout.dispose();
+      }
+    });
+
+    test('a cover is the first page, without words; unknown size is '
+        'skipped', () {
+      final tokens = book([
+        const ImageBlock(assetId: 'cover.jpg', width: 600, height: 900),
+        const ImageBlock(assetId: 'lost'),
+        const HeadingBlock(text: 'Глава 1'),
+        long,
+      ]);
+      final layout = build(tokens, 0, size, style());
+      expect(layout.pages.length, greaterThanOrEqualTo(2));
+      expect(layout.pages.first.hasWords, isFalse);
+      expect(layout.pageImages(0).single.assetId, 'cover.jpg');
+      expect(layout.pageText(0), isEmpty);
+      expect(layout.pages[1].firstWord, 0);
+      expect(layout.pageOfWord(0), 1, reason: 'a place is a page of text');
+      expect([
+        for (var p = 1; p < layout.pages.length; p++) ...layout.pageImages(p),
+      ], isEmpty);
+      final canvas = _CountingCanvas();
+      layout.paintPage(canvas, 0);
+      expect(canvas.paragraphs, 0, reason: 'pictures are widgets');
+      layout.dispose();
+    });
+  });
+
   // Big real books live outside the repository (ADR 0006): set
   // BOOKAPP_HARD_BOOKS to their folder to check them too.
   final hardBooks = Platform.environment['BOOKAPP_HARD_BOOKS'];

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:book_app/app/notice.dart';
@@ -17,6 +18,7 @@ import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
+import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -122,6 +124,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   late final PageCache _pageCache = PageCache(
     ref.read(contentStoreProvider).pagesDir(widget.opened.book.id),
   );
+
+  late final Directory _imagesDir = ref
+      .read(contentStoreProvider)
+      .imagesDir(widget.opened.book.id);
 
   /// Saves the pages when the app goes to the background (it may be closed
   /// there without [dispose]).
@@ -317,7 +323,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
     _pageSize = pageSize;
     _style = style;
-    _page = _layoutOf(_section).pageOfWord(_word);
+    // A book opened at its start shows its first page, the cover too (ADR
+    // 0008 п. 6); a page of only pictures is otherwise never a place.
+    _page = _word == 0 && _page == 0
+        ? 0
+        : _layoutOf(_section).pageOfWord(_word);
     if (guide != null) {
       guide.relayout();
       if (!guided) guide.pageTurned(page.firstWord);
@@ -856,6 +866,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
             final chapter = layout;
             final guide = _guide;
             final numbers = _pageNumbers(l10n);
+            precachePageImages(context, chapter, [
+              _page - 1,
+              _page + 1,
+            ], _imagesDir);
             // The percent read is always shown by the page (owner, 11а.3).
             final pageLabel = l10n.readerPageAndPercent(
               l10n.readerPageOfBook(numbers.page, numbers.total),
@@ -909,6 +923,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
                                       litAnimation: _lit,
                                     ),
                                   ),
+                                ),
+                                PageImages(
+                                  chapter: chapter,
+                                  page: _page,
+                                  imagesDir: _imagesDir,
+                                  dim: dark,
+                                  frameColor: colors.textSecondary,
                                 ),
                               ],
                             ),
