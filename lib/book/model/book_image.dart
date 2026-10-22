@@ -160,9 +160,11 @@ bool _isComplete(String extension, Uint8List b) {
   };
 }
 
-/// Size from the first frame header (SOF) before the image data.
+/// Size from the first frame header (SOF) before the image data, turned
+/// as the EXIF orientation says: the decoder turns the picture so.
 PictureHeader? _jpeg(Uint8List b, ByteData data) {
   var i = 2;
+  var turned = false;
   while (i + 4 <= b.length) {
     if (b[i] != 0xFF) return null;
     final marker = b[i + 1];
@@ -186,12 +188,46 @@ PictureHeader? _jpeg(Uint8List b, ByteData data) {
       if (i + 9 > b.length) return null;
       final height = data.getUint16(i + 5);
       final width = data.getUint16(i + 7);
-      return width > 0 && height > 0
-          ? PictureHeader('jpg', width, height)
-          : null;
+      if (width == 0 || height == 0) return null;
+      return turned
+          ? PictureHeader('jpg', height, width)
+          : PictureHeader('jpg', width, height);
     }
+    if (marker == 0xE1) turned = _turnedByExif(b, data, i + 4, length - 2);
     if (length < 2) return null;
     i += 2 + length;
   }
   return null;
+}
+
+/// True when the EXIF block at [start] of [length] bytes turns the picture
+/// a quarter (orientations 5–8).
+bool _turnedByExif(Uint8List b, ByteData data, int start, int length) {
+  final end = start + length;
+  if (end > b.length || length < 14) return false;
+  const exif = [0x45, 0x78, 0x69, 0x66, 0, 0];
+  for (var j = 0; j < exif.length; j++) {
+    if (b[start + j] != exif[j]) return false;
+  }
+  final tiff = start + 6;
+  final Endian e;
+  if (b[tiff] == 0x49 && b[tiff + 1] == 0x49) {
+    e = Endian.little;
+  } else if (b[tiff] == 0x4D && b[tiff + 1] == 0x4D) {
+    e = Endian.big;
+  } else {
+    return false;
+  }
+  final ifd = tiff + data.getUint32(tiff + 4, e);
+  if (ifd + 2 > end) return false;
+  final count = data.getUint16(ifd, e);
+  for (var k = 0; k < count; k++) {
+    final entry = ifd + 2 + k * 12;
+    if (entry + 12 > end) return false;
+    if (data.getUint16(entry, e) == 0x0112) {
+      final orientation = data.getUint16(entry + 8, e);
+      return orientation >= 5 && orientation <= 8;
+    }
+  }
+  return false;
 }

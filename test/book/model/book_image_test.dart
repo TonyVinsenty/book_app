@@ -17,12 +17,28 @@ Uint8List png(int width, int height) => Uint8List.fromList([
   ...pngEnd,
 ]);
 
+/// APP1 with one IFD entry: the orientation.
+List<int> exif(int orientation, List<int> Function(int, int) n) => [
+  0xFF, 0xE1, ...be(34, 2), ...'Exif'.codeUnits, 0, 0, //
+  ...(identical(n, be) ? 'MM' : 'II').codeUnits, ...n(42, 2), ...n(8, 4),
+  ...n(1, 2), ...n(0x0112, 2), ...n(3, 2), ...n(1, 4), ...n(orientation, 2),
+  0, 0, ...n(0, 4),
+];
+
 const pngEnd = [0, 0, 0, 0, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82];
 
-/// APP0, a DQT and then the frame header.
-Uint8List jpeg(int width, int height, {int sof = 0xC0}) => Uint8List.fromList([
+/// APP0, EXIF with [orientation] if given, a DQT and then the frame
+/// header.
+Uint8List jpeg(
+  int width,
+  int height, {
+  int sof = 0xC0,
+  int? orientation,
+  bool motorola = false,
+}) => Uint8List.fromList([
   0xFF, 0xD8, //
   0xFF, 0xE0, ...be(16, 2), ...'JFIF'.codeUnits, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0,
+  if (orientation != null) ...exif(orientation, motorola ? be : le),
   0xFF, 0xFF, // fill
   0xFF, 0xDB, ...be(3, 2), 0,
   0xFF, sof, ...be(17, 2), 8, ...be(height, 2), ...be(width, 2), 3,
@@ -36,6 +52,14 @@ void main() {
       'PNG': (png(640, 480), 'png', 640, 480),
       'JPEG baseline': (jpeg(800, 600), 'jpg', 800, 600),
       'JPEG progressive': (jpeg(1024, 33, sof: 0xC2), 'jpg', 1024, 33),
+      'JPEG turned by EXIF': (jpeg(800, 600, orientation: 6), 'jpg', 600, 800),
+      'JPEG turned by EXIF (Motorola)': (
+        jpeg(800, 600, orientation: 8, motorola: true),
+        'jpg',
+        600,
+        800,
+      ),
+      'JPEG upright by EXIF': (jpeg(800, 600, orientation: 3), 'jpg', 800, 600),
       'GIF': (
         Uint8List.fromList([
           ...'GIF89a'.codeUnits,
