@@ -26,7 +26,7 @@ class BookShelf extends ConsumerWidget {
 
   final LibraryView view;
 
-  /// Starts checking books for a collection with this one checked.
+  /// Opens the book menu.
   final ValueChanged<BookRow>? onLongPress;
 
   /// Not null while books are checked for a collection: a tap calls [onPick]

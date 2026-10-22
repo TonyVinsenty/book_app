@@ -27,11 +27,6 @@ Future<void> createCollection(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// A long press on a book: a new collection with [bookId] checked; the name
-/// is asked at "Готово".
-void pickForNewCollection(BuildContext context, int bookId) =>
-    unawaited(_push(context, CollectionPickScreen(initial: {bookId})));
-
 /// "Добавить книги" of a collection: its books are checked.
 void pickForCollection(BuildContext context, int collectionId) =>
     unawaited(_push(context, CollectionPickScreen(collectionId: collectionId)));
@@ -43,20 +38,12 @@ Future<void> _push(BuildContext context, Widget screen) =>
 /// for [collectionId] or a new collection called [name]. Nothing is written
 /// until "Готово": the checks are this screen's own.
 class CollectionPickScreen extends ConsumerStatefulWidget {
-  const CollectionPickScreen({
-    super.key,
-    this.collectionId,
-    this.name,
-    this.initial = const {},
-  });
+  const CollectionPickScreen({super.key, this.collectionId, this.name});
 
   final int? collectionId;
 
   /// A new collection; asked at "Готово" when null.
   final String? name;
-
-  /// Checked at the start of a new collection.
-  final Set<int> initial;
 
   @override
   ConsumerState<CollectionPickScreen> createState() =>
@@ -73,12 +60,11 @@ class _CollectionPickScreenState extends ConsumerState<CollectionPickScreen> {
 
   Set<int>? _seed() {
     final id = widget.collectionId;
-    if (id == null) return {...widget.initial};
+    if (id == null) return {};
     final links = ref.watch(collectionLinksProvider).value;
     return links == null
         ? null
         : {
-            ...widget.initial,
             for (final l in links)
               if (l.collectionId == id) l.bookId,
           };

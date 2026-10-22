@@ -8,6 +8,7 @@ import 'package:book_app/data/import_queue.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/library/book_menu.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_pick_screen.dart';
@@ -268,7 +269,7 @@ class _BooksTab extends ConsumerWidget {
             SliverToBoxAdapter(
               child: ContinueCard(
                 onTap: () => openBook(context, last.id),
-                onLongPress: () => pickForNewCollection(context, last.id),
+                onLongPress: () => unawaited(showBookMenu(context, ref, last)),
                 coverFile: repository.coverFile(last),
                 title: last.title,
                 authors: last.authors.join(', '),
@@ -295,7 +296,8 @@ class _BooksTab extends ConsumerWidget {
           else ...[
             BookShelf(
               view: view,
-              onLongPress: (book) => pickForNewCollection(context, book.id),
+              onLongPress: (book) =>
+                  unawaited(showBookMenu(context, ref, book)),
             ),
             // Room for the button over the last book.
             const SliverToBoxAdapter(child: SizedBox(height: 88)),

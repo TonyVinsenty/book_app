@@ -5,6 +5,7 @@ import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/library/book_menu.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_name_dialog.dart';
@@ -95,8 +96,14 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                         else ...[
                           BookShelf(
                             view: view,
-                            onLongPress: (_) =>
-                                pickForCollection(context, collection.id),
+                            onLongPress: (book) => unawaited(
+                              showBookMenu(
+                                context,
+                                ref,
+                                book,
+                                collectionId: collection.id,
+                              ),
+                            ),
                           ),
                           const SliverToBoxAdapter(child: SizedBox(height: 24)),
                         ],

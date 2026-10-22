@@ -107,13 +107,13 @@ void main() {
       for (final name in picked)
         (File('${temp.path}/$name')..writeAsStringSync('x')).path,
     ];
+    final store = ContentStore(Directory('${temp.path}/books'));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
-          bookRepositoryProvider.overrideWithValue(
-            BookRepository(db, ContentStore(Directory('${temp.path}/books'))),
-          ),
+          contentStoreProvider.overrideWithValue(store),
+          bookRepositoryProvider.overrideWithValue(BookRepository(db, store)),
           // Live: books, collections and links come from the database.
           if (!live) ...[
             booksProvider.overrideWithValue(AsyncData(books)),
@@ -691,31 +691,54 @@ void main() {
       });
     });
 
-    testWidgets('a long press starts a new collection with the book', (
+    testWidgets('a long press opens the book menu: details, collections', (
       tester,
     ) async {
       await pumpLive(tester);
 
       await tester.longPress(tile('Шинель'));
       await tester.pumpAndSettle();
-      expect(find.text('Новая подборка'), findsOneWidget);
-      expect(find.text('Отметьте книги · выбрано 1'), findsOneWidget);
-      expect(picked(tester, 'Шинель'), isTrue);
+      expect(find.text('Подробнее'), findsOneWidget);
+      expect(find.text('Добавить в подборку'), findsOneWidget);
+      expect(find.text('Удалить книгу'), findsOneWidget);
+      expect(find.text('Убрать из подборки'), findsNothing, reason: 'library');
+      expect(find.textContaining('Отметьте книги'), findsNothing);
 
-      await tap(tester, find.text('Готово (1)'));
-      // The name is asked now; cancelling it keeps the checks.
-      await tap(tester, find.text('Отмена'));
-      expect(find.text('Готово (1)'), findsOneWidget);
-      await tap(tester, find.text('Готово (1)'));
+      // "Добавить в подборку": the collections with checks, and a new one.
+      await tap(tester, find.text('Добавить в подборку'));
+      await tap(tester, find.widgetWithText(CheckboxListTile, 'Классика'));
+      expect((await saved(tester))['Классика'], {1, 3});
+      await tap(tester, find.text('Новая подборка'));
       await tester.enterText(find.byType(TextField), 'Сказки');
       await tap(tester, find.text('Создать'));
-
-      expect(find.byType(CollectionScreen), findsOneWidget);
-      expect(titles(tester, BookTile), ['Шинель']);
       expect((await saved(tester))['Сказки'], {3});
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      // "Подробнее": the book page.
+      await tester.longPress(tile('Шинель'));
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Подробнее'));
+      expect(find.byType(BookPageScreen), findsOneWidget);
     });
 
-    testWidgets('a long press on a grid cover checks it', (tester) async {
+    testWidgets('the menu deletes a book after confirmation', (tester) async {
+      await pumpLive(tester);
+
+      await tester.longPress(tile('Шинель'));
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Удалить книгу'));
+      await tap(tester, find.text('Отмена'));
+      expect(tile('Шинель'), findsOneWidget);
+
+      await tester.longPress(tile('Шинель'));
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Удалить книгу'));
+      await tap(tester, find.widgetWithText(TextButton, 'Удалить'));
+      expect(tile('Шинель'), findsNothing);
+    });
+
+    testWidgets('a long press on a grid cover opens the menu', (tester) async {
       await tester.runAsync(
         () => SettingsRepository(db).set(SettingKeys.libraryLayout, 'grid'),
       );
@@ -723,15 +746,15 @@ void main() {
 
       await tester.longPress(find.widgetWithText(BookGridTile, 'Шинель'));
       await tester.pumpAndSettle();
-      final tiles = {
-        for (final e in find.byType(BookGridTile).evaluate())
-          (e.widget as BookGridTile).title: (e.widget as BookGridTile).picked,
-      };
-      expect(tiles, {
-        'Шинель': true,
-        'Анна Каренина': false,
-        'Война и мир': false,
-      });
+      expect(find.text('Подробнее'), findsOneWidget);
+      expect(
+        [
+          for (final e in find.byType(BookGridTile).evaluate())
+            (e.widget as BookGridTile).picked,
+        ],
+        everyElement(isNull),
+        reason: 'no checks',
+      );
     });
 
     testWidgets('"Добавить книги" adds and takes out books', (tester) async {
@@ -752,10 +775,18 @@ void main() {
         'Классика': {3},
       });
 
-      // A long press there opens the same checks.
+      // In the collection the menu also takes the book out of it; the book
+      // stays in the library.
       await tester.longPress(tile('Шинель'));
       await tester.pumpAndSettle();
-      expect(find.text('Отметьте книги · выбрано 1'), findsOneWidget);
+      expect(find.text('Удалить книгу'), findsOneWidget);
+      await tap(tester, find.text('Убрать из подборки'));
+      expect(tile('Шинель'), findsNothing);
+      expect(await saved(tester), {'Классика': <int>{}});
+      expect(
+        await tester.runAsync(() => db.select(db.books).get()),
+        hasLength(shelfBooks.length),
+      );
     });
 
     testWidgets('renames a collection', (tester) async {

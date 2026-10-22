@@ -5,13 +5,96 @@ import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_name_dialog.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// "В подборку…" for [book], from its page.
+enum _MenuAction { details, collections, removeFromCollection, delete }
+
+/// A long press on a book (library and collections): the book menu. In the
+/// collection [collectionId] it can also take the book out of it.
+Future<void> showBookMenu(
+  BuildContext context,
+  WidgetRef ref,
+  BookRow book, {
+  int? collectionId,
+}) async {
+  final titleFont = ref.read(readingSettingsProvider).font.family;
+  final action = await showModalBottomSheet<_MenuAction>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      final error = Theme.of(context).colorScheme.error;
+      ListTile item(_MenuAction action, IconData icon, String label) =>
+          ListTile(
+            leading: Icon(icon),
+            title: Text(label),
+            onTap: () => Navigator.of(context).pop(action),
+          );
+      return SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _BookHeader(
+                book: book,
+                coverFile: ref.read(bookRepositoryProvider).coverFile(book),
+                titleFont: titleFont,
+              ),
+              item(
+                _MenuAction.details,
+                Icons.info_outline,
+                l10n.bookMenuDetails,
+              ),
+              item(
+                _MenuAction.collections,
+                Icons.collections_bookmark_outlined,
+                l10n.bookMenuAddToCollection,
+              ),
+              if (collectionId != null)
+                item(
+                  _MenuAction.removeFromCollection,
+                  Icons.remove_circle_outline,
+                  l10n.bookMenuRemoveFromCollection,
+                ),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: error),
+                title: Text(
+                  l10n.bookMenuDelete,
+                  style: TextStyle(color: error),
+                ),
+                onTap: () => Navigator.of(context).pop(_MenuAction.delete),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+  if (action == null || !context.mounted) return;
+  switch (action) {
+    case _MenuAction.details:
+      openBookPage(context, book.id);
+    case _MenuAction.collections:
+      await showBookCollections(context, ref, book: book, titleFont: titleFont);
+    case _MenuAction.removeFromCollection:
+      await ref
+          .read(collectionRepositoryProvider)
+          .removeBook(collectionId!, book.id);
+    case _MenuAction.delete:
+      if (await confirmBookDelete(context, book.title)) {
+        await ref.read(bookRepositoryProvider).deleteBook(book.id);
+      }
+  }
+}
+
+/// "В подборку…" for [book], from its page or the book menu.
 Future<void> showBookCollections(
   BuildContext context,
   WidgetRef ref, {

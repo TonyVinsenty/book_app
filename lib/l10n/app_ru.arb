@@ -174,6 +174,12 @@
   "@collectionCreate": {"description": "Button on the collections tab"},
   "collectionsHint": "Одну книгу можно положить в несколько подборок. Статус книги от этого не меняется.",
   "@collectionsHint": {"description": "Hint under a few collections"},
+  "bookMenuDetails": "Подробнее",
+  "@bookMenuDetails": {"description": "Book menu (long press on a book): open the book page"},
+  "bookMenuAddToCollection": "Добавить в подборку",
+  "@bookMenuAddToCollection": {"description": "Book menu: choose the collections of the book or make a new one"},
+  "bookMenuRemoveFromCollection": "Убрать из подборки",
+  "@bookMenuRemoveFromCollection": {"description": "Book menu in a collection: take the book out of it (the book stays in the library)"},
   "bookMenuDelete": "Удалить книгу",
   "@bookMenuDelete": {
     "description": "Book menu: delete the book from the library"
