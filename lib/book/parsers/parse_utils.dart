@@ -25,6 +25,18 @@ String tocTitle(String heading) {
   return out.toString();
 }
 
+/// [cover] becomes the first page of [sections], unless the text already
+/// opens with it (before its first paragraph).
+void putCoverFirst(List<Section> sections, ImageBlock cover) {
+  if (sections.isEmpty) return;
+  final first = sections.first;
+  final opening = first.blocks.takeWhile((b) => b is! ParagraphBlock);
+  if (opening.any((b) => b is ImageBlock && b.assetId == cover.assetId)) {
+    return;
+  }
+  sections[0] = Section(title: first.title, blocks: [cover, ...first.blocks]);
+}
+
 /// [value] without its footnote labels.
 String withoutMarks(String value, List<Span> spans) {
   final out = StringBuffer();

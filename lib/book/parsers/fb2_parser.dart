@@ -735,16 +735,7 @@ final class _Reader {
       );
     }
     // The cover is the first page, unless the text already opens with it.
-    if (cover != null && sections.isNotEmpty) {
-      final first = sections.first;
-      final opening = first.blocks.takeWhile((b) => b is! ParagraphBlock);
-      if (!opening.any((b) => b is ImageBlock && b.assetId == cover.assetId)) {
-        sections[0] = Section(
-          title: first.title,
-          blocks: [cover, ...first.blocks],
-        );
-      }
-    }
+    if (cover != null) putCoverFirst(sections, cover);
     final notes = <String, Note>{};
     for (final MapEntry(:key, :value) in _notes.entries) {
       final blocks = resolve(value.blocks);

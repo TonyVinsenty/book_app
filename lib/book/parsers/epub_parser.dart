@@ -131,18 +131,7 @@ BookContent parseEpub(
   final coverBlock = cover == null ? null : picture(cover.path);
   // A cover named by the package is the first page, unless the text
   // already opens with it; one from the first page is in the text.
-  if (coverPage != null) {
-    final first = sections.first;
-    final opening = first.blocks.takeWhile((b) => b is! ParagraphBlock);
-    if (!opening.any(
-      (b) => b is ImageBlock && b.assetId == coverPage.assetId,
-    )) {
-      sections[0] = Section(
-        title: first.title,
-        blocks: [coverPage, ...first.blocks],
-      );
-    }
-  }
+  if (coverPage != null) putCoverFirst(sections, coverPage);
   final content = BookContent(
     meta: package.meta(fallbackTitle: title, coverAssetId: coverBlock?.assetId),
     toc: toc,
