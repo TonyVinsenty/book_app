@@ -2,6 +2,8 @@ package com.tonyvinsenty.bookapp
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -12,6 +14,7 @@ import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.OpenableColumns
 import android.view.WindowManager
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -23,6 +26,7 @@ import java.util.concurrent.Executors
 class MainActivity : FlutterActivity() {
     private val filesChannel = "com.tonyvinsenty.bookapp/files"
     private val screenChannel = "com.tonyvinsenty.bookapp/screen"
+    private val shareChannel = "com.tonyvinsenty.bookapp/share"
     private val pickBooksRequest = 4101
     private val pickFolderRequest = 4102
     private var pendingPick: MethodChannel.Result? = null
@@ -98,6 +102,43 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, shareChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "shareFile" -> shareFile(
+                        call.argument<String>("path")!!,
+                        call.argument<String>("mime")!!,
+                        result,
+                    )
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    // The file is in the cache's share/ folder (res/xml/share_paths.xml);
+    // the receiving app gets read access to it for the chooser's lifetime.
+    private fun shareFile(path: String, mime: String, result: MethodChannel.Result) {
+        try {
+            val uri = FileProvider.getUriForFile(this, "$packageName.share", File(path))
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newRawUri(null, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = Intent.createChooser(send, null)
+            // Not back into this app: it would only open the same book.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                chooser.putExtra(
+                    Intent.EXTRA_EXCLUDE_COMPONENTS,
+                    arrayOf(ComponentName(this, MainActivity::class.java)),
+                )
+            }
+            startActivity(chooser)
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("share", e.message, null)
+        }
     }
 
     private fun pickBooks(result: MethodChannel.Result) {

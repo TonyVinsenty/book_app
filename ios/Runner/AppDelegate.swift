@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let filesChannel = "com.tonyvinsenty.bookapp/files"
   private let screenChannel = "com.tonyvinsenty.bookapp/screen"
+  private let shareChannel = "com.tonyvinsenty.bookapp/share"
   private var bookPicker: BookPicker?
   private var pickedFolders: PickedFolders?
   // Kept here: the registrar holds scene delegates weakly.
@@ -59,7 +60,36 @@ import UniformTypeIdentifiers
         default: result(FlutterMethodNotImplemented)
         }
       }
+    FlutterMethodChannel(name: shareChannel, binaryMessenger: registrar.messenger())
+      .setMethodCallHandler { [weak registrar] call, result in
+        switch call.method {
+        case "shareFile":
+          let path = (call.arguments as? [String: Any])?["path"] as? String ?? ""
+          shareFile(path, from: registrar?.viewController, result)
+        default: result(FlutterMethodNotImplemented)
+        }
+      }
   }
+}
+
+/// "Поделиться" (11а.6): the system share sheet with the file (Telegram,
+/// Mail, Files, AirDrop). On iPad the sheet is a popover: it points at the
+/// middle of the screen, without an arrow.
+private func shareFile(_ path: String, from root: UIViewController?, _ result: FlutterResult) {
+  guard var host = root, FileManager.default.fileExists(atPath: path) else {
+    result(FlutterError(code: "share", message: "No file or no view to share from", details: nil))
+    return
+  }
+  while let presented = host.presentedViewController { host = presented }
+  let sheet = UIActivityViewController(
+    activityItems: [URL(fileURLWithPath: path)], applicationActivities: nil)
+  if let popover = sheet.popoverPresentationController {
+    popover.sourceView = host.view
+    popover.sourceRect = CGRect(x: host.view.bounds.midX, y: host.view.bounds.midY, width: 0, height: 0)
+    popover.permittedArrowDirections = []
+  }
+  host.present(sheet, animated: true)
+  result(nil)
 }
 
 /// Files from other apps ("Open in", "Share", ADR 0005). Flutter passes

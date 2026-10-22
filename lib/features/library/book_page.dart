@@ -56,12 +56,18 @@ class _BookPageScreenState extends ConsumerState<BookPageScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          if (book != null)
+          if (book != null) ...[
+            IconButton(
+              icon: Icon(Icons.adaptive.share),
+              tooltip: l10n.bookMenuShare,
+              onPressed: () => unawaited(shareBook(context, ref, book)),
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: l10n.bookMenuDelete,
               onPressed: () => unawaited(_delete(book)),
             ),
+          ],
         ],
       ),
       body: book == null ? const SizedBox.shrink() : _BookPage(book: book),

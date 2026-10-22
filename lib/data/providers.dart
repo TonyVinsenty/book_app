@@ -4,6 +4,7 @@ import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/book_repository.dart';
+import 'package:book_app/data/book_share.dart';
 import 'package:book_app/data/collection_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -12,6 +13,7 @@ import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/data/speed_settings.dart';
 import 'package:book_app/layout/hyphenation.dart';
+import 'package:book_app/platform/share_channel.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -110,6 +112,10 @@ Future<List<Override>> openStorageOverrides() async {
     folderCopiesProvider.overrideWithValue(
       Directory('${temp.path}${Platform.pathSeparator}folder_scan'),
     ),
+    // Android: the cache's `share/`, the only folder its FileProvider gives.
+    shareCopiesProvider.overrideWithValue(
+      Directory('${temp.path}${Platform.pathSeparator}share'),
+    ),
   ];
 }
 
@@ -138,6 +144,22 @@ final folderCopiesProvider = Provider<Directory>(
   (ref) => Directory('${Directory.systemTemp.path}/folder_scan'),
 );
 
+/// Where a shared book is copied under its readable name.
+final shareCopiesProvider = Provider<Directory>(
+  (ref) => Directory('${Directory.systemTemp.path}/share'),
+);
+
+/// The system share sheet; tests override it to see the calls.
+final shareFileProvider = Provider<ShareFile>((ref) => shareFile);
+
+final bookSharerProvider = Provider<BookSharer>(
+  (ref) => BookSharer(
+    ref.watch(bookRepositoryProvider),
+    ref.watch(shareCopiesProvider),
+    ref.watch(shareFileProvider),
+  ),
+);
+
 /// The page the reader laid out last (`reader.lastLayout`), for the book
 /// page.
 final lastLayoutProvider = StreamProvider<LastLayout?>(
@@ -156,7 +178,8 @@ final hyphenationProvider = Provider<Hyphenation?>((ref) => null);
 Future<void> showInFiles(Directory documents) async {
   try {
     final visible = documents.listSync().any(
-      (entity) => !entity.path.split(Platform.pathSeparator).last.startsWith('.'),
+      (entity) =>
+          !entity.path.split(Platform.pathSeparator).last.startsWith('.'),
     );
     if (!visible) {
       await Directory('${documents.path}/Books').create(recursive: true);

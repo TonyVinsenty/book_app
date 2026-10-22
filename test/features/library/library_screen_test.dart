@@ -63,6 +63,7 @@ void main() {
   late FakeImporter importer;
   late AppDatabase db;
   var scans = 0;
+  final shared = <String>[];
 
   setUp(() {
     scans = 0;
@@ -114,6 +115,12 @@ void main() {
           appDatabaseProvider.overrideWithValue(db),
           contentStoreProvider.overrideWithValue(store),
           bookRepositoryProvider.overrideWithValue(BookRepository(db, store)),
+          shareCopiesProvider.overrideWithValue(
+            Directory('${temp.path}/share'),
+          ),
+          shareFileProvider.overrideWithValue(
+            (path, mime) async => shared.add(path),
+          ),
           // Live: books, collections and links come from the database.
           if (!live) ...[
             booksProvider.overrideWithValue(AsyncData(books)),
@@ -720,6 +727,26 @@ void main() {
       await tester.pumpAndSettle();
       await tap(tester, find.text('Подробнее'));
       expect(find.byType(BookPageScreen), findsOneWidget);
+    });
+
+    testWidgets('the menu shares the book file', (tester) async {
+      shared.clear();
+      await pumpLive(tester);
+      final store = ContentStore(Directory('${temp.path}/books'));
+      store.sourceFile(3, SourceFormat.txt)
+        ..createSync(recursive: true)
+        ..writeAsStringSync('<FictionBook/>');
+
+      await tester.longPress(tile('Шинель'));
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Поделиться'));
+      // The copy is real file work.
+      for (var i = 0; i < 50 && shared.isEmpty; i++) {
+        await settle(tester);
+      }
+      expect(shared, hasLength(1));
+      expect(shared.single, endsWith('Шинель.txt'));
+      expect(File(shared.single).readAsStringSync(), '<FictionBook/>');
     });
 
     testWidgets('the menu deletes a book after confirmation', (tester) async {

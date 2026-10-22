@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/library_view.dart';
@@ -13,7 +14,7 @@ import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum _MenuAction { details, collections, removeFromCollection, delete }
+enum _MenuAction { share, details, collections, removeFromCollection, delete }
 
 /// A long press on a book (library and collections): the book menu. In the
 /// collection [collectionId] it can also take the book out of it.
@@ -47,6 +48,7 @@ Future<void> showBookMenu(
                 coverFile: ref.read(bookRepositoryProvider).coverFile(book),
                 titleFont: titleFont,
               ),
+              item(_MenuAction.share, Icons.adaptive.share, l10n.bookMenuShare),
               item(
                 _MenuAction.details,
                 Icons.info_outline,
@@ -79,6 +81,8 @@ Future<void> showBookMenu(
   );
   if (action == null || !context.mounted) return;
   switch (action) {
+    case _MenuAction.share:
+      await shareBook(context, ref, book);
     case _MenuAction.details:
       openBookPage(context, book.id);
     case _MenuAction.collections:
@@ -91,6 +95,21 @@ Future<void> showBookMenu(
       if (await confirmBookDelete(context, book.title)) {
         await ref.read(bookRepositoryProvider).deleteBook(book.id);
       }
+  }
+}
+
+/// "Поделиться": the book's file to the system share sheet (11а.6).
+Future<void> shareBook(
+  BuildContext context,
+  WidgetRef ref,
+  BookRow book,
+) async {
+  try {
+    await ref.read(bookSharerProvider).share(book);
+  } on Object {
+    if (!context.mounted) rethrow;
+    showNotice(context, AppLocalizations.of(context).bookShareFailed);
+    rethrow;
   }
 }
 

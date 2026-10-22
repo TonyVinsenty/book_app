@@ -129,7 +129,6 @@ class ImportQueue extends Notifier<ImportQueueState> {
       );
     }
   }
-
 }
 
 final class _Job {
