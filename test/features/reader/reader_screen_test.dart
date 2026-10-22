@@ -2092,7 +2092,7 @@ void main() {
     expect(line, findsOneWidget);
     expect(
       tester.widget<Text>(line).data,
-      startsWith('≈ '),
+      allOf(startsWith('≈ '), contains('до конца главы ·')),
       reason: 'the time to the chapter end first',
     );
 

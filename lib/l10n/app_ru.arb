@@ -673,6 +673,8 @@
   "@statsHoursMinutes": {"description": "A duration in hours and minutes", "placeholders": {"hours": {"type": "int"}, "minutes": {"type": "int"}}},
   "readerTimeLeft": "≈ {chapter} до конца главы · {book} до конца книги",
   "@readerTimeLeft": {"description": "Reader bottom panel: reading time left; tap opens the sheet about the book", "placeholders": {"chapter": {"type": "String"}, "book": {"type": "String"}}},
+  "readerTimeLeftBook": "≈ {book} до конца книги",
+  "@readerTimeLeftBook": {"description": "Reader bottom panel: reading time left when the chapter ends with the book", "placeholders": {"book": {"type": "String"}}},
   "readerTimeLeftHint": "Статистика этой книги",
   "@readerTimeLeftHint": {"description": "Screen reader hint of the time left line: what a tap opens"},
   "bookStatsTitle": "Эта книга",

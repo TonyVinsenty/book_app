@@ -1512,8 +1512,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// «≈ 9 мин до конца главы · 3 ч 40 мин до конца книги»; a tap opens the
-  /// sheet "This book".
+  /// «≈ 9 мин до конца главы · 3 ч 40 мин до конца книги», only the book
+  /// in its last chapter; a tap opens the sheet "This book".
   Widget _timeLeftLine(BuildContext context, BookStats stats) {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
@@ -1531,10 +1531,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
               Icon(Icons.schedule, size: 18, color: colors.textSecondary),
               Expanded(
                 child: Text(
-                  l10n.readerTimeLeft(
-                    formatDuration(l10n, stats.left(words.chapter)),
-                    formatDuration(l10n, stats.left(words.book)),
-                  ),
+                  words.chapter == words.book
+                      ? l10n.readerTimeLeftBook(
+                          formatDuration(l10n, stats.left(words.book)),
+                        )
+                      : l10n.readerTimeLeft(
+                          formatDuration(l10n, stats.left(words.chapter)),
+                          formatDuration(l10n, stats.left(words.book)),
+                        ),
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
