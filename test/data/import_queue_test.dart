@@ -144,15 +144,18 @@ void main() {
     expect(File('${temp.path}/b.txt').existsSync(), isFalse);
   });
 
-  test('a file that cannot be fetched is unreadable; the queue goes on', () async {
-    final results = await queue().addLater(
-      'gone.fb2',
-      () async => throw const FileSystemException('no access'),
-    );
-    expect((results.single as ImportFailed).error, ImportError.unreadable);
-    expect(results.single.fileName, 'gone.fb2');
-    expect(await queue().add([file('a.txt')]), hasLength(1));
-  });
+  test(
+    'a file that cannot be fetched is unreadable; the queue goes on',
+    () async {
+      final results = await queue().addLater(
+        'gone.fb2',
+        () async => throw const FileSystemException('no access'),
+      );
+      expect((results.single as ImportFailed).error, ImportError.unreadable);
+      expect(results.single.fileName, 'gone.fb2');
+      expect(await queue().add([file('a.txt')]), hasLength(1));
+    },
+  );
 
   test('files the owner brings go ahead of folder books', () async {
     importer.hold = true;

@@ -11,9 +11,10 @@ import 'package:book_app/data/db/app_database.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-BookContent bookTitled(String title) => BookContent(
+BookContent bookTitled(String title, {String? annotation}) => BookContent(
   meta: BookMeta(
     title: title,
+    annotation: annotation,
     authors: const ['Первый', 'Второй'],
     series: 'Серия',
     seriesNumber: 2,
@@ -242,7 +243,10 @@ void main() {
 
   test('replaceContent stores the reparsed model and moved position', () async {
     final row = await add('Книга');
-    final reparsed = bookTitled('Книга, вторая редакция');
+    final reparsed = bookTitled(
+      'Книга, вторая редакция',
+      annotation: 'О книге.',
+    );
     const moved = ReadingPosition(
       wordIndex: 4,
       anchor: TextAnchor(sectionIndex: 0, blockIndex: 1, charOffset: 7),
@@ -265,6 +269,7 @@ void main() {
     expect(saved.parserVersion, 2);
     expect(saved.wordCount, 6);
     expect(saved.position, moved);
+    expect(saved.annotation, 'О книге.', reason: 'added before it was parsed');
     expect((await repo.loadContent(saved))!.meta.title, reparsed.meta.title);
   });
 

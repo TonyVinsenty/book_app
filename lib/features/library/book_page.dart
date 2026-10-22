@@ -52,11 +52,28 @@ class _BookPageScreenState extends ConsumerState<BookPageScreen> {
     final books = ref.watch(booksProvider).value;
     final book = books?.where((b) => b.id == widget.bookId).firstOrNull;
     if (books != null && book == null) _close();
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        actions: [
+          if (book != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: l10n.bookMenuDelete,
+              onPressed: () => unawaited(_delete(book)),
+            ),
+        ],
+      ),
       body: book == null ? const SizedBox.shrink() : _BookPage(book: book),
       bottomNavigationBar: book == null ? null : _MainButton(book: book),
     );
+  }
+
+  Future<void> _delete(BookRow book) async {
+    if (await confirmBookDelete(context, book.title)) {
+      // The page closes itself once the book is gone.
+      await ref.read(bookRepositoryProvider).deleteBook(book.id);
+    }
   }
 
   /// The book was deleted: back to the library.
@@ -146,22 +163,14 @@ class _BookPage extends ConsumerWidget {
             color: colors.textSecondary,
           ),
         ),
+        if (book.annotation case final text? when text.trim().isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _Annotation(text: text.trim()),
+        ],
         const SizedBox(height: 16),
         _StatusButtons(book: book, status: status),
         const SizedBox(height: 12),
         _CollectionsRow(book: book, titleFont: titleFont),
-        const SizedBox(height: 8),
-        Center(
-          child: TextButton.icon(
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
-              minimumSize: const Size(0, 48),
-            ),
-            icon: const Icon(Icons.delete_outline),
-            label: Text(l10n.bookMenuDelete),
-            onPressed: () => unawaited(_delete(context, ref)),
-          ),
-        ),
       ],
     );
   }
@@ -205,12 +214,71 @@ class _BookPage extends ConsumerWidget {
       last: last,
     );
   }
+}
 
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    if (await confirmBookDelete(context, book.title)) {
-      // The page closes itself once the book is gone.
-      await ref.read(bookRepositoryProvider).deleteBook(book.id);
-    }
+/// The book's annotation: the first lines, all of it on a tap.
+class _Annotation extends StatefulWidget {
+  const _Annotation({required this.text});
+
+  final String text;
+
+  @override
+  State<_Annotation> createState() => _AnnotationState();
+}
+
+class _AnnotationState extends State<_Annotation> {
+  static const _lines = 6;
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.bookPageAnnotation, style: theme.textTheme.titleSmall),
+        const SizedBox(height: 6),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final painter = TextPainter(
+              text: TextSpan(text: widget.text, style: style),
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+              maxLines: _lines,
+            )..layout(maxWidth: constraints.maxWidth);
+            final long = painter.didExceedMaxLines;
+            painter.dispose();
+            final text = Text(
+              widget.text,
+              style: style,
+              maxLines: _open ? null : _lines,
+              overflow: _open ? null : TextOverflow.ellipsis,
+            );
+            if (!long) return text;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                text,
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 40),
+                  ),
+                  onPressed: () => setState(() => _open = !_open),
+                  child: Text(
+                    _open
+                        ? l10n.bookPageAnnotationLess
+                        : l10n.bookPageAnnotationMore,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
   }
 }
 

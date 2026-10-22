@@ -30,6 +30,7 @@ BookRow _book(
   int position = 0,
   bool opened = false,
   bool finished = false,
+  String? annotation,
 }) => BookRow(
   id: id,
   title: title,
@@ -48,6 +49,7 @@ BookRow _book(
   openedAt: opened ? _day : null,
   touchedAt: _day,
   finishedAt: finished ? _day.add(const Duration(days: 17)) : null,
+  annotation: annotation,
 );
 
 void main() {
@@ -276,10 +278,50 @@ void main() {
       _book(1, title: 'Война и мир'),
     ], open: 'Война и мир');
 
-    await tap(tester, onPage(find.text('Удалить книгу')));
+    // The trash icon at the top right, with a confirmation.
+    await tap(tester, onPage(find.byTooltip('Удалить книгу')));
+    await tap(tester, find.widgetWithText(TextButton, 'Отмена'));
+    expect(await row(tester, 1), isNotNull);
+    await tap(tester, onPage(find.byTooltip('Удалить книгу')));
     await tap(tester, find.widgetWithText(TextButton, 'Удалить'));
     expect(await row(tester, 1), isNull);
     expect(find.byType(BookPageScreen), findsNothing);
     expect(find.byType(LibraryScreen), findsOneWidget);
+  });
+
+  testWidgets('the annotation: short in full, long in part with «Ещё»', (
+    tester,
+  ) async {
+    final long = List.filled(40, 'Длинная аннотация о книге.').join(' ');
+    await pumpPage(tester, [
+      _book(1, title: 'Война и мир', annotation: 'Роман-эпопея.\nО войне.'),
+      _book(2, title: 'Анна Каренина', annotation: long),
+      _book(3, title: 'Воскресение'),
+    ], open: 'Война и мир');
+    expect(onPage(find.text('Аннотация')), findsOneWidget);
+    expect(onPage(find.text('Роман-эпопея.\nО войне.')), findsOneWidget);
+    expect(onPage(find.text('Ещё')), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    await tap(tester, find.widgetWithText(BookTile, 'Анна Каренина'));
+    Text annotation() => tester.widget<Text>(onPage(find.text(long)));
+    // The button may be under the bottom one: scroll it up before the tap.
+    Future<void> press(String label) async {
+      await tester.ensureVisible(onPage(find.text(label)));
+      await tester.pumpAndSettle();
+      await tap(tester, onPage(find.text(label)));
+    }
+
+    expect(annotation().maxLines, 6);
+    await press('Ещё');
+    expect(annotation().maxLines, isNull);
+    await press('Свернуть');
+    expect(annotation().maxLines, 6);
+
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    await tap(tester, find.widgetWithText(BookTile, 'Воскресение'));
+    expect(onPage(find.text('Аннотация')), findsNothing);
   });
 }
