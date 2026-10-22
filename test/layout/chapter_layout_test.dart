@@ -542,6 +542,17 @@ void main() {
     );
     const size = Size(300, 500);
 
+    test('screen readers get the page text without labels', () {
+      final layout = build(
+        book(const [ParagraphBlock(text: text, spans: labels)]),
+        0,
+        size,
+        style(),
+      );
+      expect(layout.pageText(0), 'Он сказал, и ушёл домой.');
+      layout.dispose();
+    });
+
     test('a tap near a label finds its note; a lost note is not active', () {
       final layout = build(
         book(const [ParagraphBlock(text: text, spans: labels)]),

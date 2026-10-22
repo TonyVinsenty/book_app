@@ -130,7 +130,9 @@ final class ChapterLayout {
   String pageText(int index) => [
     for (final slice in pages[index].slices)
       ?switch (_section.blocks[slice.blockIndex]) {
-        TextBlock(:final text) => text.substring(
+        TextBlock(:final text, :final spans) => _withoutLabels(
+          text,
+          spans,
           slice.charStart,
           slice.charEnd,
         ),
@@ -138,6 +140,27 @@ final class ChapterLayout {
         ImageBlock() => null,
       },
   ].join('\n');
+
+  /// [text] from [start] to [end] without note labels: a screen reader
+  /// would read them glued to the words.
+  static String _withoutLabels(
+    String text,
+    List<Span> spans,
+    int start,
+    int end,
+  ) {
+    final out = StringBuffer();
+    var from = start;
+    for (final s in spans) {
+      if (s.kind != SpanKind.noteRef || s.end <= from || s.start >= end) {
+        continue;
+      }
+      if (s.start > from) out.write(text.substring(from, s.start));
+      from = math.min(end, math.max(from, s.end));
+    }
+    out.write(text.substring(from, end));
+    return out.toString();
+  }
 
   /// Pictures on page [index], top to bottom.
   List<PageImage> pageImages(int index) => [
