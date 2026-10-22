@@ -130,14 +130,18 @@ void main() {
     );
     await tester.tap(find.text('Подключить папку'));
     await settle(tester);
+    expect(find.text('Подключить папку «Книги»?'), findsOneWidget);
+    await tester.tap(find.text('Подключить'));
+    await settle(tester);
     await settle(tester);
     expect(find.text('Книги'), findsOneWidget);
     expect(scans, 1);
     final row = (await rows()).single;
     expect(
-      (row.kind, row.ref, row.name),
-      (FolderKind.picked, 'tree:books', 'Книги'),
+      (row.kind, row.ref, row.name, row.collectionId),
+      (FolderKind.picked, 'tree:books', 'Книги', null),
     );
+    expect(await db.select(db.collections).get(), isEmpty);
 
     await tester.tap(find.text('Подключить папку'));
     await settle(tester);
@@ -145,6 +149,60 @@ void main() {
     expect(find.text('Эта папка уже подключена'), findsOneWidget);
     expect(await rows(), hasLength(1));
     expect(scans, 1);
+  });
+
+  testWidgets('the checkbox puts the books into a collection by the name', (
+    tester,
+  ) async {
+    // One with the name in other case is taken, not made again.
+    await db
+        .into(db.collections)
+        .insert(
+          CollectionsCompanion.insert(
+            name: 'фантастика',
+            createdAt: DateTime(2026),
+          ),
+        );
+    await pumpFolders(
+      tester,
+      pick: () async => (ref: 'tree:sf', name: 'Фантастика'),
+    );
+    await tester.tap(find.text('Подключить папку'));
+    await settle(tester);
+    await tester.tap(find.text('Сложить книги в подборку «Фантастика»'));
+    await tester.pump();
+    await tester.tap(find.text('Подключить'));
+    await settle(tester);
+    await settle(tester);
+    final collection = (await db.select(db.collections).get()).single;
+    expect((await rows()).single.collectionId, collection.id);
+    expect(
+      find.textContaining('Книги — в подборку «фантастика»'),
+      findsOneWidget,
+    );
+    expect(scans, 1);
+
+    // The collection deleted: the folder keeps going without it.
+    await db.delete(db.collections).go();
+    await settle(tester);
+    expect((await rows()).single.collectionId, isNull);
+    expect(find.textContaining('в подборку'), findsNothing);
+  });
+
+  testWidgets('cancelled connect dialog: nothing kept, the access given back', (
+    tester,
+  ) async {
+    await pumpFolders(
+      tester,
+      pick: () async => (ref: 'tree:books', name: 'Книги'),
+    );
+    await tester.tap(find.text('Подключить папку'));
+    await settle(tester);
+    await tester.tap(find.text('Отмена'));
+    await settle(tester);
+    expect(await rows(), isEmpty);
+    expect(released, ['tree:books']);
+    expect(scans, 0);
   });
 
   testWidgets('cancelled or failed picker changes nothing', (tester) async {

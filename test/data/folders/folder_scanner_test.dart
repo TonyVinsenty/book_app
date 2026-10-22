@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:book_app/data/collection_repository.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/folders/folder_scan.dart';
@@ -86,6 +87,42 @@ void main() {
     expect(temp.listSync(), isEmpty);
   });
 
+  test('added books and duplicates go to the folder collection', () async {
+    final sf = await CollectionRepository(db).create('Фантастика');
+    await folders.setCollection(folder.id, sf.id);
+    folder = await row();
+    final names = ['a.fb2', 'dup.fb2', 'box.zip-1', 'box.zip-2', 'box.zip-3'];
+    for (final name in names) {
+      await db.into(db.books).insert(bookRow(name));
+    }
+    source.files.addAll({'a.fb2': 1, 'dup.fb2': 1, 'box.zip': 1, 'bad.fb2': 1});
+    await scan();
+    final linked = await db.select(db.bookCollections).get();
+    expect(linked.map((l) => l.collectionId).toSet(), {sf.id});
+    expect(
+      linked.map((l) => l.bookId).toSet(),
+      names.map((n) => bookRow(n).id).toSet(),
+    );
+  });
+
+  test('no collection, or deleted ones, and deleted books: no links', () async {
+    // Not in the database: as if deleted while the scan went on.
+    source.files['a.fb2'] = 1;
+    final sf = await CollectionRepository(db).create('Фантастика');
+    await folders.setCollection(folder.id, sf.id);
+    folder = await row();
+    await scan();
+    expect(await db.select(db.bookCollections).get(), isEmpty);
+
+    // Deleted after the folder row was read.
+    await db.into(db.books).insert(bookRow('b.fb2'));
+    await CollectionRepository(db).delete(sf.id);
+    source.files['b.fb2'] = 1;
+    await scan();
+    expect(await db.select(db.bookCollections).get(), isEmpty);
+    expect((await row()).collectionId, isNull);
+  });
+
   test('a rescan takes only new and changed files', () async {
     source.files.addAll({'a.fb2': 1, 'bad.fb2': 2});
     await scan();
@@ -101,18 +138,21 @@ void main() {
     expect(importer.calls, ['a.fb2', 'b.txt']);
   });
 
-  test('a renamed file is a quiet duplicate; a gone one is forgotten', () async {
-    source.files['dup.fb2'] = 1;
-    await scan();
-    source.files
-      ..remove('dup.fb2')
-      ..['dup renamed.fb2'] = 1;
-    importer.calls.clear();
-    await scan();
-    expect(importer.calls, ['dup renamed.fb2']);
-    expect(importer.touches.last, isFalse);
-    expect((await folders.knownFiles(folder.id)).keys, ['dup renamed.fb2']);
-  });
+  test(
+    'a renamed file is a quiet duplicate; a gone one is forgotten',
+    () async {
+      source.files['dup.fb2'] = 1;
+      await scan();
+      source.files
+        ..remove('dup.fb2')
+        ..['dup renamed.fb2'] = 1;
+      importer.calls.clear();
+      await scan();
+      expect(importer.calls, ['dup renamed.fb2']);
+      expect(importer.touches.last, isFalse);
+      expect((await folders.knownFiles(folder.id)).keys, ['dup renamed.fb2']);
+    },
+  );
 
   test('each file is remembered as soon as it is done', () async {
     importer.hold = true;

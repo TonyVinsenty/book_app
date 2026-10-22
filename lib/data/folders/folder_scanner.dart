@@ -1,4 +1,5 @@
-import 'package:book_app/book/import/book_importer.dart' show fileNameOf;
+import 'package:book_app/book/import/book_importer.dart'
+    show ImportAdded, ImportDuplicate, fileNameOf;
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/folders/folder_scan.dart';
@@ -47,7 +48,8 @@ final class FolderScanner {
       await _folders.remember(folder.id, entry);
     }
     // Each file is remembered once it has a result, whatever it is: an app
-    // closed midway takes the rest next time.
+    // closed midway takes the rest next time. Added books and duplicates
+    // go to the folder's collection first, so that is redone too.
     await Future.wait([
       for (final entry in plan.toImport)
         _queue
@@ -56,7 +58,16 @@ final class FolderScanner {
               () => source.copy(entry.key),
               touch: false,
             )
-            .then((_) => _folders.remember(folder.id, entry)),
+            .then((results) async {
+              await _folders.collect(folder.id, [
+                for (final result in results)
+                  if (result
+                      case ImportAdded(:final book) ||
+                          ImportDuplicate(:final book))
+                    book.id,
+              ]);
+              await _folders.remember(folder.id, entry);
+            }),
     ]);
     await _folders.markScanned(folder.id, tooBig: plan.tooBig);
   }

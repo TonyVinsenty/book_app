@@ -79,8 +79,70 @@ class FoldersScreen extends ConsumerWidget {
       if (context.mounted) showNotice(context, l10n.foldersAlready);
       return;
     }
-    await repo.addPicked(ref: chosen.ref, name: chosen.name);
+    if (!context.mounted) return;
+    var collect = false;
+    if (chosen.name.trim().isNotEmpty) {
+      final answer = await showDialog<bool>(
+        context: context,
+        builder: (_) => _ConnectDialog(name: chosen.name),
+      );
+      if (answer == null) {
+        // Cancelled: the access isn't needed after all.
+        await ref.read(releaseFolderProvider)(chosen.ref);
+        return;
+      }
+      collect = answer;
+    }
+    final collection = collect
+        ? await ref.read(collectionRepositoryProvider).named(chosen.name)
+        : null;
+    await repo.addPicked(
+      ref: chosen.ref,
+      name: chosen.name,
+      collectionId: collection?.id,
+    );
     unawaited(ref.read(scanFoldersProvider)());
+  }
+}
+
+/// "Подключить папку «Книги»?" with the collection checkbox (ADR 0007,
+/// p. 6); pops whether to collect, null when cancelled.
+class _ConnectDialog extends StatefulWidget {
+  const _ConnectDialog({required this.name});
+
+  final String name;
+
+  @override
+  State<_ConnectDialog> createState() => _ConnectDialogState();
+}
+
+class _ConnectDialogState extends State<_ConnectDialog> {
+  var _collect = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.foldersConnectTitle(widget.name)),
+      contentPadding: const EdgeInsets.fromLTRB(8, 16, 16, 0),
+      content: CheckboxListTile(
+        value: _collect,
+        onChanged: (v) => setState(() => _collect = v ?? false),
+        controlAffinity: ListTileControlAffinity.leading,
+        title: Text(l10n.foldersCollect(widget.name)),
+        subtitle: Text(l10n.foldersCollectHint),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_collect),
+          child: Text(l10n.foldersConnectButton),
+        ),
+      ],
+    );
   }
 }
 
@@ -167,6 +229,11 @@ class _PickedFolder extends ConsumerWidget {
     final error = Theme.of(context).colorScheme.error;
     final locale = Localizations.localeOf(context).toLanguageTag();
     final reconnect = folder.lost && canPick;
+    final collection = ref
+        .watch(collectionsProvider)
+        .value
+        ?.where((c) => c.id == folder.collectionId)
+        .firstOrNull;
     return _Card(
       child: ListTile(
         minTileHeight: 60,
@@ -187,6 +254,7 @@ class _PickedFolder extends ConsumerWidget {
             else
               _scanned(l10n, folder.scannedAt, locale),
             if (folder.tooBig) l10n.foldersTooBig(maxFolderBooks),
+            if (collection != null) l10n.foldersInCollection(collection.name),
           ].join('\n'),
           style: TextStyle(color: folder.lost ? error : colors.textSecondary),
         ),

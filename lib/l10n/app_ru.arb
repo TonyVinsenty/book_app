@@ -610,5 +610,15 @@
   "foldersAlready": "Эта папка уже подключена",
   "@foldersAlready": {"description": "Snack bar: the picked folder is connected already"},
   "foldersPickFailed": "Не удалось подключить папку",
-  "@foldersPickFailed": {"description": "Snack bar: the folder picker failed"}
+  "@foldersPickFailed": {"description": "Snack bar: the folder picker failed"},
+  "foldersConnectTitle": "Подключить папку «{name}»?",
+  "@foldersConnectTitle": {"description": "Dialog after a folder is picked", "placeholders": {"name": {"type": "String"}}},
+  "foldersConnectButton": "Подключить",
+  "@foldersConnectButton": {"description": "Dialog after a folder is picked: connect it"},
+  "foldersCollect":"Сложить книги в подборку «{name}»",
+  "@foldersCollect": {"description": "Checkbox when connecting a folder: its books also go to a collection named after it", "placeholders": {"name": {"type": "String"}}},
+  "foldersCollectHint": "Новые книги из папки будут попадать и в эту подборку. Её можно менять, как любую другую.",
+  "@foldersCollectHint": {"description": "Under the collect checkbox"},
+  "foldersInCollection": "Книги — в подборку «{name}»",
+  "@foldersInCollection": {"description": "Folders screen: the folder's books also go to this collection", "placeholders": {"name": {"type": "String"}}}
 }

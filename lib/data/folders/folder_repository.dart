@@ -94,6 +94,33 @@ final class FolderRepository {
         FoldersCompanion(collectionId: Value(collectionId)),
       );
 
+  /// Puts books from the folder into its collection, if it still has one
+  /// (deleting the collection unsets it); books deleted meanwhile are left
+  /// out.
+  Future<void> collect(int folderId, Iterable<int> bookIds) =>
+      _db.transaction(() async {
+        final folder = await (_db.select(
+          _db.folders,
+        )..where((f) => f.id.equals(folderId))).getSingleOrNull();
+        final collectionId = folder?.collectionId;
+        if (collectionId == null || bookIds.isEmpty) return;
+        final books = await (_db.select(
+          _db.books,
+        )..where((b) => b.id.isIn(bookIds))).get();
+        for (final book in books) {
+          await _db
+              .into(_db.bookCollections)
+              .insert(
+                BookCollectionsCompanion.insert(
+                  bookId: book.id,
+                  collectionId: collectionId,
+                  addedAt: _now(),
+                ),
+                mode: InsertMode.insertOrIgnore,
+              );
+        }
+      });
+
   /// After a scan: when, and whether the limit cut it short; the access is
   /// there again.
   Future<void> markScanned(int id, {bool tooBig = false}) =>

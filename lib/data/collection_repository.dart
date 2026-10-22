@@ -45,6 +45,15 @@ final class CollectionRepository {
         return created;
       });
 
+  /// The collection with this name (in any case), made if there is none;
+  /// throws [CollectionNameException] for an empty name.
+  Future<CollectionRow> named(String name) => _db.transaction(() async {
+    final key = name.trim().toLowerCase();
+    final all = await _db.select(_db.collections).get();
+    return all.where((c) => c.name.toLowerCase() == key).firstOrNull ??
+        await create(name);
+  });
+
   /// Throws [CollectionNameException]; the same name in other case is fine.
   Future<void> rename(int id, String name) => _db.transaction(() async {
     final clean = await checkName(name, except: id);
