@@ -107,7 +107,11 @@ Future<(ParsedBook, BookTokens, int?)> _parseInIsolate(
   final tokens = tokenize(parsed.content);
   if (old == null) return (parsed, tokens, null);
   final before = tokenize(old);
-  return (parsed, tokens, relocateWord(before, before.resolve(position), tokens));
+  return (
+    parsed,
+    tokens,
+    relocateWord(before, before.resolve(position), tokens),
+  );
 });
 
 Future<BookTokens> _tokenizeInIsolate(BookContent content) =>

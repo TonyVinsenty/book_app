@@ -9,6 +9,7 @@ import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/stats_repository.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/speed/speed_controls.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
@@ -19,6 +20,8 @@ import 'package:book_app/speed/rsvp_engine.dart';
 import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/steps.dart';
 import 'package:book_app/speed/timing.dart';
+import 'package:book_app/stats/play_meter.dart';
+import 'package:book_app/stats/stats_buffer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,6 +76,12 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   /// Pictures of the current stop already tapped away.
   int _imagesSeen = 0;
 
+  /// Time, words and signals of understanding (ADR 0009 п. 4), gathered in
+  /// [_statsBuffer] and written to [_stats] now and then.
+  late final StatsRepository _stats;
+  late final StatsBuffer _statsBuffer;
+  late final PlayMeter _meter;
+
   @visibleForTesting
   RsvpEngine get engine => _engine;
 
@@ -89,8 +98,28 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
           widget.opened.tokens.imagesBefore(word).isNotEmpty,
     );
     _ticker = createTicker(_onTick);
-    _lifecycle = AppLifecycleListener(onInactive: _pause);
+    _stats = ref.read(statsRepositoryProvider);
+    final now = ref.read(statsClockProvider);
+    _statsBuffer = StatsBuffer(now: now);
+    _meter = PlayMeter(
+      bookId: widget.opened.book.id,
+      mode: _mode,
+      wpm: _wpm,
+      wordIndex: widget.startWord,
+      buffer: _statsBuffer,
+      now: now,
+    );
+    _lifecycle = AppLifecycleListener(
+      onInactive: () {
+        _pause();
+        // Not the reader's pause: no signal.
+        _meter.stop();
+      },
+      onHide: _flushStats,
+    );
   }
+
+  void _flushStats() => unawaited(_stats.flush(_statsBuffer));
 
   @override
   void didChangeDependencies() {
@@ -131,6 +160,10 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
         ..timing = (_engine.timing as SmartPace).withSpeed(wpm)
         ..steps = mode == SpeedMode.phrase ? _phrases! : const WordSteps();
     });
+    _meter
+      ..mode = mode
+      ..wpm = wpm
+      ..seek(_engine.wordIndex);
     _savePosition();
   }
 
@@ -166,6 +199,8 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   @override
   void dispose() {
     _hintTimer?.cancel();
+    _meter.stop();
+    _flushStats();
     _lifecycle.dispose();
     _ticker.dispose();
     super.dispose();
@@ -174,7 +209,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   void _onTick(Duration elapsed) {
     final changed = _engine.advance(elapsed - _lastTick);
     _lastTick = elapsed;
+    _meter.advance(_engine.wordIndex);
+    if (_statsBuffer.due) _flushStats();
     if (!_engine.isPlaying) {
+      // A chapter, a picture or the book end: not the reader's pause.
+      _meter.stop();
       _ticker.stop();
       _savePosition();
       if (_engine.isFinished) {
@@ -204,7 +243,11 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     _imagesSeen = 0;
     _engine.play();
     _started = true;
-    if (!_engine.isPlaying || _ticker.isActive) return;
+    if (!_engine.isPlaying) return;
+    _meter
+      ..advance(_engine.wordIndex)
+      ..play();
+    if (_ticker.isActive) return;
     _lastTick = Duration.zero;
     unawaited(_ticker.start());
   }
@@ -212,6 +255,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   void _pause() {
     if (!_engine.isPlaying) return;
     _engine.pause();
+    _meter.pause();
     _ticker.stop();
     _savePosition();
     if (mounted) setState(() {});
@@ -223,6 +267,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     setState(
       () => _engine.seek(sentenceBack(widget.opened.tokens, _engine.wordIndex)),
     );
+    _meter.back(_engine.wordIndex);
     if (!_engine.isPlaying) _savePosition();
   }
 
@@ -264,6 +309,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
       _engine.timing = (_engine.timing as SmartPace).withSpeed(_wpm);
       _speedHint = _engine.isPlaying;
     });
+    _meter.wpm = _wpm;
     _hintTimer?.cancel();
     _hintTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _speedHint = false);
@@ -282,11 +328,15 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     );
   }
 
-  void _exit([SpeedMode? mode]) => Navigator.of(context).pop<RsvpExit>((
-    word: _engine.wordIndex,
-    end: _engine.unitEnd,
-    mode: mode ?? _mode,
-  ));
+  /// A pause before leaving is no signal.
+  void _exit([SpeedMode? mode]) {
+    _meter.stop();
+    Navigator.of(context).pop<RsvpExit>((
+      word: _engine.wordIndex,
+      end: _engine.unitEnd,
+      mode: mode ?? _mode,
+    ));
+  }
 
   /// The word or the phrase on screen.
   String get _shownText =>

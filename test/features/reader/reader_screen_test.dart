@@ -1925,4 +1925,143 @@ void main() {
 
     expect(await pageStats(tester), (20000, 30 + page.endWord - end));
   });
+
+  /// Speed reading rows written so far: time and words by mode, and the
+  /// pace rows of [mode].
+  Future<
+    ({
+      Map<ReadingMode, (int, int)> reading,
+      Map<int, (int, int, int, int)> pace,
+    })
+  >
+  speedStats(WidgetTester tester, SpeedMode mode) async {
+    await settle(tester);
+    final stats = StatsRepository(db);
+    final rows = (await tester.runAsync(stats.readingDays))!;
+    final pace = (await tester.runAsync(() => stats.paceDays(mode: mode)))!;
+    return (
+      reading: {
+        for (final r in rows)
+          if (r.mode != ReadingMode.page) r.mode: (r.activeMs, r.words),
+      },
+      pace: {
+        for (final r in pace) r.wpm: (r.words, r.activeMs, r.backs, r.pauses),
+      },
+    );
+  }
+
+  /// [seconds] of playing: the meters' clock goes with the frames.
+  Future<void> play(WidgetTester tester, int seconds) async {
+    for (var i = 0; i < seconds; i++) {
+      wait(1);
+      await tester.pump(const Duration(seconds: 1));
+    }
+  }
+
+  testWidgets('stage 13: speed reading counts playing time, words, backs and '
+      'pauses before going on', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord + 5;
+    await longPressWord(tester, start);
+    final engine = rsvp(tester).engine;
+    wait(30); // paused at the start: not counted
+
+    await tapRsvp(tester);
+    await play(tester, 3);
+    await tapRsvp(tester);
+    final paused = engine.wordIndex;
+    expect(paused, greaterThan(start));
+    wait(10);
+    await tester.tap(find.byTooltip('Быстрее'));
+    await tester.pump();
+    await tapRsvp(tester);
+    await play(tester, 1);
+    await tapRsvp(tester);
+    final stopped = engine.wordIndex;
+    expect(stopped, greaterThan(paused));
+    // Back on a pause; the pause before leaving is no signal.
+    await tester.tap(find.text('Назад на предложение'));
+    await tester.pump();
+    wait(10);
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+
+    final stats = await speedStats(tester, SpeedMode.word);
+    expect(stats.reading, {ReadingMode.word: (4000, stopped - start)});
+    expect(stats.pace, {
+      300: (paused - start, 3000, 0, 1),
+      325: (stopped - paused, 1000, 1, 0),
+    });
+  });
+
+  testWidgets('stage 13: the highlight counts as speed reading, not as the '
+      'page', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final start = reader(tester).page.firstWord + 5;
+    wait(10);
+    await longPressWord(tester, start);
+    final guide = reader(tester).guide!;
+    wait(30); // on a pause: neither page nor highlight
+
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isTrue);
+    await play(tester, 2);
+    await tester.tapAt(tester.getCenter(find.byType(ReaderView)));
+    await tester.pump();
+    expect(guide.isPlaying, isFalse);
+    final paused = guide.word;
+    await tester.tap(find.byTooltip('Назад на предложение'));
+    await tester.pump();
+    // The app goes to the background while playing: no pause signal.
+    await tapAt(tester, 0.5);
+    await play(tester, 1);
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.hidden]);
+    await tester.pump();
+    expect(guide.isPlaying, isFalse);
+    wait(100);
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.resumed]);
+    await closeApp(tester);
+
+    final stats = await speedStats(tester, SpeedMode.guide);
+    final words = stats.reading[ReadingMode.guide]!.$2;
+    expect(stats.reading.keys, [ReadingMode.guide]);
+    expect(stats.reading[ReadingMode.guide]!.$1, 3000);
+    expect(words, greaterThan(paused - start));
+    expect(stats.pace, {250: (words, 3000, 1, 1)});
+    expect(await pageStats(tester), (
+      10000,
+      5,
+    ), reason: 'the page up to the word');
+  });
+
+  testWidgets('stage 13: a chapter stop is neither time nor a pause', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final second = reader(tester).widget.opened.tokens.firstWordOfSection(1);
+    await speedReadFrom(tester, second - 3);
+    await play(tester, 2);
+    final engine = rsvp(tester).engine;
+    expect(engine.isStopped, isTrue);
+    wait(100);
+    await tester.tap(find.text('Старт'));
+    await tester.pump();
+    await play(tester, 1);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await closeApp(tester);
+
+    final stats = await speedStats(tester, SpeedMode.word);
+    expect(stats.reading[ReadingMode.word]!.$1, inInclusiveRange(1000, 3000));
+    expect(stats.pace[SpeedLimits.max]!.$4, 0, reason: 'no pauses');
+  });
 }

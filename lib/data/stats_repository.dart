@@ -1,5 +1,6 @@
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/speed/speed_mode.dart';
+import 'package:book_app/stats/stats_buffer.dart';
 import 'package:book_app/stats/stats_records.dart';
 import 'package:drift/drift.dart';
 
@@ -23,6 +24,13 @@ final class StatsRepository {
       await _addPace(d);
     }
   });
+
+  /// Writes what [buffer] gathered, if anything; it is empty after.
+  Future<void> flush(StatsBuffer buffer) {
+    if (buffer.isEmpty) return Future.value();
+    final (:reading, :pace) = buffer.take();
+    return add(reading: reading, pace: pace);
+  }
 
   Future<void> _addReading(ReadingDelta d) async {
     final old =

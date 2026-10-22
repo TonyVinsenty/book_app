@@ -37,6 +37,7 @@ import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/timing.dart';
 import 'package:book_app/stats/page_meter.dart';
+import 'package:book_app/stats/play_meter.dart';
 import 'package:book_app/stats/speed_histogram.dart';
 import 'package:book_app/stats/stats_buffer.dart';
 import 'package:book_app/stats/stats_records.dart';
@@ -217,6 +218,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   late final StatsBuffer _statsBuffer;
   late final PageMeter _pageMeter;
 
+  /// The highlight's time and words (ADR 0009 п. 4), while it is on.
+  PlayMeter? _guideMeter;
+
   /// The app is on screen, not in the background.
   bool _appShown = true;
 
@@ -279,7 +283,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
     unawaited(_loadPageSpeed());
     _lifecycle = AppLifecycleListener(
-      onInactive: _pauseGuide,
+      onInactive: () {
+        _pauseGuide();
+        // Not the reader's pause: no signal.
+        _guideMeter?.stop();
+      },
       onShow: () {
         _appShown = true;
         _syncPageMeter();
@@ -303,6 +311,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guideWord.dispose();
     _lifecycle.dispose();
     _pageMeter.close();
+    _guideMeter?.stop();
     _flushStats();
     _clearLayouts();
     _pagination?.dispose();
@@ -345,11 +354,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   /// Writes what was gathered to the base (ADR 0009 п. 2).
-  void _flushStats() {
-    if (_statsBuffer.isEmpty) return;
-    final (:reading, :pace) = _statsBuffer.take();
-    unawaited(_stats.add(reading: reading, pace: pace));
-  }
+  void _flushStats() => unawaited(_stats.flush(_statsBuffer));
 
   /// Holds the page meter while [screen] is open over the page.
   Future<T> _over<T>(Future<T> screen) async {
@@ -692,6 +697,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (!mounted) return;
     final tokens = widget.opened.tokens;
     _guidePace = SmartPace(tokens, wpm);
+    _guideMeter?.stop();
+    _guideMeter = PlayMeter(
+      bookId: widget.opened.book.id,
+      mode: SpeedMode.guide,
+      wpm: wpm,
+      wordIndex: word,
+      buffer: _statsBuffer,
+      now: ref.read(statsClockProvider),
+    );
     setState(() {
       _guide = GuideSession(
         wordCount: tokens.length,
@@ -759,12 +773,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final guide = _guide!;
     final change = guide.advance(elapsed - _guideLastTick);
     _guideLastTick = elapsed;
+    _guideMeter?.advance(guide.word);
+    if (_statsBuffer.due) _flushStats();
     if (change == GuideChange.page) {
       _followGuide();
     } else if (change == GuideChange.word) {
       _guideWord.value = guide.word;
     }
     if (guide.isPlaying) return;
+    // A chapter, a picture or the book end: not the reader's pause.
+    _guideMeter?.stop();
     _guideTicker!.stop();
     _saveGuidePlace();
     _showGuideImage();
@@ -799,6 +817,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guideImagesSeen = 0;
     guide.play();
     if (!guide.isPlaying) return;
+    _guideMeter
+      ?..advance(guide.word)
+      ..play();
     _setPanels(false);
     _followGuide();
     setState(() => _guideStarted = true);
@@ -812,6 +833,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final guide = _guide;
     if (guide == null || !guide.isPlaying) return;
     guide.pause();
+    _guideMeter?.pause();
     _guideTicker?.stop();
     _saveGuidePlace();
     if (mounted) setState(() {});
@@ -820,6 +842,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Jumps the highlight to [word] and opens its page.
   void _guideSeek(int word) {
     final guide = _guide!..seek(word);
+    _guideMeter?.seek(word);
     _followGuide();
     if (!guide.isPlaying) _saveGuidePlace();
   }
@@ -829,9 +852,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final v = details.primaryVelocity ?? 0;
     final wpm = _guidePace.wordsPerMinute;
     if (!vertical) {
-      if (v > _swipeVelocity) {
-        _guideSeek(sentenceBack(widget.opened.tokens, _guide!.word));
-      }
+      if (v > _swipeVelocity) _guideBack();
     } else if (v < -_swipeVelocity && wpm < SpeedLimits.max) {
       _changeGuideSpeed(SpeedLimits.step);
     } else if (v > _swipeVelocity && wpm > SpeedLimits.min) {
@@ -841,10 +862,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   static const _swipeVelocity = 300.0;
 
+  /// Back by a sentence: a sign the pace is too fast.
+  void _guideBack() {
+    final word = sentenceBack(widget.opened.tokens, _guide!.word);
+    _guideSeek(word);
+    _guideMeter?.back(word);
+  }
+
   void _changeGuideSpeed(int delta) {
     final wpm = SpeedLimits.clamp(_guidePace.wordsPerMinute + delta);
     _guidePace = _guidePace.withSpeed(wpm);
     _guide!.timing = _guidePace;
+    _guideMeter?.wpm = wpm;
     setState(() => _guideSpeedHint = _guide!.isPlaying);
     _guideHintTimer?.cancel();
     _guideHintTimer = Timer(const Duration(milliseconds: 1200), () {
@@ -871,6 +900,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final guide = _guide;
     if (guide == null || mode == SpeedMode.guide) return;
     unawaited(ref.read(speedSettingsProvider).setMode(mode));
+    _endGuideMeter();
     _guideTicker?.stop();
     _saveGuidePlace();
     final word = guide.word;
@@ -882,10 +912,17 @@ class ReaderViewState extends ConsumerState<ReaderView>
     await _speedRead(word, picked: mode);
   }
 
+  /// The highlight goes off: a pause before it is no signal.
+  void _endGuideMeter() {
+    _guideMeter?.stop();
+    _guideMeter = null;
+  }
+
   /// Back to normal reading; the word stays lit for a moment, then fades.
   void _exitGuide() {
     final guide = _guide;
     if (guide == null) return;
+    _endGuideMeter();
     _guideTicker?.stop();
     _saveGuidePlace();
     final word = guide.word;
@@ -1189,11 +1226,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       wpm: _guidePace.wordsPerMinute,
                       pro: ref.watch(proUnlockedProvider),
                       onPlay: _playGuide,
-                      onBack: guide.word > 0
-                          ? () => _guideSeek(
-                              sentenceBack(widget.opened.tokens, guide.word),
-                            )
-                          : null,
+                      onBack: guide.word > 0 ? _guideBack : null,
                       onSpeed: _changeGuideSpeed,
                       onMode: (mode) => unawaited(_switchFromGuide(mode)),
                       onSettings: () => setState(() => _settingsShown = true),
