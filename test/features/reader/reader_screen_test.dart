@@ -16,6 +16,7 @@ import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/data/stats_repository.dart';
 import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/library_screen.dart';
@@ -38,6 +39,7 @@ import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/steps.dart';
 import 'package:book_app/speed/timing.dart';
+import 'package:book_app/stats/stats_records.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +56,10 @@ void main() {
   late BookRepository repo;
   late int bookId;
   late AppDatabase db;
+
+  /// The clock of the reading meters, moved by hand.
+  late DateTime clock;
+  void wait(int seconds) => clock = clock.add(Duration(seconds: seconds));
 
   /// Calls to keep the screen on (true) or let it dim (false).
   late List<bool> keepScreenOn;
@@ -86,6 +92,7 @@ void main() {
     // synchronous stream closing leaves no pending timer.
     keepScreenOn = [];
     statusBar = [];
+    clock = DateTime(2026, 10, 23, 20);
     db = AppDatabase(
       DatabaseConnection(
         NativeDatabase.memory(),
@@ -115,6 +122,7 @@ void main() {
           proUnlockedProvider.overrideWithValue(pro),
           contentStoreProvider.overrideWithValue(store),
           bookRepositoryProvider.overrideWithValue(repo),
+          statsClockProvider.overrideWithValue(() => clock),
           keepScreenOnProvider.overrideWithValue((on) async {
             keepScreenOn.add(on);
           }),
@@ -1838,5 +1846,83 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     await closeApp(tester);
+  });
+
+  /// Time (ms) and words read by eye, written so far.
+  Future<(int, int)> pageStats(WidgetTester tester) async {
+    await settle(tester);
+    final rows = await tester.runAsync(() => StatsRepository(db).readingDays());
+    final pages = rows!.where((r) => r.mode == ReadingMode.page);
+    return (
+      pages.fold(0, (sum, r) => sum + r.activeMs),
+      pages.fold(0, (sum, r) => sum + r.words),
+    );
+  }
+
+  void lifecycle(WidgetTester tester, List<AppLifecycleState> states) {
+    for (final state in states) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+  }
+
+  testWidgets('stage 13: a page counts only while it is seen', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final first = reader(tester).page;
+    wait(10);
+    await tapAt(tester, 0.95);
+    final second = reader(tester).page;
+    expect(first.endWord - first.firstWord, greaterThan(20));
+    expect(second.endWord - second.firstWord, greaterThan(20));
+
+    // The panels and the background stop the time.
+    await tapAt(tester, 0.5);
+    expect(reader(tester).panelsShown, isTrue);
+    wait(100);
+    await tapAt(tester, 0.5);
+    expect(reader(tester).panelsShown, isFalse);
+    wait(10);
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.hidden]);
+    expect(await pageStats(tester), (
+      10000,
+      first.endWord - first.firstWord,
+    ), reason: 'written on hiding');
+    wait(500);
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.resumed]);
+    wait(10);
+    // Leafing back and forth (under 2 s) counts nothing.
+    await tapAt(tester, 0.05);
+    wait(1);
+    await tapAt(tester, 0.95);
+    wait(5);
+    await closeApp(tester);
+
+    expect(await pageStats(tester), (
+      10000 + 20000 + 5000,
+      first.endWord - first.firstWord + 2 * (second.endWord - second.firstWord),
+    ));
+  });
+
+  testWidgets('stage 13: speed reading takes the page over at the word', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.95);
+    final page = reader(tester).page;
+    final start = page.firstWord + 30;
+    expect(page.endWord, greaterThan(start + 20));
+    wait(10);
+    await longPressWord(tester, start);
+    // The time in speed reading is not the page's.
+    wait(100);
+    await tester.tap(find.byTooltip('Выйти из скорочтения'));
+    await tester.pumpAndSettle();
+    expect(reader(tester).page.firstWord, page.firstWord);
+    final end = reader(tester).litEnd;
+    wait(10);
+    await closeApp(tester);
+
+    expect(await pageStats(tester), (20000, 30 + page.endWord - end));
   });
 }

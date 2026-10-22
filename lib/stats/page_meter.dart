@@ -56,13 +56,14 @@ final class PageMeter {
     _shownSince = _visible ? _now() : null;
   }
 
-  /// Counts the open page; none is open after.
-  void close() {
-    final words = _words;
-    if (words == null) return;
+  /// Counts the open page; none is open after. [words] — only so many were
+  /// read by eye (speed reading went on from the middle of the page).
+  void close({int? words}) {
+    final opened = _words;
+    if (opened == null) return;
     _stopClock();
     _words = null;
-    _count(words, _shown);
+    _count(words == null ? opened : min(words, opened), _shown);
   }
 
   void _stopClock() {

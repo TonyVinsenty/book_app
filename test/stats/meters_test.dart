@@ -42,6 +42,16 @@ void main() {
       expect(d.pageSpeeds, {20: 1}); // 200 wpm
     });
 
+    test('a page left for speed reading counts the words up to there', () {
+      meter.open(250);
+      wait(30);
+      meter.close(words: 100);
+
+      final d = only()!;
+      expect((d.activeMs, d.words), (30000, 100));
+      expect(d.pageSpeeds, {20: 1}); // 200 wpm
+    });
+
     test('under 2 s is leafing: nothing counts', () {
       meter.open(250);
       wait(1);

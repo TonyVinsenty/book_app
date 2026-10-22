@@ -15,6 +15,7 @@ import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
+import 'package:book_app/data/stats_repository.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
@@ -35,6 +36,10 @@ import 'package:book_app/speed/guide.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/timing.dart';
+import 'package:book_app/stats/page_meter.dart';
+import 'package:book_app/stats/speed_histogram.dart';
+import 'package:book_app/stats/stats_buffer.dart';
+import 'package:book_app/stats/stats_records.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -206,6 +211,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
   late final KeepScreenOn _keepScreenOn;
   late final ShowStatusBar _showStatusBar;
 
+  /// Time and words read by eye (ADR 0009 п. 3), gathered in [_statsBuffer]
+  /// and written to [_stats] now and then.
+  late final StatsRepository _stats;
+  late final StatsBuffer _statsBuffer;
+  late final PageMeter _pageMeter;
+
+  /// The app is on screen, not in the background.
+  bool _appShown = true;
+
+  /// Screens open over the page: speed reading, contents, a note, a picture.
+  int _covers = 0;
+
   @visibleForTesting
   ChapterLayout get layout => _layoutOf(_section);
 
@@ -252,9 +269,27 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_keepScreenOn(true));
     _showStatusBar = ref.read(showStatusBarProvider);
     unawaited(_showStatusBar(false));
+    _stats = ref.read(statsRepositoryProvider);
+    final now = ref.read(statsClockProvider);
+    _statsBuffer = StatsBuffer(now: now);
+    _pageMeter = PageMeter(
+      bookId: widget.opened.book.id,
+      buffer: _statsBuffer,
+      now: now,
+    );
+    unawaited(_loadPageSpeed());
     _lifecycle = AppLifecycleListener(
       onInactive: _pauseGuide,
-      onHide: () => _pagination?.flush(),
+      onShow: () {
+        _appShown = true;
+        _syncPageMeter();
+      },
+      onHide: () {
+        _appShown = false;
+        _syncPageMeter();
+        _flushStats();
+        _pagination?.flush();
+      },
     );
   }
 
@@ -267,9 +302,65 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guideTicker?.dispose();
     _guideWord.dispose();
     _lifecycle.dispose();
+    _pageMeter.close();
+    _flushStats();
     _clearLayouts();
     _pagination?.dispose();
     super.dispose();
+  }
+
+  /// The owner's page speed sets how long a page is expected to take.
+  Future<void> _loadPageSpeed() async {
+    var speeds = const <int, int>{};
+    for (final row in await _stats.readingDays()) {
+      if (row.mode == ReadingMode.page) {
+        speeds = mergeBuckets(speeds, row.pageSpeedHist);
+      }
+    }
+    if (pageCount(speeds) >= minPagesForSpeed) {
+      _pageMeter.medianWpm = medianWpm(speeds);
+    }
+  }
+
+  /// The page is seen only with nothing over it and the highlight off (that
+  /// is counted as speed reading).
+  void _syncPageMeter() => _pageMeter.visible =
+      _appShown &&
+      _covers == 0 &&
+      !_panelsShown &&
+      !_settingsShown &&
+      _guide == null;
+
+  /// Starts the meter on the shown page, read from [from] on.
+  void _openPage({int? from}) {
+    if (_page >= layout.pages.length) return;
+    final shown = page;
+    _pageMeter.open(max(0, shown.endWord - max(from ?? 0, shown.firstWord)));
+  }
+
+  /// Counts the shown page up to [word]: speed reading goes on from there.
+  void _closePageAt(int word) {
+    if (_page >= layout.pages.length) return;
+    _pageMeter.close(words: max(0, word - page.firstWord));
+  }
+
+  /// Writes what was gathered to the base (ADR 0009 п. 2).
+  void _flushStats() {
+    if (_statsBuffer.isEmpty) return;
+    final (:reading, :pace) = _statsBuffer.take();
+    unawaited(_stats.add(reading: reading, pace: pace));
+  }
+
+  /// Holds the page meter while [screen] is open over the page.
+  Future<T> _over<T>(Future<T> screen) async {
+    _covers++;
+    _syncPageMeter();
+    try {
+      return await screen;
+    } finally {
+      _covers--;
+      if (mounted) _syncPageMeter();
+    }
   }
 
   void _clearLayouts() {
@@ -340,6 +431,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (guide != null) {
       guide.relayout();
       if (!guided) guide.pageTurned(page.firstWord);
+    } else {
+      _openPage();
     }
   }
 
@@ -422,6 +515,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _word = shown.firstWord;
       if (!keepReturn) _returnTo = null;
     });
+    if (guide == null) _openPage();
+    if (_statsBuffer.due) _flushStats();
     if (!shown.hasWords) return;
     final books = ref.read(bookRepositoryProvider);
     final id = widget.opened.book.id;
@@ -449,15 +544,17 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   Future<void> _openContents() async {
     final pagination = _pagination!;
-    final section = await Navigator.of(context).push<int>(
-      MaterialPageRoute(
-        builder: (_) => ContentsScreen(
-          lines: _contents,
-          current: currentLineOf(_contents, _section),
-          fontFamily: _style?.fontFamily,
-          chapterStarts: () => pagination.chapterStarts,
-          chapterNumberOf: widget.opened.tokens.chapterNumberOf,
-          pageUpdates: pagination,
+    final section = await _over(
+      Navigator.of(context).push<int>(
+        MaterialPageRoute(
+          builder: (_) => ContentsScreen(
+            lines: _contents,
+            current: currentLineOf(_contents, _section),
+            fontFamily: _style?.fontFamily,
+            chapterStarts: () => pagination.chapterStarts,
+            chapterNumberOf: widget.opened.tokens.chapterNumberOf,
+            pageUpdates: pagination,
+          ),
         ),
       ),
     );
@@ -524,15 +621,17 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// A footnote over the page (ADR 0008 п. 8); the page stays as it was.
   void _openNote(String id) => unawaited(
-    openNote(
-      context,
-      NoteBook(
-        notes: widget.opened.tokens.content.notes,
-        style: _style!,
-        side: _margin.left,
-        imagesDir: _imagesDir,
+    _over(
+      openNote(
+        context,
+        NoteBook(
+          notes: widget.opened.tokens.content.notes,
+          style: _style!,
+          side: _margin.left,
+          imagesDir: _imagesDir,
+        ),
+        id,
       ),
-      id,
     ),
   );
 
@@ -554,6 +653,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Speed reading from [word] in [picked] (the saved mode by default); back
   /// on the page of the last word shown.
   Future<void> _speedRead(int word, {SpeedMode? picked}) async {
+    _closePageAt(word);
     _setPanels(false);
     _readOn();
     final settings = ref.read(speedSettingsProvider);
@@ -562,17 +662,20 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (mode == SpeedMode.guide) return _startGuide(word);
     final wpm = await settings.wordsPerMinute(mode);
     if (!mounted) return;
-    final last = await Navigator.of(context).push<RsvpExit>(
-      MaterialPageRoute(
-        builder: (_) => RsvpScreen(
-          opened: widget.opened,
-          startWord: word,
-          wordsPerMinute: wpm,
-          mode: mode,
+    final last = await _over(
+      Navigator.of(context).push<RsvpExit>(
+        MaterialPageRoute(
+          builder: (_) => RsvpScreen(
+            opened: widget.opened,
+            startWord: word,
+            wordsPerMinute: wpm,
+            mode: mode,
+          ),
         ),
       ),
     );
-    if (!mounted || last == null) return;
+    if (!mounted) return;
+    if (last == null) return _openPage();
     if (last.mode == SpeedMode.guide) {
       // On a pause on the page of the word.
       _showWord(last.word, last.end, lit: false);
@@ -583,6 +686,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// The leading highlight from [word] on the shown page, on a pause.
   Future<void> _startGuide(int word) async {
+    _closePageAt(word);
     final settings = ref.read(speedSettingsProvider);
     final wpm = await settings.wordsPerMinute(SpeedMode.guide);
     if (!mounted) return;
@@ -796,6 +900,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         _litEnd = word + 1;
       }
     });
+    _openPage(from: lit ? word : null);
     if (lit) unawaited(_lit.forward(from: 0));
   }
 
@@ -812,6 +917,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _litEnd = end;
       _returnTo = null;
     });
+    _openPage(from: end);
     _setPanels(false);
     if (lit) unawaited(_lit.forward(from: 0));
     unawaited(
@@ -881,12 +987,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
         case final image?) {
       // A tap on a picture opens it over the whole screen (owner, 12.0).
       unawaited(
-        ImageViewerScreen.open(
-          context,
-          file: File('${_imagesDir.path}/${image.assetId}'),
-          width: image.width,
-          height: image.height,
-          dim: Theme.of(context).brightness == Brightness.dark,
+        _over(
+          ImageViewerScreen.open(
+            context,
+            file: File('${_imagesDir.path}/${image.assetId}'),
+            width: image.width,
+            height: image.height,
+            dim: Theme.of(context).brightness == Brightness.dark,
+          ),
         ),
       );
     } else {
@@ -939,6 +1047,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final secondary = Theme.of(context).textTheme.bodySmall
         ?.copyWith(color: colors.textSecondary);
     final dark = Theme.of(context).brightness == Brightness.dark;
+    _syncPageMeter();
     return PopScope(
       // Back closes the panels first.
       canPop: !_panelsShown && _guide == null,

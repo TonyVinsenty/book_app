@@ -72,6 +72,9 @@ final statsRepositoryProvider = Provider<StatsRepository>(
   (ref) => StatsRepository(ref.watch(appDatabaseProvider)),
 );
 
+/// The clock of the reading meters; tests put a fake one here.
+final statsClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 /// Folders the library takes books from (ADR 0007).
 final folderRepositoryProvider = Provider<FolderRepository>(
   (ref) => FolderRepository(ref.watch(appDatabaseProvider)),
