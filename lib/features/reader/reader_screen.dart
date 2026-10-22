@@ -132,6 +132,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
       .read(contentStoreProvider)
       .imagesDir(widget.opened.book.id);
 
+  /// The page whose neighbours' pictures were last decoded ahead.
+  (ChapterLayout, int)? _precachedAround;
+
   /// Saves the pages when the app goes to the background (it may be closed
   /// there without [dispose]).
   late final AppLifecycleListener _lifecycle;
@@ -960,10 +963,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
             final chapter = layout;
             final guide = _guide;
             final numbers = _pageNumbers(l10n);
-            precachePageImages(context, chapter, [
-              _page - 1,
-              _page + 1,
-            ], _imagesDir);
+            // Once per page, not on every rebuild (panels, highlight).
+            if (_precachedAround != (chapter, _page)) {
+              _precachedAround = (chapter, _page);
+              precachePageImages(context, chapter, [
+                _page - 1,
+                _page + 1,
+              ], _imagesDir);
+            }
             // The percent read is always shown by the page (owner, 11а.3).
             final pageLabel = l10n.readerPageAndPercent(
               l10n.readerPageOfBook(numbers.page, numbers.total),
