@@ -13,11 +13,13 @@ import 'package:book_app/book/import/import_error.dart';
 import 'package:book_app/book/import/zip_box.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/model/book_cover.dart';
+import 'package:book_app/book/model/book_image.dart';
 import 'package:book_app/book/parsers/epub_parser.dart';
 import 'package:book_app/book/parsers/fb2_parser.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_repository.dart';
+import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:crypto/crypto.dart';
 
@@ -71,8 +73,13 @@ int parserVersionOf(SourceFormat format) => switch (format) {
 };
 
 /// Parses a book of any supported format. Pure and synchronous, so it can
-/// run in an isolate. Throws [ImportException].
-ParsedBook parseBook(Uint8List bytes, {required String fileName}) {
+/// run in an isolate; pictures of the text go to [images]. Throws
+/// [ImportException].
+ParsedBook parseBook(
+  Uint8List bytes, {
+  required String fileName,
+  ImageSink? images,
+}) {
   final title = titleFromFileName(fileName);
   final BookContent content;
   BookCover? cover;
@@ -174,6 +181,7 @@ class BookImporter {
     String name, {
     required bool touch,
   }) async {
+    Directory? images;
     try {
       final hash = await _hashInIsolate(book.path);
       final existing = await _books.findByHash(hash);
@@ -181,7 +189,8 @@ class BookImporter {
       // Deleted in the meantime → added again.
       final touched = existing == null ? null : await _books.touch(existing.id);
       if (touched != null) return ImportDuplicate(name, touched);
-      final parsed = await _parseInIsolate(book.path, name);
+      images = await _books.newIncomingImagesDir();
+      final parsed = await _parseInIsolate(book.path, name, images.path);
       final row = await _books.addBook(
         content: parsed.content,
         source: book,
@@ -190,10 +199,14 @@ class BookImporter {
         parserVersion: parsed.parserVersion,
         wordCount: parsed.wordCount,
         cover: parsed.cover,
+        images: images,
       );
       return ImportAdded(name, row);
     } on Object catch (e) {
       return _failure(name, e);
+    } finally {
+      // Moved into the book when it was added.
+      if (images != null) await _deleteQuietly(images);
     }
   }
 }
@@ -231,5 +244,11 @@ Future<String> _hashInIsolate(String path) =>
 Future<List<String>?> _unpackInIsolate(String path, String outDir) =>
     Isolate.run(() => unpackBox(path, outDir));
 
-Future<ParsedBook> _parseInIsolate(String path, String name) =>
-    Isolate.run(() => parseBook(File(path).readAsBytesSync(), fileName: name));
+Future<ParsedBook> _parseInIsolate(String path, String name, String images) =>
+    Isolate.run(
+      () => parseBook(
+        File(path).readAsBytesSync(),
+        fileName: name,
+        images: FileImageSink(Directory(images)),
+      ),
+    );

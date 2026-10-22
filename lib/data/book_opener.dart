@@ -6,6 +6,7 @@ import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_repository.dart';
+import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 
 /// A book ready for reading: its words and the word to open at.
@@ -49,9 +50,11 @@ final class BookOpener {
       return OpenedBook((await _books.findById(id))!, tokens, word);
     }
 
+    final images = await _books.newImagesDir(id);
     final (parsed, tokens) = await _parseInIsolate(
       _books.sourceFile(book).path,
       book.sourceName,
+      images.path,
     );
     // Note labels and pictures shift blocks and offsets but add no words
     // (ADR 0008): the same number of words means the same words.
@@ -65,17 +68,25 @@ final class BookOpener {
       wordCount: parsed.wordCount,
       position: tokens.positionOf(word),
       cover: parsed.cover,
+      images: images,
     );
     return OpenedBook((await _books.findById(id))!, tokens, word);
   }
 }
 
 // Top-level, so the isolate closures capture only their arguments.
-Future<(ParsedBook, BookTokens)> _parseInIsolate(String path, String name) =>
-    Isolate.run(() {
-      final parsed = parseBook(File(path).readAsBytesSync(), fileName: name);
-      return (parsed, tokenize(parsed.content));
-    });
+Future<(ParsedBook, BookTokens)> _parseInIsolate(
+  String path,
+  String name,
+  String images,
+) => Isolate.run(() {
+  final parsed = parseBook(
+    File(path).readAsBytesSync(),
+    fileName: name,
+    images: FileImageSink(Directory(images)),
+  );
+  return (parsed, tokenize(parsed.content));
+});
 
 Future<BookTokens> _tokenizeInIsolate(BookContent content) =>
     Isolate.run(() => tokenize(content));

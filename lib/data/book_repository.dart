@@ -44,8 +44,9 @@ final class BookRepository {
     _db.books,
   )..where((b) => b.sourceHash.equals(sourceHash))).getSingleOrNull();
 
-  /// Adds a parsed book: a row, then the source copy, the model and the
-  /// cover. If the files can't be written, the row is removed again.
+  /// Adds a parsed book: a row, then the source copy, the pictures (from
+  /// [images], see [newIncomingImagesDir]), the model and the cover. If the
+  /// files can't be written, the row is removed again.
   Future<BookRow> addBook({
     required BookContent content,
     required File source,
@@ -54,6 +55,7 @@ final class BookRepository {
     required int parserVersion,
     required int wordCount,
     BookCover? cover,
+    Directory? images,
   }) async {
     final meta = content.meta;
     final now = _now();
@@ -79,6 +81,7 @@ final class BookRepository {
         );
     try {
       await _store.saveSource(row.id, meta.sourceFormat, source);
+      if (images != null) await _store.replaceImages(row.id, images);
       await _store.saveContent(row.id, parserVersion, content);
     } catch (_) {
       await (_db.delete(_db.books)..where((b) => b.id.equals(row.id))).go();
@@ -115,8 +118,19 @@ final class BookRepository {
     null => null,
   };
 
-  /// Stores a reparsed model with its cover and the position moved by its
-  /// anchor.
+  /// A folder for the pictures of a book about to be imported (for
+  /// [addBook]); the caller removes it if the book is not added.
+  Future<Directory> newIncomingImagesDir() => _store.newIncomingImagesDir();
+
+  /// A folder for the pictures of a reparse of book [id] (for
+  /// [replaceContent]).
+  Future<Directory> newImagesDir(int id) => _store.newImagesDir(id);
+
+  /// Folder of the pictures of the book's text.
+  Directory imagesDir(BookRow book) => _store.imagesDir(book.id);
+
+  /// Stores a reparsed model with its pictures (from [images], see
+  /// [newImagesDir]), its cover and the moved position.
   Future<void> replaceContent(
     int id, {
     required BookContent content,
@@ -124,7 +138,9 @@ final class BookRepository {
     required int wordCount,
     required ReadingPosition position,
     BookCover? cover,
+    Directory? images,
   }) async {
+    if (images != null) await _store.replaceImages(id, images);
     await _store.saveContent(id, parserVersion, content);
     final coverFile = await _saveCover(id, cover);
     await _write(
