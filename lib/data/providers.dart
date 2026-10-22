@@ -12,6 +12,7 @@ import 'package:book_app/data/folders/folder_repository.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/data/speed_settings.dart';
 import 'package:book_app/layout/hyphenation.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:path_provider/path_provider.dart';
@@ -116,7 +117,11 @@ Future<List<Override>> openStorageOverrides() async {
 /// Info.plist keys, ADR 0007); Android: `files/Books` in the app's external
 /// folder, reachable by cable from a computer and by `adb push`.
 Future<Directory?> _ownFolder() async {
-  if (Platform.isIOS) return getApplicationDocumentsDirectory();
+  if (Platform.isIOS) {
+    final documents = await getApplicationDocumentsDirectory();
+    await showInFiles(documents);
+    return documents;
+  }
   if (Platform.isAndroid) {
     final external = await getExternalStorageDirectory();
     if (external == null) return null;
@@ -144,3 +149,19 @@ final lastLayoutProvider = StreamProvider<LastLayout?>(
 
 /// Hyphenation patterns, loaded in `main()`; null (tests) — no hyphens.
 final hyphenationProvider = Provider<Hyphenation?>((ref) => null);
+
+/// Files hides an app's folder while it is empty, so an empty one gets a
+/// `Books` folder to put books in (the scan looks into subfolders).
+@visibleForTesting
+Future<void> showInFiles(Directory documents) async {
+  try {
+    final visible = documents.listSync().any(
+      (entity) => !entity.path.split(Platform.pathSeparator).last.startsWith('.'),
+    );
+    if (!visible) {
+      await Directory('${documents.path}/Books').create(recursive: true);
+    }
+  } on FileSystemException {
+    // The folder just stays hidden until a book is put in through "Open in".
+  }
+}
