@@ -117,6 +117,15 @@ final class ChapterLayout {
     return lo;
   }
 
+  /// The page showing block [blockIndex] (its first part), or null if the
+  /// block is not shown (a picture without a size).
+  int? pageOfBlock(int blockIndex) {
+    for (final (i, page) in pages.indexed) {
+      if (page.slices.any((slice) => slice.blockIndex == blockIndex)) return i;
+    }
+    return null;
+  }
+
   /// Text of page [index], for screen readers.
   String pageText(int index) => [
     for (final slice in pages[index].slices)

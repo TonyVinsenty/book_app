@@ -5,6 +5,10 @@ import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/tokenizer/chars.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 
+/// A picture in the flow of words: block [blockIndex] of section
+/// [sectionIndex], shown before a word (ADR 0008 п. 9).
+typedef WordImage = ({int sectionIndex, int blockIndex, ImageBlock image});
+
 /// All words of a book in reading order, stored compactly (about 20 bytes
 /// per word: a 500k-word book takes ~10 MB). Built by `tokenize`.
 final class BookTokens {
@@ -149,6 +153,52 @@ final class BookTokens {
       }
     }
     return lo < length ? lo : (length == 0 ? 0 : length - 1);
+  }
+
+  /// Pictures between word [word] - 1 and [word], in reading order: only
+  /// those with a size, as the pages show them. Pictures after the last
+  /// word have no word to stand before and are not shown in speed reading.
+  List<WordImage> imagesBefore(int word) => _images[word] ?? const [];
+
+  late final Map<int, List<WordImage>> _images = _buildImages();
+
+  Map<int, List<WordImage>> _buildImages() {
+    final result = <int, List<WordImage>>{};
+    for (final (s, section) in content.sections.indexed) {
+      for (final (b, block) in section.blocks.indexed) {
+        if (block case ImageBlock(width: final w?, height: final h?)
+            when w > 0 && h > 0) {
+          final word = _firstWordFrom(s, b);
+          if (word < length) {
+            (result[word] ??= []).add((
+              sectionIndex: s,
+              blockIndex: b,
+              image: block,
+            ));
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  /// First word in block [block] of section [section] or after it;
+  /// [length] if none.
+  int _firstWordFrom(int section, int block) {
+    var lo = 0;
+    var hi = length;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      final before = _sections[mid] != section
+          ? _sections[mid] < section
+          : _blocks[mid] < block;
+      if (before) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
   }
 
   bool _endsBefore(int i, TextAnchor a) {

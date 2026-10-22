@@ -5,9 +5,11 @@ import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
+import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/speed/speed_controls.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/speed/pause_text.dart';
@@ -68,6 +70,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   Timer? _hintTimer;
   Duration _lastTick = Duration.zero;
 
+  /// Pictures of the current stop already tapped away.
+  int _imagesSeen = 0;
+
   @visibleForTesting
   RsvpEngine get engine => _engine;
 
@@ -80,7 +85,8 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
       startWord: widget.startWord,
       timing: SmartPace(widget.opened.tokens, _wpm),
       stopBefore: (word) =>
-          widget.opened.tokens.flagsOf(word) & TokenFlags.sectionStart != 0,
+          _chapterStartAt(word) ||
+          widget.opened.tokens.imagesBefore(word).isNotEmpty,
     );
     _ticker = createTicker(_onTick);
     _lifecycle = AppLifecycleListener(onInactive: _pause);
@@ -182,8 +188,20 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     }
   }
 
+  bool _chapterStartAt(int word) =>
+      widget.opened.tokens.flagsOf(word) & TokenFlags.sectionStart != 0;
+
+  /// On a stop: the next picture before the word not yet tapped away (ADR
+  /// 0008 п. 9), shown before the chapter start if both are there.
+  WordImage? get _stopImage {
+    if (!_engine.isStopped) return null;
+    final images = widget.opened.tokens.imagesBefore(_engine.wordIndex);
+    return _imagesSeen < images.length ? images[_imagesSeen] : null;
+  }
+
   void _play() {
     _usePhrases();
+    _imagesSeen = 0;
     _engine.play();
     _started = true;
     if (!_engine.isPlaying || _ticker.isActive) return;
@@ -226,6 +244,15 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
   void _toggle() {
     if (_engine.isPlaying) {
       _pause();
+    } else if (_stopImage != null) {
+      // A tap shows the next picture, then the chapter start or the words;
+      // the time on a picture is a pause, not counted in the speed.
+      setState(() {
+        _imagesSeen++;
+        if (_stopImage == null && !_chapterStartAt(_engine.wordIndex)) {
+          _play();
+        }
+      });
     } else {
       setState(_play);
     }
@@ -302,6 +329,44 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     );
   }
 
+  /// A picture on a stop, fitted between the exit button and the hint, no
+  /// larger than its own size (as on the page).
+  Widget _picture(BuildContext context, WordImage picture) {
+    final colors = context.readingColors;
+    final dir = ref.read(contentStoreProvider).imagesDir(widget.opened.book.id);
+    final width = picture.image.width!;
+    final height = picture.image.height!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 56, 24, 80),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final scale = math.min(
+            1.0,
+            math.min(box.maxWidth / width, box.maxHeight / height),
+          );
+          final size = Size(width * scale, height * scale);
+          return Center(
+            child: SizedBox.fromSize(
+              size: size,
+              child: PagePicture(
+                image: (
+                  assetId: picture.image.assetId,
+                  rect: Offset.zero & size,
+                  width: width,
+                  height: height,
+                ),
+                imagesDir: dir,
+                devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+                dim: Theme.of(context).brightness == Brightness.dark,
+                frameColor: colors.textSecondary,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   /// The text before the word on pause, pressed down to the word line from
   /// above (ADR 0004 п. 7, «Изменения»); it ends with the word or phrase on
   /// screen, lit.
@@ -369,6 +434,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     final text = phrase ? _shownText : token.text;
     final paused = !_engine.isPlaying;
     final showText = paused && !_engine.isStopped;
+    final picture = _stopImage;
     final secondary = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(color: colors.textSecondary);
     return PopScope(
@@ -387,7 +453,9 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
               onVerticalDragEnd: _onVerticalSwipe,
               child: Stack(
                 children: [
-                  if (_engine.isStopped)
+                  if (picture != null)
+                    Positioned.fill(child: _picture(context, picture))
+                  else if (_engine.isStopped)
                     Positioned.fill(child: _chapterStart(context))
                   else
                     Positioned.fill(
@@ -436,7 +504,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                         textAlign: TextAlign.center,
                       ),
                     ),
-                  if (paused) ...[
+                  if (paused)
                     Positioned(
                       top: 4,
                       left: 4,
@@ -446,6 +514,18 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                         onPressed: _exit,
                       ),
                     ),
+                  if (picture != null)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 24,
+                      child: Text(
+                        l10n.speedTapToContinue,
+                        style: secondary,
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else if (paused)
                     Positioned(
                       left: 16,
                       right: 16,
@@ -490,7 +570,6 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
                         ],
                       ),
                     ),
-                  ],
                 ],
               ),
             ),

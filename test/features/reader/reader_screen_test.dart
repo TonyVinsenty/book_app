@@ -7,6 +7,7 @@ import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/parsers/txt_parser.dart';
+import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/book_repository.dart';
@@ -27,6 +28,7 @@ import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/features/speed/speed_controls.dart';
 import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
@@ -1534,7 +1536,10 @@ void main() {
         ...base.sections.skip(1),
       ],
       notes: const {
-        'n1': Note(label: '1', blocks: [ParagraphBlock(text: 'Сноска.')]),
+        'n1': Note(
+          label: '1',
+          blocks: [ParagraphBlock(text: 'Сноска.')],
+        ),
       },
     );
     await pumpApp(tester, book: book);
@@ -1563,6 +1568,121 @@ void main() {
     expect(find.byType(NoteSheet), findsNothing);
     expect(reader(tester).page, same(page));
     expect(reader(tester).panelsShown, isFalse);
+    await closeApp(tester);
+  });
+
+  /// [sampleBook] (it has pictures of its own) with picture `1.jpg` after
+  /// paragraph 5 of chapter 1 and at the start of chapter 2.
+  BookContent bookWithPictures() {
+    final base = sampleBook(sections: 3, paragraphs: 14);
+    const picture = ImageBlock(assetId: '1.jpg', width: 600, height: 900);
+    final first = base.sections[0];
+    final second = base.sections[1];
+    return BookContent(
+      meta: base.meta,
+      sections: [
+        Section(
+          title: first.title,
+          blocks: [...first.blocks.take(6), picture, ...first.blocks.skip(6)],
+        ),
+        Section(title: second.title, blocks: [picture, ...second.blocks]),
+        ...base.sections.skip(2),
+      ],
+    );
+  }
+
+  testWidgets('stage 12: speed reading pauses on a picture; a tap goes on, '
+      'to the chapter start if one follows', (tester) async {
+    await pumpApp(tester, book: bookWithPictures());
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final [inside, second] = [
+      for (var w = 0; w < tokens.length; w++)
+        if (tokens.imagesBefore(w).any((i) => i.image.assetId == '1.jpg')) w,
+    ];
+    expect(tokens.flagsOf(second) & TokenFlags.sectionStart, isNonZero);
+
+    await speedReadFrom(tester, inside - 3);
+    await tester.pump(const Duration(seconds: 2));
+    final engine = rsvp(tester).engine;
+    expect((engine.isStopped, engine.wordIndex), (true, inside));
+    expect(find.byType(PagePicture), findsOneWidget);
+    expect(find.text('Коснитесь экрана, чтобы продолжить'), findsOneWidget);
+    expect(find.byType(SpeedStepper), findsNothing);
+    await tester.pump(const Duration(seconds: 2));
+    expect(engine.wordIndex, inside, reason: 'waits for a tap');
+    await tapRsvp(tester);
+    expect(engine.isPlaying, isTrue);
+    expect(find.byType(PagePicture), findsNothing);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(engine.wordIndex, greaterThan(inside));
+
+    // A picture before a chapter: the picture, then the chapter start.
+    engine.seek(second - 3);
+    await tester.pump(const Duration(seconds: 2));
+    expect((engine.isStopped, engine.wordIndex), (true, second));
+    expect(find.byType(PagePicture), findsOneWidget);
+    expect(find.text('Новая глава'), findsNothing);
+    await tapRsvp(tester);
+    expect(engine.isStopped, isTrue);
+    expect(find.byType(PagePicture), findsNothing);
+    expect(find.text('Новая глава'), findsOneWidget);
+    await tester.tap(find.text('Старт'));
+    await tester.pump();
+    expect(engine.isPlaying, isTrue);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 12: the highlight stops on the page of a picture with no '
+      'panel; a tap goes on', (tester) async {
+    await pumpApp(tester, book: bookWithPictures());
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    final [inside, second] = [
+      for (var w = 0; w < tokens.length; w++)
+        if (tokens.imagesBefore(w).any((i) => i.image.assetId == '1.jpg')) w,
+    ];
+    expect(tokens.flagsOf(second) & TokenFlags.sectionStart, isNonZero);
+
+    await reader(tester).guideFrom(inside - 3);
+    await settle(tester);
+    await tapAt(tester, 0.5);
+    await tester.pump(const Duration(seconds: 3));
+    final guide = reader(tester).guide!;
+    expect((guide.isStopped, guide.word), (true, inside));
+    expect(find.byType(GuidePanel), findsNothing);
+    expect(find.byType(PagePicture), findsOneWidget);
+    await tapAt(tester, 0.9);
+    expect(guide.isPlaying, isTrue, reason: 'any tap goes on');
+    await tester.pump(const Duration(seconds: 2));
+    expect(guide.word, greaterThan(inside));
+    expect(reader(tester).page.endWord, greaterThan(guide.word));
+    await tapAt(tester, 0.5);
+
+    // Before a chapter: the picture, then its first page and the panel.
+    await reader(tester).guideFrom(second - 3);
+    await settle(tester);
+    await tapAt(tester, 0.5);
+    await tester.pump(const Duration(seconds: 3));
+    final next = reader(tester).guide!;
+    expect((next.isStopped, next.word), (true, second));
+    expect(find.byType(GuidePanel), findsNothing);
+    expect(find.byType(PagePicture), findsOneWidget);
+    await tapAt(tester, 0.5);
+    expect(next.isPlaying, isFalse);
+    expect(find.text('Новая глава'), findsOneWidget);
+    expect(reader(tester).page.firstWord, second);
+    await tester.tap(find.byTooltip('Старт'));
+    await tester.pump();
+    expect(next.isPlaying, isTrue);
+    await tester.pump(const Duration(seconds: 2));
+    expect(next.word, greaterThan(second));
+    await tapAt(tester, 0.5);
+    expect(tester.takeException(), isNull);
+    await tester.pumpAndSettle();
     await closeApp(tester);
   });
 

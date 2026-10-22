@@ -7,6 +7,7 @@ import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
+import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/book_pages.dart';
@@ -190,6 +191,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// Played at least once since the highlight came on.
   bool _guideStarted = false;
+
+  /// Pictures of the highlight's current stop already tapped away.
+  int _guideImagesSeen = 0;
 
   /// The speed shown for a moment after a swipe changed it while playing.
   bool _guideSpeedHint = false;
@@ -587,13 +591,53 @@ class ReaderViewState extends ConsumerState<ReaderView>
         startWord: word,
         timing: _guidePace,
         pageOf: _guidePageOf,
-        stopBefore: (w) => tokens.flagsOf(w) & TokenFlags.sectionStart != 0,
+        stopBefore: (w) =>
+            _chapterStartAt(w) || tokens.imagesBefore(w).isNotEmpty,
       );
       _guideWord.value = _guide!.word;
       _guideStarted = false;
+      _guideImagesSeen = 0;
       _litWord = null;
     });
     _setPanels(false);
+  }
+
+  bool _chapterStartAt(int word) =>
+      widget.opened.tokens.flagsOf(word) & TokenFlags.sectionStart != 0;
+
+  /// On a stop of the highlight: the next picture before its word not yet
+  /// tapped away (ADR 0008 п. 9); its page is shown with no panel.
+  WordImage? get _guideStopImage {
+    final guide = _guide;
+    if (guide == null || !guide.isStopped) return null;
+    final images = widget.opened.tokens.imagesBefore(guide.word);
+    return _guideImagesSeen < images.length ? images[_guideImagesSeen] : null;
+  }
+
+  /// Opens the page of [_guideStopImage], if any; true if it did.
+  bool _showGuideImage() {
+    final image = _guideStopImage;
+    if (image == null) return false;
+    final page = _layoutOf(image.sectionIndex).pageOfBlock(image.blockIndex);
+    if (page != null) _show(image.sectionIndex, page, turned: true);
+    return true;
+  }
+
+  /// A tap on a picture stop: the next picture, then the chapter start (its
+  /// page and the panel) or the words go on; the time on a picture is a
+  /// pause, not counted in the speed.
+  void _nextGuideImage() {
+    final guide = _guide!;
+    _guideImagesSeen++;
+    if (_showGuideImage()) return;
+    // Back to the stop word, whatever page the pictures showed.
+    guide.pageTurned(guide.word);
+    if (_chapterStartAt(guide.word)) {
+      _followGuide();
+      setState(() {});
+    } else {
+      _playGuide();
+    }
   }
 
   GuidePage _guidePageOf(int word) {
@@ -616,6 +660,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (guide.isPlaying) return;
     _guideTicker!.stop();
     _saveGuidePlace();
+    _showGuideImage();
     if (guide.isFinished) {
       unawaited(
         ref.read(bookRepositoryProvider).markFinished(widget.opened.book.id),
@@ -644,6 +689,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _playGuide() {
     final guide = _guide;
     if (guide == null) return;
+    _guideImagesSeen = 0;
     guide.play();
     if (!guide.isPlaying) return;
     _setPanels(false);
@@ -806,6 +852,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
         when !_panelsShown) {
       // A label is above turning pages (ADR 0008 п. 8).
       _openNote(id);
+    } else if (_guideStopImage != null && !_panelsShown) {
+      // Any tap goes on from a picture.
+      _nextGuideImage();
     } else if (guide != null && !_panelsShown) {
       // On a pause the sides turn pages, the middle goes on.
       if (x < width / 3) {
@@ -1008,7 +1057,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       onClose: _closeSettings,
                     ),
                   )
-                else if (guide != null && !_panelsShown && !guide.isPlaying)
+                else if (guide != null &&
+                    !_panelsShown &&
+                    !guide.isPlaying &&
+                    _guideStopImage == null)
                   Positioned(
                     left: 0,
                     right: 0,

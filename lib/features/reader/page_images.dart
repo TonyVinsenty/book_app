@@ -40,27 +40,53 @@ class PageImages extends StatelessWidget {
           for (final image in images)
             Positioned.fromRect(
               rect: image.rect,
-              child: Image(
-                image: pageImageProvider(imagesDir, image, ratio),
-                fit: BoxFit.fill,
-                gaplessPlayback: true,
-                color: dim ? nightImageDim : null,
-                colorBlendMode: dim ? BlendMode.srcATop : null,
-                excludeFromSemantics: true,
-                errorBuilder: (_, _, _) => DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: frameColor),
-                  ),
-                  child: Center(
-                    child: Icon(Icons.broken_image_outlined, color: frameColor),
-                  ),
-                ),
+              child: PagePicture(
+                image: image,
+                imagesDir: imagesDir,
+                devicePixelRatio: ratio,
+                dim: dim,
+                frameColor: frameColor,
               ),
             ),
         ],
       ),
     );
   }
+}
+
+/// One picture filling its place: night-dimmed, a frame with an icon if
+/// the file is broken or gone.
+class PagePicture extends StatelessWidget {
+  const PagePicture({
+    super.key,
+    required this.image,
+    required this.imagesDir,
+    required this.devicePixelRatio,
+    required this.dim,
+    required this.frameColor,
+  });
+
+  final PageImage image;
+  final Directory imagesDir;
+  final double devicePixelRatio;
+  final bool dim;
+  final Color frameColor;
+
+  @override
+  Widget build(BuildContext context) => Image(
+    image: pageImageProvider(imagesDir, image, devicePixelRatio),
+    fit: BoxFit.fill,
+    gaplessPlayback: true,
+    color: dim ? nightImageDim : null,
+    colorBlendMode: dim ? BlendMode.srcATop : null,
+    excludeFromSemantics: true,
+    errorBuilder: (_, _, _) => DecoratedBox(
+      decoration: BoxDecoration(border: Border.all(color: frameColor)),
+      child: Center(
+        child: Icon(Icons.broken_image_outlined, color: frameColor),
+      ),
+    ),
+  );
 }
 
 /// The picture decoded at the width it takes on screen, not more than its

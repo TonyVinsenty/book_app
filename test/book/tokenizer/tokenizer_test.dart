@@ -258,6 +258,46 @@ void main() {
     });
   });
 
+  test('pictures stand before the next word; sizeless and last ones not', () {
+    final t = tokenize(
+      const BookContent(
+        meta: BookMeta(title: 't', sourceFormat: SourceFormat.epub),
+        sections: [
+          Section(
+            blocks: [ImageBlock(assetId: 'cover', width: 600, height: 900)],
+          ),
+          Section(
+            blocks: [
+              ImageBlock(assetId: 'a', width: 10, height: 10),
+              ParagraphBlock(text: 'Один два.'),
+              ImageBlock(assetId: 'b', width: 10, height: 10),
+              ImageBlock(assetId: 'no-size'),
+              ImageBlock(assetId: 'c', width: 10, height: 10),
+              ParagraphBlock(text: 'Три.'),
+              ImageBlock(assetId: 'd', width: 10, height: 10),
+            ],
+          ),
+          Section(
+            blocks: [
+              ParagraphBlock(text: 'Четыре.'),
+              ImageBlock(assetId: 'last', width: 10, height: 10),
+            ],
+          ),
+        ],
+      ),
+    );
+    List<String> ids(int word) => [
+      for (final i in t.imagesBefore(word)) i.image.assetId,
+    ];
+    expect(ids(0), ['cover', 'a']);
+    expect(ids(1), isEmpty);
+    expect(ids(2), ['b', 'c']);
+    expect(ids(3), ['d']);
+    expect(t.length, 4);
+    final c = t.imagesBefore(2).last;
+    expect((c.sectionIndex, c.blockIndex), (1, 4));
+  });
+
   group('ORP', () {
     const cases = <String, String>{
       'я': 'я',
