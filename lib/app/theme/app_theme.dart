@@ -50,6 +50,13 @@ ThemeData buildAppTheme(ReadingPalette palette, {required bool night}) {
   return ThemeData(
     colorScheme: scheme,
     scaffoldBackgroundColor: c.background,
+    // The top bar keeps the page color when content scrolls under it (the
+    // iPhone's bouncing scroll made the tint flash on every pull).
+    appBarTheme: AppBarTheme(
+      backgroundColor: c.background,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+    ),
     fontFamily: AppFonts.ui,
     extensions: [ReadingTheme(c)],
   );

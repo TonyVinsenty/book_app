@@ -42,6 +42,8 @@ void main() {
         expect(theme.extension<ReadingTheme>()!.colors, same(c));
         expect(theme.scaffoldBackgroundColor, c.background);
         expect(theme.colorScheme.onSurface, c.text);
+        expect(theme.appBarTheme.backgroundColor, c.background);
+        expect(theme.appBarTheme.scrolledUnderElevation, 0);
       });
     }
   }
