@@ -3,8 +3,8 @@
 /// XML events into blocks. Lenient: HTML5 entities, unclosed tags and
 /// broken markup are stepped over; a broken or missing spine file is
 /// skipped. Chapters follow the book's contents (EPUB 3 `nav` or EPUB 2
-/// NCX); the cover is taken, other pictures and footnotes are skipped, as
-/// in FB2.
+/// NCX). Pictures (`<img>`, `<svg><image>`) become image blocks (ADR 0008),
+/// the cover is the first page; footnotes are skipped.
 library;
 
 import 'dart:collection';
@@ -15,12 +15,13 @@ import 'package:archive/archive.dart';
 import 'package:book_app/book/encoding/text_decoder.dart';
 import 'package:book_app/book/model/book_content.dart';
 import 'package:book_app/book/model/book_cover.dart';
+import 'package:book_app/book/model/book_image.dart';
 import 'package:book_app/book/parsers/parse_utils.dart';
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 /// Bump when the result for the same file changes (books get re-parsed).
-const epubParserVersion = 3;
+const epubParserVersion = 4;
 
 /// Not a readable EPUB: no OPF, an empty spine or no text at all.
 final class NotEpubException implements Exception {
@@ -38,15 +39,20 @@ final class EpubDrmException implements Exception {
   String toString() => 'EpubDrmException';
 }
 
-/// [title] is used when the book has no `dc:title` (usually the file name).
-/// Throws [NotEpubException] or [EpubDrmException].
-BookContent parseEpub(Uint8List bytes, {required String title}) =>
-    parseEpubWithCover(bytes, title: title).$1;
+/// [title] is used when the book has no `dc:title` (usually the file name);
+/// pictures of the text go to [images]. Throws [NotEpubException] or
+/// [EpubDrmException].
+BookContent parseEpub(
+  Uint8List bytes, {
+  required String title,
+  ImageSink? images,
+}) => parseEpubWithCover(bytes, title: title, images: images).$1;
 
 /// [parseEpub] plus the cover picture, if the book has a usable one.
 (BookContent, BookCover?) parseEpubWithCover(
   Uint8List bytes, {
   required String title,
+  ImageSink? images,
 }) {
   final Archive archive;
   try {
@@ -73,13 +79,21 @@ BookContent parseEpub(Uint8List bytes, {required String title}) =>
   for (final entry in contents) {
     (entriesOf[entry.path] ??= []).add(entry);
   }
+  // Numbered in book order: the cover, the text.
+  final pictures = BookImages(images);
+  ImageBlock? picture(String path) =>
+      pictures.add(path.toLowerCase(), () => files.bytes(path, maxImageBytes));
+  var cover = _cover(files, package.coverPaths());
+  final coverPage = cover == null ? null : picture(cover.path);
   final chapters = _Chapters(contents);
   String? firstPage;
   for (final path in spine) {
     final text = files.text(path);
     if (text == null) continue;
     final entries = entriesOf[path] ?? const <_Entry>[];
-    final reader = _Xhtml({for (final e in entries) ?e.anchor});
+    final reader = _Xhtml(_dirOf(path), picture, {
+      for (final e in entries) ?e.anchor,
+    });
     try {
       final blocks = (reader..walk(text)).finish();
       if (path == spine.first && _isCoverPage(blocks)) firstPage = text;
@@ -96,12 +110,30 @@ BookContent parseEpub(Uint8List bytes, {required String title}) =>
     if (_drmFiles.any(files.has)) throw const EpubDrmException();
     throw const NotEpubException();
   }
+  if (firstPage != null) {
+    cover ??= _cover(files, _pagePictures(spine.first, firstPage));
+  }
+  final coverBlock = cover == null ? null : picture(cover.path);
+  // A cover named by the package is the first page, unless the text
+  // already opens with it; one from the first page is in the text.
+  if (coverPage != null) {
+    final first = sections.first;
+    final opening = first.blocks.takeWhile((b) => b is! ParagraphBlock);
+    if (!opening.any(
+      (b) => b is ImageBlock && b.assetId == coverPage.assetId,
+    )) {
+      sections[0] = Section(
+        title: first.title,
+        blocks: [coverPage, ...first.blocks],
+      );
+    }
+  }
   final content = BookContent(
-    meta: package.meta(fallbackTitle: title),
+    meta: package.meta(fallbackTitle: title, coverAssetId: coverBlock?.assetId),
     toc: toc,
     sections: sections,
   );
-  return (content, _cover(files, package, spine.first, firstPage));
+  return (content, cover?.cover);
 }
 
 /// A first page with less text than this may hold the cover picture.
@@ -121,31 +153,24 @@ final _pagePicture = RegExp(
 );
 final _comment = RegExp('<!--.*?-->', dotAll: true);
 
-/// The first usable picture of: the EPUB 3 `cover-image`, the EPUB 2
-/// `<meta name="cover">`, a picture with `cover` in its id or name, the
-/// first picture of [firstPage] (the text of the first spine file at
-/// [firstPath], when it has almost no text).
-BookCover? _cover(
+/// The pictures of [page], the text of the spine file at [path].
+List<String> _pagePictures(String path, String page) => [
+  for (final m in _pagePicture.allMatches(page.replaceAll(_comment, '')))
+    _resolve(_dirOf(path), const XmlDefaultEntityMapping.html5().decode(m[1]!)),
+];
+
+/// The first usable picture of [candidates], with its archive path: the
+/// EPUB 3 `cover-image`, the EPUB 2 `<meta name="cover">`, a picture with
+/// `cover` in its id or name ([_Package.coverPaths]); else the first
+/// picture of the first spine file, when it has almost no text.
+({String path, BookCover cover})? _cover(
   _Files files,
-  _Package package,
-  String firstPath,
-  String? firstPage,
+  Iterable<String> candidates,
 ) {
-  final candidates = [
-    ...package.coverPaths(),
-    if (firstPage != null)
-      for (final m in _pagePicture.allMatches(
-        firstPage.replaceAll(_comment, ''),
-      ))
-        _resolve(
-          _dirOf(firstPath),
-          const XmlDefaultEntityMapping.html5().decode(m[1]!),
-        ),
-  ];
   for (final path in candidates) {
     final bytes = files.bytes(path, maxCoverBytes);
     final cover = bytes == null ? null : coverFromBytes(bytes);
-    if (cover != null) return cover;
+    if (cover != null) return (path: path, cover: cover);
   }
   return null;
 }
@@ -570,7 +595,7 @@ final class _Package extends _Walker {
   String? _refined(String? id, String property) =>
       id == null ? null : _refines[id]?[property];
 
-  BookMeta meta({required String fallbackTitle}) {
+  BookMeta meta({required String fallbackTitle, String? coverAssetId}) {
     final mainTitle = _titles
         .where((t) => _refined(t.$2, 'title-type') == 'main')
         .firstOrNull;
@@ -596,6 +621,7 @@ final class _Package extends _Walker {
       seriesNumber: series == null ? null : _wholeNumber(number),
       lang: _language,
       annotation: _description == null ? null : _plainText(_description!),
+      coverAssetId: coverAssetId,
       sourceFormat: SourceFormat.epub,
     );
   }
@@ -719,6 +745,17 @@ final _numberMark = RegExp(r'^\(?\d{1,4}\)?$');
 
 final _noteHref = RegExp(r'note|fn|#n[_-]?\d', caseSensitive: false);
 
+/// A link to a picture file, or to a page wrapping one (Gutenberg:
+/// `p003.jpg.wrap-0.html`).
+final _pictureFile = RegExp(
+  r'\.(?:jpe?g|png|gif|webp|bmp|svg)\b',
+  caseSensitive: false,
+);
+
+/// A smaller picture in a link to a picture file is a button (`Full Size`
+/// in Gutenberg books), not an illustration.
+const _maxButtonSide = 100;
+
 /// A heading longer than this is a heading never closed (broken HTML):
 /// the next block is a paragraph.
 const _maxHeadingLength = 200;
@@ -745,6 +782,9 @@ final class _Element {
 
   /// The link points to a note or is set as a superscript.
   var noteLike = false;
+
+  /// The link opens a picture (the full size of an illustration).
+  var toPicture = false;
 }
 
 /// A state of [_Text] to go back to.
@@ -874,12 +914,23 @@ final class _Text {
 
 /// One XHTML file → blocks (ADR 0005): `h1`–`h6` → headings, `p`, `div`,
 /// `li`… → paragraphs, `hr` → a separator, `em`/`i` and `strong`/`b` →
-/// spans; poems and epigraphs by `class`; CSS is not read.
+/// spans; poems and epigraphs by `class`; CSS is not read. `<img>` and
+/// `<svg><image>` → image blocks; a picture inside a paragraph splits it, a
+/// skipped one does not.
 final class _Xhtml extends _Walker {
-  _Xhtml([this._anchors = const {}]);
+  _Xhtml(this._dir, this._picture, [this._anchors = const {}]);
+
+  /// Folder of the file, for picture links.
+  final String _dir;
+
+  /// The block for a picture of the archive; null when it is skipped.
+  final ImageBlock? Function(String path) _picture;
 
   /// Ids the contents links to.
   final Set<String> _anchors;
+
+  /// Pictures met inside a heading: they go after it.
+  final _afterHeading = <ImageBlock>[];
 
   /// Id from [_anchors] → index of the first block at or after it; the text
   /// being collected there belongs to that block.
@@ -904,7 +955,14 @@ final class _Xhtml extends _Walker {
   }) {
     final element = _Element(name);
     _stack.add(element);
-    if (_skip == null) _open(element, attributes);
+    if (_skip case final skip?) {
+      // A full-page picture wrapped in SVG; other SVG drawings are skipped.
+      if (name == 'image' && _stack[skip - 1].name == 'svg') {
+        _addImage(attributes['xlink:href'] ?? attributes['href']);
+      }
+    } else {
+      _open(element, attributes);
+    }
     if (_anchors.isNotEmpty) {
       final id = attributes['id'] ?? (name == 'a' ? attributes['name'] : null);
       if (id != null &&
@@ -991,6 +1049,8 @@ final class _Xhtml extends _Walker {
       case 'hr':
         _flush();
         _addSeparator();
+      case 'img':
+        _addImage(attributes['src']);
       case 'td' || 'th':
         _text?.gap();
       // A paragraph started later gets it from the stack (`_current`).
@@ -1002,6 +1062,7 @@ final class _Xhtml extends _Walker {
         }
       case 'a':
         final href = attributes['href'] ?? '';
+        element.toPicture = _pictureFile.hasMatch(href);
         if (types.contains('noteref') || role == 'doc-noteref') {
           _skip = depth;
         } else if (href.contains('#')) {
@@ -1111,7 +1172,33 @@ final class _Xhtml extends _Walker {
       anchorBlocks[id] = _blocks.length;
     }
     _afterText.clear();
+    _blocks.addAll(_afterHeading);
+    _afterHeading.clear();
   }
+
+  /// [src] as a picture of the archive; links to the web, `data:` and
+  /// empty ones are skipped.
+  void _addImage(String? src) {
+    final link = src?.trim() ?? '';
+    if (link.isEmpty || link.startsWith('#') || _scheme.hasMatch(link)) {
+      return;
+    }
+    final image = _picture(_resolve(_dir, link));
+    if (image == null ||
+        (image.width! <= _maxButtonSide &&
+            image.height! <= _maxButtonSide &&
+            _stack.any((e) => e.toPicture))) {
+      return;
+    }
+    if (_text?.heading != null) {
+      _afterHeading.add(image);
+    } else {
+      _flush();
+      _blocks.add(image);
+    }
+  }
+
+  static final _scheme = RegExp(r'^[a-z][a-z0-9+.-]*:', caseSensitive: false);
 
   void _addText(_Text text) {
     final value = text.finish();
@@ -1425,6 +1512,10 @@ final class _Chapters {
   /// Links to places without text (a cover), waiting for the next text.
   final _waiting = <_Entry>[];
 
+  /// Pictures of places without text, waiting for the next text (the last
+  /// ones join the chapter before).
+  final _pictures = <Block>[];
+
   /// Links with a lost anchor: they go to the chapter of the next text
   /// without starting or naming it.
   final _unnamed = <_Entry>[];
@@ -1463,8 +1554,8 @@ final class _Chapters {
     }
     // A file not in the contents that starts with a heading is a chapter
     // of its own, next to the one before.
-    if (blocks.firstOrNull case HeadingBlock(:final text)
-        when _byContents && starts[0] == null) {
+    if (blocks.where((b) => b is! ImageBlock).firstOrNull
+        case HeadingBlock(:final text) when _byContents && starts[0] == null) {
       if (entries.isEmpty) {
         final level = _numberLevel < 1 ? 0 : _numberLevel - 1;
         final entry = _Entry(tocTitle(text), level, '', null);
@@ -1552,7 +1643,12 @@ final class _Chapters {
   void _add(List<Block> blocks, List<_Entry> own, {required bool newChapter}) {
     _waiting.addAll(own);
     // Covers and pictures without text.
-    if (!blocks.any((b) => b is TextBlock)) return;
+    if (!blocks.any((b) => b is TextBlock)) {
+      _pictures.addAll(blocks.whereType<ImageBlock>());
+      return;
+    }
+    final pictures = [..._pictures];
+    _pictures.clear();
     final current = _blocks;
     final glue = current != null && !newChapter && _waiting.isEmpty;
     if (!glue) _close();
@@ -1561,15 +1657,18 @@ final class _Chapters {
     }
     _unnamed.clear();
     if (glue) {
-      current.addAll(
-        current.last is SeparatorBlock
-            ? blocks.skipWhile((b) => b is SeparatorBlock)
-            : blocks,
-      );
+      current
+        ..addAll(pictures)
+        ..addAll(
+          current.last is SeparatorBlock
+              ? blocks.skipWhile((b) => b is SeparatorBlock)
+              : blocks,
+        );
       return;
     }
     final chapter = blocks.skipWhile((b) => b is SeparatorBlock).toList();
-    final first = chapter.first;
+    final at = chapter.indexWhere((b) => b is! ImageBlock);
+    final first = chapter[at];
     // A heading further down (`Примечания` after the text) is not the
     // title of the file.
     final heading = first is HeadingBlock ? tocTitle(first.text) : null;
@@ -1581,7 +1680,7 @@ final class _Chapters {
         first is ParagraphBlock &&
         first.text.length <= _maxHeadingLength &&
         _titleKey(first.text) == _titleKey(link.title)) {
-      chapter[0] = HeadingBlock(
+      chapter[at] = HeadingBlock(
         text: first.text,
         level: link.level + 1,
         spans: first.spans,
@@ -1591,7 +1690,7 @@ final class _Chapters {
       _sectionOf[e] = _sections.length;
     }
     _waiting.clear();
-    _blocks = chapter;
+    _blocks = [...pictures, ...chapter];
   }
 
   void _close() {
@@ -1605,6 +1704,7 @@ final class _Chapters {
   }
 
   ({List<Section> sections, List<TocEntry> toc}) finish() {
+    _blocks?.addAll(_pictures);
     _close();
     // Links after the last text point to the last chapter.
     for (final e in [..._waiting, ..._unnamed]) {

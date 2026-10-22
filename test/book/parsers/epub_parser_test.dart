@@ -5,10 +5,12 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/book_image.dart';
 import 'package:book_app/book/parsers/epub_parser.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../model/book_image_test.dart' show jpeg, png;
 import '../snapshot.dart';
 
 const fixtures = 'test/fixtures/epub';
@@ -119,15 +121,19 @@ List<String> wordsOf(BookContent book) {
 }
 
 /// Blocks of one file as short strings: `#level text`, `[style] text`.
-List<String> blocksOf(String body) => [
-  for (final s in parseEpub(epubOf({'a.xhtml': body}), title: 'x').sections)
+List<String> blocksOf(String body) =>
+    bookBlocksOf(parseEpub(epubOf({'a.xhtml': body}), title: 'x'));
+
+/// Blocks of [book] as in [blocksOf], a picture as `image <assetId>`.
+List<String> bookBlocksOf(BookContent book) => [
+  for (final s in book.sections)
     for (final b in s.blocks)
       switch (b) {
         HeadingBlock(:final text, :final level) => '#$level $text',
         ParagraphBlock(:final text, style: ParagraphStyle.normal) => text,
         ParagraphBlock(:final text, :final style) => '[${style.name}] $text',
         SeparatorBlock() => '***',
-        ImageBlock() => 'image',
+        ImageBlock(:final assetId) => 'image $assetId',
       },
 ];
 
@@ -139,6 +145,8 @@ void main() {
       'cp1251.epub',
       'one_file.epub',
       'calibre_split.epub',
+      'epub_images.epub',
+      'epub_images_only.epub',
     ]) {
       test(name, () => expectSnapshot(parseFile(name), '$fixtures/$name'));
     }
@@ -721,6 +729,200 @@ void main() {
       );
       expect(chaptersOf(book), ['Один: #1 Один | Раз.', 'null: Два.']);
       expect(tocOf(book), ['Один → 0']);
+    });
+  });
+  group('pictures', () {
+    (BookContent, MemoryImageSink) parseImages(String name) {
+      final sink = MemoryImageSink();
+      return (parseEpub(fixture(name), title: name, images: sink), sink);
+    }
+
+    /// One picture per file `img/<name>`.
+    Uint8List withPictures(
+      Map<String, String> files,
+      Map<String, Uint8List> pictures, {
+      String opf = '',
+    }) => epubOf(
+      files,
+      extra: {
+        for (final MapEntry(:key, :value) in pictures.entries)
+          'img/$key': value,
+        if (opf.isNotEmpty) 'content.opf': opf,
+      },
+    );
+
+    test('epub_images.epub: the cover first, pictures in the text', () {
+      final (book, sink) = parseImages('epub_images.epub');
+      expect(bookBlocksOf(book), [
+        'image 1.jpg', // cover.xhtml
+        'image 2.png', // plate.xhtml
+        '#1 Глава 1',
+        'Текст до картинки',
+        'image 3.gif',
+        'и после неё в том же абзаце, чтобы абзац пришлось разрезать на две '
+            'части.',
+        'image 4.jpg',
+        'Абзац между картинками.',
+        'Картинка в начале абзаца:',
+        'image 2.png',
+        'image 2.png',
+        'и в начале, повторная.',
+        'image 4.jpg',
+        'Подпись под рисунком.',
+        'Спейсер внутри слова не картинка-страница.', // 1×1 skipped, whole
+        '#1 Глава 2',
+        'Обёртка svg в середине главы:',
+        'image 2.png',
+        'Чистый svg-рисунок (его показать нельзя, пропускается):',
+        'Битая и пропавшая картинки:',
+        'Огромные размеры:',
+        'Внешняя картинка: и картинка без src: и data-ссылка: .',
+        'Конец главы 2.',
+        'image 4.jpg', // endpage.xhtml
+      ]);
+      final gif = book.sections.first.blocks[4] as ImageBlock;
+      expect((gif.width, gif.height), (40, 30));
+      expect(sink.files.keys, ['1.jpg', '2.png', '3.gif', '4.jpg']);
+      expect(book.meta.coverAssetId, '1.jpg');
+      expect(tocOf(book), ['Глава 1 → 0', 'Глава 2 → 1']);
+    });
+
+    test('epub_images_only.epub: picture pages join a chapter with text', () {
+      final (book, sink) = parseImages('epub_images_only.epub');
+      expect(book.sections, hasLength(1));
+      expect(bookBlocksOf(book), [
+        'image 1.jpg', // the cover page
+        'image 2.png',
+        'image 1.jpg',
+        'Подпись.',
+        'image 2.png', // the last page joins the chapter before
+      ]);
+      expect(sink.files.keys, ['1.jpg', '2.png']);
+      expect(book.meta.coverAssetId, '1.jpg');
+    });
+
+    test('a picture inside a paragraph splits it, spans go on', () {
+      final book = parseEpub(
+        withPictures(
+          {
+            'a.xhtml':
+                '<p>До <em>кур<img src="img/a.png"/>сив</em> после</p>'
+                '<p><img src="img/a.png"/>Сразу текст</p>',
+          },
+          {'a.png': png(40, 40)},
+        ),
+        title: 'x',
+      );
+      expect(bookBlocksOf(book), [
+        'До кур',
+        'image 1.png',
+        'сив после',
+        'image 1.png',
+        'Сразу текст',
+      ]);
+      final after = book.sections.single.blocks[2] as ParagraphBlock;
+      expect(
+        [for (final s in after.spans) (s.start, s.end, s.kind)],
+        [(0, 3, SpanKind.emphasis)],
+      );
+    });
+
+    test('a picture in a heading goes after it', () {
+      final book = parseEpub(
+        withPictures(
+          {
+            'a.xhtml':
+                '<h1>Глава <img src="img/a.png"/>1</h1><p>Текст.</p>'
+                '<h2><img src="img/b.png"/></h2><p>Ещё.</p>',
+          },
+          {'a.png': png(40, 40), 'b.png': png(50, 50)},
+        ),
+        title: 'x',
+      );
+      expect(bookBlocksOf(book), [
+        '#1 Глава 1',
+        'image 1.png',
+        'Текст.',
+        'image 2.png',
+        'Ещё.',
+      ]);
+    });
+
+    test('links resolve from the file, in any letter case', () {
+      final book = parseEpub(
+        epubOf(
+          {
+            'text/a.xhtml':
+                '<p>Раз.</p><img src="../Img/A.PNG"/>'
+                '<img src="%2E%2E/img/a.png"/><img src="/img/b.jpg#x"/>'
+                '<img src="#top"/><p>Два.</p>',
+          },
+          extra: {'img/a.png': png(40, 40), 'img/b.jpg': jpeg(60, 30)},
+        ),
+        title: 'x',
+      );
+      expect(bookBlocksOf(book), [
+        'Раз.',
+        'image 1.png',
+        'image 1.png',
+        'image 2.jpg',
+        'Два.',
+      ]);
+    });
+
+    test('a small picture in a link to a picture is a button', () {
+      final book = parseEpub(
+        withPictures(
+          {
+            'a.xhtml':
+                '<p>Раз.</p><p><a href="p.jpg.wrap-0.html" title="linked '
+                'image"><img alt="Full Size" src="img/b.png"/></a></p>'
+                '<a href="img/p.jpg"><img src="img/p.jpg"/></a>'
+                '<a href="ch2.xhtml#x"><img src="img/b.png"/></a><p>Два.</p>',
+          },
+          {'b.png': png(72, 23), 'p.jpg': jpeg(400, 300)},
+        ),
+        title: 'x',
+      );
+      expect(bookBlocksOf(book), [
+        'Раз.',
+        'image 2.jpg', // a big one stays
+        'image 1.png', // not a link to a picture
+        'Два.',
+      ]);
+    });
+
+    test('a picture file before the first heading and a cover outside the '
+        'text', () {
+      final names = ['a.xhtml', 'b.xhtml'];
+      final opf =
+          '<package><metadata/><manifest>'
+          '${[for (final (i, f) in names.indexed) '<item id="i$i" href="$f" media-type="application/xhtml+xml"/>'].join()}'
+          '<item id="c" href="img/c.jpg" media-type="image/jpeg" '
+          'properties="cover-image"/>'
+          '</manifest><spine><itemref idref="i0"/><itemref idref="i1"/>'
+          '</spine></package>';
+      final sink = MemoryImageSink();
+      final (book, cover) = parseEpubWithCover(
+        withPictures(
+          {
+            'a.xhtml': '<img src="img/a.png"/><h1>Один</h1><p>Раз.</p>',
+            'b.xhtml': '<h1>Два</h1><p>Два.</p>',
+          },
+          {'a.png': png(40, 40), 'c.jpg': jpeg(120, 160)},
+          opf: opf,
+        ),
+        title: 'x',
+        images: sink,
+      );
+      expect(chaptersOf(book), [
+        'Один: *** | *** | #1 Один | Раз.',
+        'Два: #1 Два | Два.',
+      ]);
+      expect(bookBlocksOf(book).take(2), ['image 1.jpg', 'image 2.png']);
+      expect(book.meta.coverAssetId, '1.jpg');
+      expect(cover?.extension, 'jpg');
+      expect(sink.files.keys, ['1.jpg', '2.png']);
     });
   });
 }

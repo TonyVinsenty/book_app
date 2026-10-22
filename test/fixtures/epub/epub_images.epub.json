@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "title": "Книга с картинками",
+    "authors": [],
+    "lang": "ru",
+    "coverAssetId": "1.jpg",
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Глава 1",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Глава 2",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Глава 1",
+      "blocks": [
+        {
+          "type": "image",
+          "assetId": "1.jpg",
+          "width": 120,
+          "height": 160
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 200,
+          "height": 120
+        },
+        {
+          "type": "heading",
+          "text": "Глава 1",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст до картинки",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "3.gif",
+          "width": 40,
+          "height": 30
+        },
+        {
+          "type": "paragraph",
+          "text": "и после неё в том же абзаце, чтобы абзац пришлось разрезать на две части.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "4.jpg",
+          "width": 160,
+          "height": 100
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац между картинками.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Картинка в начале абзаца:",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 200,
+          "height": 120
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 200,
+          "height": 120
+        },
+        {
+          "type": "paragraph",
+          "text": "и в начале, повторная.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "4.jpg",
+          "width": 160,
+          "height": 100
+        },
+        {
+          "type": "paragraph",
+          "text": "Подпись под рисунком.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Спейсер внутри слова не картинка-страница.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Глава 2",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Глава 2",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Обёртка svg в середине главы:",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 200,
+          "height": 120
+        },
+        {
+          "type": "paragraph",
+          "text": "Чистый svg-рисунок (его показать нельзя, пропускается):",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Битая и пропавшая картинки:",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Огромные размеры:",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Внешняя картинка: и картинка без src: и data-ссылка: .",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Конец главы 2.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "4.jpg",
+          "width": 160,
+          "height": 100
+        }
+      ]
+    }
+  ]
+}

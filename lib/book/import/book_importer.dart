@@ -107,7 +107,11 @@ ParsedBook parseBook(
       version = txtParserVersion;
     case DetectedFormat.epub:
       try {
-        (content, cover) = parseEpubWithCover(bytes, title: title);
+        (content, cover) = parseEpubWithCover(
+          bytes,
+          title: title,
+          images: images,
+        );
       } on NotEpubException {
         throw const ImportException(ImportError.damaged);
       } on EpubDrmException {

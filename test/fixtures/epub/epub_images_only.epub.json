@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "title": "Только картинки",
+    "authors": [],
+    "lang": "ru",
+    "coverAssetId": "1.jpg",
+    "sourceFormat": "epub"
+  },
+  "toc": [],
+  "sections": [
+    {
+      "blocks": [
+        {
+          "type": "image",
+          "assetId": "1.jpg",
+          "width": 120,
+          "height": 160
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 160,
+          "height": 100
+        },
+        {
+          "type": "image",
+          "assetId": "1.jpg",
+          "width": 120,
+          "height": 160
+        },
+        {
+          "type": "paragraph",
+          "text": "Подпись.",
+          "style": "normal"
+        },
+        {
+          "type": "image",
+          "assetId": "2.png",
+          "width": 160,
+          "height": 100
+        }
+      ]
+    }
+  ]
+}
