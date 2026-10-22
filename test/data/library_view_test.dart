@@ -112,6 +112,14 @@ void main() {
     expect(percentRead(_book(1, words: 10, position: 50, opened: 1)), 100);
   });
 
+  test('percent in the reader: to a tenth, rounded down', () {
+    expect(tenthPercentOf(161, 1000), 16.1);
+    expect(tenthPercentOf(9996, 10000), 99.9);
+    expect(tenthPercentOf(0, 1000), 0);
+    expect(tenthPercentOf(1000, 1000), 100);
+    expect(tenthPercentOf(5, 0), 0);
+  });
+
   test('status: read, then a mark, then opened, else new', () {
     const q = StatusMark.queued;
     const a = StatusMark.abandoned;

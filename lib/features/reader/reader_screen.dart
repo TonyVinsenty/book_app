@@ -859,7 +859,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             // The percent read is always shown by the page (owner, 11а.3).
             final pageLabel = l10n.readerPageAndPercent(
               l10n.readerPageOfBook(numbers.page, numbers.total),
-              percentOf(_word, widget.opened.tokens.length),
+              tenthPercentOf(_word, widget.opened.tokens.length),
             );
             return Stack(
               children: [

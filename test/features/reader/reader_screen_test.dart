@@ -12,7 +12,6 @@ import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
-import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
@@ -151,10 +150,12 @@ void main() {
   ReaderViewState reader(WidgetTester tester) =>
       tester.state<ReaderViewState>(find.byType(ReaderView));
 
-  /// « · N %» after the page number: the share read up to the shown page.
+  /// « · 12,3 %» after the page number: the share read up to the shown
+  /// page, to a tenth.
   String percent(WidgetTester tester) {
     final r = reader(tester);
-    return ' · ${percentOf(r.page.firstWord, r.widget.opened.tokens.length)} %';
+    final tenths = r.page.firstWord * 1000 ~/ r.widget.opened.tokens.length;
+    return ' · ${tenths ~/ 10},${tenths % 10} %';
   }
 
   Future<void> tapAt(WidgetTester tester, double x) async {

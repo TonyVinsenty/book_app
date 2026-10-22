@@ -334,8 +334,8 @@
   },
   "readerPageAndPercent": "{page} · {percent} %",
   "@readerPageAndPercent": {
-    "description": "Bottom of the reader page: the page label (readerPageOfBook) and the whole percent of the book read",
-    "placeholders": {"page": {"type": "String"}, "percent": {"type": "int"}}
+    "description": "Bottom of the reader page: the page label (readerPageOfBook) and the percent of the book read, to a tenth (owner, 2026-10-22)",
+    "placeholders": {"page": {"type": "String"}, "percent": {"type": "double", "format": "decimalPatternDigits", "optionalParameters": {"decimalDigits": 1}}}
   },
   "readerBookPages": "Страницы книги",
   "@readerBookPages": {

@@ -114,6 +114,10 @@ int? percentRead(BookRow book) {
 int percentOf(int word, int wordCount) =>
     wordCount <= 0 ? 0 : (word * 100 ~/ wordCount).clamp(0, 100);
 
+/// The same to a tenth, rounded down (99.96% is 99.9%), for the reader.
+double tenthPercentOf(int word, int wordCount) =>
+    wordCount <= 0 ? 0 : (word * 1000 ~/ wordCount).clamp(0, 1000) / 10;
+
 /// The books of [filter] in [sort] order. [links] — all book-in-collection
 /// rows.
 List<BookRow> filterBooks(
