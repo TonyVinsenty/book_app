@@ -74,7 +74,7 @@ final class ChapterLayout {
       tokens,
       sectionIndex,
       metrics,
-      _split(metrics, pageSize.height, _chapterStart, (blocks.length, 0)),
+      _split(metrics, pageSize.height),
     );
     return ChapterLayout._(
       sectionIndex,
@@ -250,25 +250,15 @@ final class ChapterLayout {
     }
   }
 
-  /// Pages of lines from [from] up to [to] (not included), filled from the
-  /// top as far as they go.
+  /// Pages of the chapter's lines, filled from the top as far as they go.
   static List<List<PageSlice>> _split(
     List<_BlockMetrics?> blocks,
     double pageHeight,
-    _Line from,
-    _Line to,
   ) {
     final splitter = _Splitter(pageHeight);
-    final (fromBlock, fromLine) = from;
-    final (toBlock, toLine) = to;
-    for (var b = fromBlock; b < blocks.length && b <= toBlock; b++) {
+    for (var b = 0; b < blocks.length; b++) {
       final block = blocks[b];
-      if (block == null) continue;
-      final firstLine = b == fromBlock ? fromLine : 0;
-      final endLine = b == toBlock ? toLine : block.lineCount;
-      // The lines of the last block from [toLine] on are not in the range.
-      if (b == toBlock && firstLine >= endLine) continue;
-      splitter.add(b, block, firstLine, endLine);
+      if (block != null) splitter.add(b, block, 0, block.lineCount);
     }
     return splitter.finish();
   }
@@ -459,11 +449,6 @@ final class _Splitter {
 }
 
 const _separatorText = '* * *';
-
-/// A line of a chapter: (block index, line in the block).
-typedef _Line = (int, int);
-
-const _Line _chapterStart = (0, 0);
 
 /// First-line indent of a normal paragraph: about one em. Figure spaces:
 /// justified lines drop a leading em space, but keep these non-breaking
