@@ -607,7 +607,7 @@ final class _Reader {
         _annotation ??= value;
         return;
       case _Kind.noteTitle:
-        _note?.label ??= cleanSpaces(_withoutMarks(value, text.spans));
+        _note?.label ??= cleanSpaces(withoutMarks(value, text.spans));
         return;
       // `<subtitle>* * *</subtitle>`: a scene break.
       case _Kind.paragraph when separatorPattern.hasMatch(value):
@@ -621,7 +621,7 @@ final class _Reader {
       case _Kind.sectionTitle:
         final level = _sectionDepth < 1 ? 1 : _sectionDepth;
         _blocks.add(HeadingBlock(text: value, level: level, spans: text.spans));
-        final title = tocTitle(_withoutMarks(value, text.spans));
+        final title = tocTitle(withoutMarks(value, text.spans));
         _toc.add(
           TocEntry(
             title: title,
@@ -645,19 +645,6 @@ final class _Reader {
     }
     _blocks = <Block>[];
     _sectionTitle = null;
-  }
-
-  /// [value] without its footnote labels.
-  static String _withoutMarks(String value, List<Span> spans) {
-    final out = StringBuffer();
-    var from = 0;
-    for (final s in spans) {
-      if (s.kind != SpanKind.noteRef || s.start < from) continue;
-      out.write(value.substring(from, s.start));
-      from = s.end;
-    }
-    out.write(value.substring(from));
-    return out.toString();
   }
 
   void _closeNote() {

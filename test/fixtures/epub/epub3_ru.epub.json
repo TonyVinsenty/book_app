@@ -44,7 +44,7 @@
         },
         {
           "type": "paragraph",
-          "text": "Утро было тихим, и над рекой ещё стоял туман. Анна вышла на крыльцо.",
+          "text": "Утро было тихим, и над рекой ещё стоял туман.1 Анна вышла на крыльцо.",
           "style": "normal",
           "spans": [
             [
@@ -53,16 +53,30 @@
               "emphasis"
             ],
             [
-              60,
-              67,
+              45,
+              46,
+              "noteRef",
+              "oebps/text/notes.xhtml#n1"
+            ],
+            [
+              61,
+              68,
               "strong"
             ]
           ]
         },
         {
           "type": "paragraph",
-          "text": "— Ты опять встала раньше всех? — спросил отец.",
-          "style": "normal"
+          "text": "— Ты опять встала раньше всех?2 — спросил отец.",
+          "style": "normal",
+          "spans": [
+            [
+              30,
+              31,
+              "noteRef",
+              "oebps/text/notes.xhtml#n2"
+            ]
+          ]
         },
         {
           "type": "separator"
@@ -94,8 +108,16 @@
         },
         {
           "type": "paragraph",
-          "text": "Конец главы со ссылкой и сноской.",
-          "style": "normal"
+          "text": "Конец главы со ссылкой и сноской3.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              33,
+              "noteRef",
+              "oebps/text/ch1.xhtml#n3"
+            ]
+          ]
         }
       ]
     },
@@ -171,5 +193,37 @@
         }
       ]
     }
-  ]
+  ],
+  "notes": {
+    "oebps/text/notes.xhtml#n1": {
+      "label": "1",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Первая сноска.",
+          "style": "normal"
+        }
+      ]
+    },
+    "oebps/text/notes.xhtml#n2": {
+      "label": "2",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Вторая сноска.",
+          "style": "normal"
+        }
+      ]
+    },
+    "oebps/text/ch1.xhtml#n3": {
+      "label": "3",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Сноска внутри главы.",
+          "style": "normal"
+        }
+      ]
+    }
+  }
 }

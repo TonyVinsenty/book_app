@@ -4,7 +4,8 @@
 /// broken markup are stepped over; a broken or missing spine file is
 /// skipped. Chapters follow the book's contents (EPUB 3 `nav` or EPUB 2
 /// NCX). Pictures (`<img>`, `<svg><image>`) become image blocks (ADR 0008),
-/// the cover is the first page; footnotes are skipped.
+/// the cover is the first page; footnote marks link to notes read from note
+/// elements and from the targets of the marks ([_Notes]).
 library;
 
 import 'dart:collection';
@@ -21,7 +22,7 @@ import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
 /// Bump when the result for the same file changes (books get re-parsed).
-const epubParserVersion = 4;
+const epubParserVersion = 5;
 
 /// Not a readable EPUB: no OPF, an empty spine or no text at all.
 final class NotEpubException implements Exception {
@@ -85,21 +86,35 @@ BookContent parseEpub(
       pictures.add(path.toLowerCase(), () => files.bytes(path, maxImageBytes));
   var cover = _cover(files, package.coverPaths());
   final coverPage = cover == null ? null : picture(cover.path);
-  final chapters = _Chapters(contents);
+  final notes = _Notes(files, picture, {
+    for (final p in spine) p.toLowerCase(),
+  });
+  final read = <(String, List<Block>, Map<String, int>)>[];
   String? firstPage;
   for (final path in spine) {
     final text = files.text(path);
     if (text == null) continue;
     final entries = entriesOf[path] ?? const <_Entry>[];
-    final reader = _Xhtml(_dirOf(path), picture, {
-      for (final e in entries) ?e.anchor,
-    });
+    final reader = notes.reader(
+      path,
+      anchors: {for (final e in entries) ?e.anchor},
+    );
     try {
       final blocks = (reader..walk(text)).finish();
       if (path == spine.first && _isCoverPage(blocks)) firstPage = text;
-      chapters.addFile(blocks, entries, reader.anchorBlocks);
+      notes.addFile(reader);
+      read.add((path, blocks, reader.anchorBlocks));
     } on Object {
       // A parser bug on one strange file must not lose the whole book.
+      continue;
+    }
+  }
+  final chapters = _Chapters(contents);
+  for (final (path, blocks, anchorBlocks) in read) {
+    try {
+      notes.dropBackLinks(path, blocks);
+      chapters.addFile(blocks, entriesOf[path] ?? const [], anchorBlocks);
+    } on Object {
       continue;
     }
   }
@@ -132,6 +147,7 @@ BookContent parseEpub(
     meta: package.meta(fallbackTitle: title, coverAssetId: coverBlock?.assetId),
     toc: toc,
     sections: sections,
+    notes: notes.finish(sections),
   );
   return (content, cover?.cover);
 }
@@ -739,9 +755,16 @@ final _headingTag = RegExp(r'^h([1-6])$');
 /// The text of a link that is a footnote mark: `[12]`, `{3}`, `*`.
 final _noteMark = RegExp(r'^(?:[\[{]\d{1,4}[\]}]|\*{1,3})$');
 
-/// `1` or `(1)`: a footnote mark only in a link that looks like a note
-/// ([_Element.noteLike]); `в 1812 году` keeps its year.
-final _numberMark = RegExp(r'^\(?\d{1,4}\)?$');
+/// `1`, `(1)`, `1)`: a footnote mark only in a link that looks like a note
+/// ([_Element.noteLike]), leads out of the spine or is inside a note;
+/// `в 1812 году` keeps its year.
+final _numberMark = RegExp(r'^\(?\d{1,4}\)?\.?$');
+
+/// Brackets and a dot around a mark: `[12]` → `12`.
+final _markEdges = RegExp(r'^[\[{(]+|[\]})]+\.?$|(?<=\d)\.$');
+
+/// The link back from a note to the text: `↩`, `↩︎`, `↑`, `^`.
+final _backArrow = RegExp('^[↑↩↵⤴⬆^︎️\\s]+\$');
 
 final _noteHref = RegExp(r'note|fn|#n[_-]?\d', caseSensitive: false);
 
@@ -769,9 +792,12 @@ final _quoteClass = RegExp(r'\b(cite|citation|quote|blockquote)\b');
 enum _Look { epigraph, poem, subtitle, quote }
 
 final class _Element {
-  _Element(this.name);
+  _Element(this.name, this.id);
 
   final String name;
+
+  /// `id` (or `name` of a link): what links lead to.
+  final String? id;
 
   /// The look this element gives the paragraphs inside it.
   _Look? look;
@@ -783,8 +809,17 @@ final class _Element {
   /// The link points to a note or is set as a superscript.
   var noteLike = false;
 
+  /// `epub:type="noteref"`: a footnote mark whatever its text.
+  var noteRef = false;
+
+  /// `<file>#<id>` the link leads to.
+  String? target;
+
   /// The link opens a picture (the full size of an illustration).
   var toPicture = false;
+
+  /// An inline element with a note class (`<span class="footnote">`).
+  var noteClass = false;
 }
 
 /// A state of [_Text] to go back to.
@@ -805,6 +840,13 @@ final class _Text {
 
   var _buffer = StringBuffer();
   final spans = <Span>[];
+
+  /// Ids met in the block (and around its marks): where the text links
+  /// notes from.
+  final ids = <String>[];
+
+  /// Files of the notes the marks of the block lead to.
+  final markFiles = <String>{};
   final _open = <(int, SpanKind)>[];
   var _space = false;
   var _lineStart = true;
@@ -852,6 +894,16 @@ final class _Text {
   _Mark mark() =>
       (length: _buffer.length, space: _space, lineStart: _lineStart);
 
+  /// A footnote label (ADR 0008): its chars are not words.
+  void addMark(String label, String noteId) {
+    if (_space) _buffer.writeCharCode(0x20);
+    _space = false;
+    _lineStart = false;
+    final start = _buffer.length;
+    _buffer.write(label);
+    spans.add(Span(start, _buffer.length, SpanKind.noteRef, noteId: noteId));
+  }
+
   String textSince(_Mark mark) => _buffer.toString().substring(mark.length);
 
   /// Drops the text added after [mark].
@@ -865,7 +917,7 @@ final class _Text {
       if (s.start >= length) {
         spans.removeAt(i);
       } else if (s.end > length) {
-        spans[i] = Span(s.start, length, s.kind);
+        spans[i] = Span(s.start, length, s.kind, noteId: s.noteId);
       }
     }
     for (var i = 0; i < _open.length; i++) {
@@ -893,7 +945,7 @@ final class _Text {
     for (final s in spans) {
       final from = (s.start - start).clamp(0, length);
       final to = (s.end - start).clamp(0, length);
-      if (from < to) shifted.add(Span(from, to, s.kind));
+      if (from < to) shifted.add(Span(from, to, s.kind, noteId: s.noteId));
     }
     spans
       ..clear()
@@ -916,9 +968,22 @@ final class _Text {
 /// `li`… → paragraphs, `hr` → a separator, `em`/`i` and `strong`/`b` →
 /// spans; poems and epigraphs by `class`; CSS is not read. `<img>` and
 /// `<svg><image>` → image blocks; a picture inside a paragraph splits it, a
-/// skipped one does not.
+/// skipped one does not. Footnote marks → labels ([SpanKind.noteRef]); note
+/// elements (`aside`, `epub:type="footnote"`…) leave the text for [notes].
+/// With [wanted] only the notes at those anchors are read.
 final class _Xhtml extends _Walker {
-  _Xhtml(this._dir, this._picture, [this._anchors = const {}]);
+  _Xhtml(
+    String path,
+    this._picture,
+    this._spine, {
+    this._anchors = const {},
+    this._wanted,
+    this._backTo = const {},
+  }) : _path = path.toLowerCase(),
+       _dir = _dirOf(path);
+
+  /// The file, lower-case, for note ids.
+  final String _path;
 
   /// Folder of the file, for picture links.
   final String _dir;
@@ -926,8 +991,43 @@ final class _Xhtml extends _Walker {
   /// The block for a picture of the archive; null when it is skipped.
   final ImageBlock? Function(String path) _picture;
 
+  /// Lower-case paths of the spine files.
+  final Set<String> _spine;
+
   /// Ids the contents links to.
   final Set<String> _anchors;
+
+  /// Anchors of the notes to read; null for the text of the file.
+  final Set<String>? _wanted;
+
+  /// `<file>#<id>` → blocks of the note there.
+  final notes = <String, List<Block>>{};
+
+  /// `<file>#<id>` of the footnote marks of the text.
+  final markIds = <String>{};
+
+  /// `<file>#<id>` of an element holding marks of the text → files of the
+  /// notes they lead to.
+  final homes = <String, Set<String>>{};
+
+  /// `<file>#<id>` of the marks of the text: a link there from a note is
+  /// the way back.
+  final Set<String> _backTo;
+
+  /// Ids met before the text of a block began.
+  final _idsAhead = <String>[];
+
+  /// A note at an anchor out of any text (`<p><a id="n1"/></p>`): it is the
+  /// next block.
+  String? _nextBlockNote;
+
+  /// A note at an anchor met inside the text of a block at [depth].
+  ({String id, int depth, _Text text, _Mark mark})? _tail;
+
+  /// Notes being read, inner last.
+  final _captures = <({int depth, String? id, List<Block> outer})>[];
+
+  bool get _inNote => _captures.isNotEmpty || _tail != null;
 
   /// Pictures met inside a heading: they go after it.
   final _afterHeading = <ImageBlock>[];
@@ -940,7 +1040,7 @@ final class _Xhtml extends _Walker {
   /// after it.
   final _afterText = <String>[];
 
-  final _blocks = <Block>[];
+  var _blocks = <Block>[];
   final _stack = <_Element>[];
 
   /// Everything inside the element at this depth is ignored.
@@ -953,7 +1053,8 @@ final class _Xhtml extends _Walker {
     Map<String, String> attributes, {
     required bool selfClosing,
   }) {
-    final element = _Element(name);
+    final id = attributes['id'] ?? (name == 'a' ? attributes['name'] : null);
+    final element = _Element(name, id);
     _stack.add(element);
     if (_skip case final skip?) {
       // A full-page picture wrapped in SVG; other SVG drawings are skipped.
@@ -962,9 +1063,12 @@ final class _Xhtml extends _Walker {
       }
     } else {
       _open(element, attributes);
+      if (id != null && (_wanted?.contains(id) ?? false)) _captureWanted(id);
     }
-    if (_anchors.isNotEmpty) {
-      final id = attributes['id'] ?? (name == 'a' ? attributes['name'] : null);
+    if (id != null && _wanted == null && _captures.isEmpty) {
+      (_text?.ids ?? _idsAhead).add(id);
+    }
+    if (_anchors.isNotEmpty && _captures.isEmpty) {
       if (id != null &&
           _anchors.contains(id) &&
           !anchorBlocks.containsKey(id) &&
@@ -1001,6 +1105,9 @@ final class _Xhtml extends _Walker {
   }
 
   List<Block> finish() {
+    while (_captures.isNotEmpty) {
+      _endCapture();
+    }
     _flush();
     return _blocks;
   }
@@ -1012,7 +1119,72 @@ final class _Xhtml extends _Walker {
       if (depth == _skip) _skip = null;
       return;
     }
+    final tail = _tail;
+    final rest = tail != null && identical(tail.text, _text)
+        ? tail.text.textSince(tail.mark).trim()
+        : '';
     _close(element, depth);
+    if (tail != null && tail.depth == depth) {
+      _tail = null;
+      if (rest.isEmpty) {
+        _nextBlockNote = tail.id;
+      } else if (_blocks.lastOrNull case final TextBlock block) {
+        notes.putIfAbsent('$_path#${tail.id}', () => [block]);
+      }
+    }
+    if (_captures.lastOrNull?.depth == depth) _endCapture();
+  }
+
+  /// Blocks from here to the end of the element at [depth] are a note; the
+  /// text being collected goes there unless [flush].
+  void _startCapture(int depth, String? id, {bool flush = true}) {
+    if (flush) _flush();
+    _captures.add((depth: depth, id: id, outer: _blocks));
+    _blocks = [];
+  }
+
+  void _endCapture() {
+    _flush();
+    final (:depth, :id, :outer) = _captures.removeLast();
+    if (id != null && _blocks.isEmpty && _wanted != null) {
+      _nextBlockNote = id;
+    } else if (id != null && _blocks.isNotEmpty) {
+      notes.putIfAbsent('$_path#$id', () => _blocks);
+    }
+    _blocks = outer;
+  }
+
+  /// `<a href="#n1"><sup>1</sup></a>`: the links around look like notes.
+  void _noteLikeLinks() {
+    for (final e in _stack) {
+      if (e.linkMark != null) e.noteLike = true;
+    }
+  }
+
+  /// A note at an anchor: the nearest block, the element itself or one
+  /// around it (`<p><a id="n1"/>…</p>`).
+  void _captureWanted(String id) {
+    if (notes.containsKey('$_path#$id') || _captures.any((c) => c.id == id)) {
+      return;
+    }
+    final at = _stack.lastIndexWhere(
+      (e) => _blockTags.contains(e.name) || _headingTag.hasMatch(e.name),
+    );
+    if (at < 0 || const {'body', 'html'}.contains(_stack[at].name)) {
+      _nextBlockNote = id;
+      return;
+    }
+    final depth = at + 1;
+    // After some text of the block (a closing tag lost): the block, or the
+    // next one when nothing follows (`…конец.] <a id="n2"/></p>`).
+    if (_text case final text?
+        when depth < _stack.length && text.length > 0 && _tail == null) {
+      _tail = (id: id, depth: depth, text: text, mark: text.mark());
+      return;
+    }
+    if (_captures.any((c) => c.depth >= depth)) return;
+    // The block has flushed what came before it when it was opened.
+    _startCapture(depth, id, flush: false);
   }
 
   void _open(_Element element, Map<String, String> attributes) {
@@ -1022,13 +1194,18 @@ final class _Xhtml extends _Walker {
     final role = attributes['role'] ?? '';
     if (_skipTags.contains(name) ||
         attributes.containsKey('hidden') ||
-        (name == 'nav' && types.any(_hiddenNavTypes.contains)) ||
-        types.any(_noteTypes.contains) ||
-        (role.startsWith('doc-') &&
-            role.contains('note') &&
-            role != 'doc-noteref')) {
+        (name == 'nav' && types.any(_hiddenNavTypes.contains))) {
       _skip = depth;
       return;
+    }
+    // Notes leave the text of the file; read for [_wanted], they are like
+    // any other element.
+    if (_wanted == null &&
+        (types.any(_noteTypes.contains) ||
+            (role.startsWith('doc-') &&
+                role.contains('note') &&
+                role != 'doc-noteref'))) {
+      _startCapture(depth, element.id);
     }
     element.look = _look(name, attributes['class']?.toLowerCase(), types);
     final heading = _headingTag.firstMatch(name);
@@ -1057,24 +1234,34 @@ final class _Xhtml extends _Walker {
       case 'em' || 'i' || 'cite' || 'dfn' || 'var' || 'strong' || 'b':
         _text?.openSpan(_spanKind(name)!);
       case 'sup':
-        for (final e in _stack) {
-          if (e.linkMark != null) e.noteLike = true;
-        }
+        _noteLikeLinks();
       case 'a':
         final href = attributes['href'] ?? '';
         element.toPicture = _pictureFile.hasMatch(href);
-        if (types.contains('noteref') || role == 'doc-noteref') {
-          _skip = depth;
-        } else if (href.contains('#')) {
+        element.target = _noteTarget(href);
+        element.noteRef = types.contains('noteref') || role == 'doc-noteref';
+        // Inside a note any link may be the one back to the text.
+        if (element.target != null ||
+            element.noteRef ||
+            (_inNote && href.isNotEmpty)) {
           final text = element.linkText = _current();
           element.linkMark = text.mark();
           element.noteLike =
+              element.noteRef ||
               _noteHref.hasMatch(href) ||
               (attributes['class']?.contains('note') ?? false) ||
-              _stack.any((e) => e.name == 'sup');
+              _stack.any((e) => e.name == 'sup' || e.noteClass);
         }
       case _ when _blockTags.contains(name):
         _blockBoundary(depth);
+        if (_nextBlockNote case final id? when _captures.isEmpty) {
+          _nextBlockNote = null;
+          _startCapture(depth, id);
+        }
+      case _
+          when attributes['class']?.toLowerCase().contains('note') ?? false:
+        element.noteClass = true;
+        _noteLikeLinks();
     }
   }
 
@@ -1086,15 +1273,29 @@ final class _Xhtml extends _Walker {
     switch (element.name) {
       case 'em' || 'i' || 'cite' || 'dfn' || 'var' || 'strong' || 'b':
         _text?.closeSpan(_spanKind(element.name)!);
-      // A footnote mark like `[1]` linking to the notes file: not a word.
+      // A footnote mark like `[1]` linking to a note: a label, not words.
       case 'a':
         final text = element.linkText;
         final mark = element.linkMark;
         if (text != null && mark != null && identical(text, _text)) {
           final linkText = text.textSince(mark).trim();
-          if (_noteMark.hasMatch(linkText) ||
-              (element.noteLike && _numberMark.hasMatch(linkText))) {
+          final target = element.target;
+          if (_inNote &&
+              (_backArrow.hasMatch(linkText) || _backTo.contains(target))) {
             text.rollback(mark);
+          } else if (target == null) {
+            // A mark leading nowhere.
+            if (element.noteRef) text.rollback(mark);
+          } else if (element.noteRef ||
+              _noteMark.hasMatch(linkText) ||
+              (_numberMark.hasMatch(linkText) &&
+                  (element.noteLike ||
+                      _inNote ||
+                      !_spine.contains(_fileOf(target))))) {
+            text.rollback(mark);
+            final label = linkText.replaceAll(_markEdges, '');
+            text.addMark(label.isEmpty ? '*' : label, target);
+            if (!_inNote) _addHomes(text, element, target);
           }
         }
       case final name when _blockTags.contains(name):
@@ -1135,6 +1336,8 @@ final class _Xhtml extends _Walker {
   _Text _current() {
     if (_text case final text?) return text;
     final text = _text = _Text(_style());
+    text.ids.addAll(_idsAhead);
+    _idsAhead.clear();
     _openStackSpans(text);
     return text;
   }
@@ -1164,9 +1367,15 @@ final class _Xhtml extends _Walker {
   }
 
   void _flush() {
+    _idsAhead.clear();
     final text = _text;
     if (text == null) return;
     _text = null;
+    if (text.markFiles.isNotEmpty) {
+      for (final id in text.ids) {
+        (homes['$_path#$id'] ??= {}).addAll(text.markFiles);
+      }
+    }
     _addText(text);
     for (final id in _afterText) {
       anchorBlocks[id] = _blocks.length;
@@ -1179,6 +1388,8 @@ final class _Xhtml extends _Walker {
   /// [src] as a picture of the archive; links to the web, `data:` and
   /// empty ones are skipped.
   void _addImage(String? src) {
+    // Read for notes: pictures out of them are not kept.
+    if (_wanted != null && _captures.isEmpty) return;
     final link = src?.trim() ?? '';
     if (link.isEmpty || link.startsWith('#') || _scheme.hasMatch(link)) {
       return;
@@ -1200,6 +1411,28 @@ final class _Xhtml extends _Walker {
 
   static final _scheme = RegExp(r'^[a-z][a-z0-9+.-]*:', caseSensitive: false);
 
+  /// `<file>#<id>` of a link to an anchor of the book; null for links to
+  /// the web and to whole files.
+  String? _noteTarget(String href) {
+    final hash = href.indexOf('#');
+    if (hash < 0) return null;
+    final anchor = _decoded(href.substring(hash + 1));
+    final file = href.substring(0, hash).trim();
+    if (anchor == null || _scheme.hasMatch(file)) return null;
+    return '${file.isEmpty ? _path : _resolve(_dir, file).toLowerCase()}'
+        '#$anchor';
+  }
+
+  /// The block of the mark, its anchors and the elements around it are
+  /// where the text links notes in [target]'s file from.
+  void _addHomes(_Text text, _Element mark, String target) {
+    if (mark.id case final id?) markIds.add('$_path#$id');
+    text.markFiles.add(_fileOf(target));
+    for (final e in _stack) {
+      if (e.id case final id?) text.ids.add(id);
+    }
+  }
+
   void _addText(_Text text) {
     final value = text.finish();
     if (value == null) return;
@@ -1220,6 +1453,213 @@ final class _Xhtml extends _Walker {
     }
   }
 }
+
+/// The file of a note id `<file>#<id>`.
+String _fileOf(String noteId) => noteId.substring(0, noteId.indexOf('#'));
+
+/// Notes inside notes are followed this deep.
+const _maxNoteDepth = 5;
+
+/// A longer "note" is a chapter some link leads to, not a note.
+const _maxNoteLength = 20000;
+
+/// Footnotes of the book (ADR 0008): note elements of the spine files, then
+/// the other targets of the marks, found by anchor in their files (in the
+/// spine or not). Links from a note back to the text are dropped.
+final class _Notes {
+  _Notes(this._files, this._picture, this._spine);
+
+  final _Files _files;
+  final ImageBlock? Function(String path) _picture;
+  final Set<String> _spine;
+
+  /// Note id → blocks, as read.
+  final _found = <String, List<Block>>{};
+  final _markIds = <String>{};
+  final _homes = <String, Set<String>>{};
+
+  _Xhtml reader(String path, {Set<String> anchors = const {}}) =>
+      _Xhtml(path, _picture, _spine, anchors: anchors, backTo: _markIds);
+
+  void addFile(_Xhtml reader) {
+    reader.notes.forEach((id, blocks) => _found.putIfAbsent(id, () => blocks));
+    _markIds.addAll(reader.markIds);
+    reader.homes.forEach((id, files) => (_homes[id] ??= {}).addAll(files));
+  }
+
+  /// A mark in [file] that leads to a mark of the text, or opens a note
+  /// (`[7] Текст примечания`) and leads to where the text links this file
+  /// from: the way back, not a note.
+  bool _isBack(String file, Span mark) =>
+      _markIds.contains(mark.noteId) ||
+      (mark.start == 0 && (_homes[mark.noteId]?.contains(file) ?? false));
+
+  /// Drops the marks of [blocks] (from [file]) that lead back to the text.
+  void dropBackLinks(String file, List<Block> blocks) {
+    final path = file.toLowerCase();
+    for (var i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i] case final TextBlock block) {
+        final kept = _withoutMarks(block, (s) => _isBack(path, s));
+        if (kept == null) {
+          blocks.removeAt(i);
+        } else {
+          blocks[i] = kept;
+        }
+      }
+    }
+  }
+
+  /// The notes the marks of [sections] lead to, notes inside them too.
+  Map<String, Note> finish(List<Section> sections) {
+    final labels = <String, String>{};
+    var next = <String>[];
+    void follow(List<Block> blocks) {
+      for (final b in blocks) {
+        if (b is! TextBlock) continue;
+        for (final s in b.spans) {
+          if (s.noteId case final id? when !labels.containsKey(id)) {
+            labels[id] = b.text.substring(s.start, s.end);
+            next.add(id);
+          }
+        }
+      }
+    }
+
+    for (final s in sections) {
+      follow(s.blocks);
+    }
+    final notes = <String, Note>{};
+    for (var depth = 0; depth < _maxNoteDepth && next.isNotEmpty; depth++) {
+      final ids = next;
+      next = [];
+      final missing = <String, Set<String>>{};
+      for (final id in ids) {
+        if (_found.containsKey(id)) continue;
+        (missing[_fileOf(id)] ??= {}).add(id.substring(id.indexOf('#') + 1));
+      }
+      missing.forEach(_read);
+      for (final id in ids) {
+        final blocks = _found[id];
+        if (blocks == null) continue;
+        dropBackLinks(_fileOf(id), blocks);
+        if (blocks.firstOrNull case final TextBlock first) {
+          if (_emptyBackLink.matchAsPrefix(first.text) case final m?) {
+            final kept = _cut(first, [(0, m.end)]);
+            if (kept == null) {
+              blocks.removeAt(0);
+            } else {
+              blocks[0] = kept;
+            }
+          }
+        }
+        final length = blocks.fold(
+          0,
+          (n, b) => n + (b is TextBlock ? b.text.length : 0),
+        );
+        if (blocks.isEmpty || length > _maxNoteLength) continue;
+        notes[id] = Note(
+          label: labels[id],
+          blocks: [
+            for (final b in blocks)
+              if (b case HeadingBlock(:final text, :final spans))
+                ParagraphBlock(text: text, spans: spans)
+              else
+                b,
+          ],
+        );
+        follow(blocks);
+      }
+    }
+    return notes;
+  }
+
+  /// The notes at [anchors] of [path].
+  void _read(String path, Set<String> anchors) {
+    final text = _files.text(path);
+    if (text == null) return;
+    final reader = _Xhtml(
+      path,
+      _picture,
+      _spine,
+      wanted: anchors,
+      backTo: _markIds,
+    );
+    try {
+      (reader..walk(text)).finish();
+    } on Object {
+      return;
+    }
+    reader.notes.forEach((id, blocks) => _found.putIfAbsent(id, () => blocks));
+  }
+}
+
+/// [block] without the marks [drop] picks (and one space next to each);
+/// null when nothing is left.
+TextBlock? _withoutMarks(TextBlock block, bool Function(Span mark) drop) {
+  final cuts = [
+    for (final s in block.spans)
+      if (s.kind == SpanKind.noteRef && drop(s)) s,
+  ];
+  if (cuts.isEmpty) return block;
+  return _cut(
+    block,
+    [for (final s in cuts) (s.start, s.end)],
+    keep: (s) => !cuts.contains(s),
+  );
+}
+
+/// `1 (return)` of Gutenberg books once the link is dropped: `1 ()`.
+final _emptyBackLink = RegExp(
+  r'^\s*(?:[\[(]?\d{1,4}[\])]?\.?\s*)?(?:\(\s*\)|\[\s*\])\s*',
+);
+
+/// [block] without [ranges] (sorted, one space next to each goes too) and
+/// the spans [keep] does not take; null when nothing is left.
+TextBlock? _cut(
+  TextBlock block,
+  List<(int, int)> ranges, {
+  bool Function(Span span)? keep,
+}) {
+  var text = block.text;
+  var spans = [
+    for (final s in block.spans)
+      if (keep?.call(s) ?? true) s,
+  ];
+  for (final (start, end) in ranges.reversed) {
+    var from = start;
+    var to = end;
+    final before = from > 0 ? text[from - 1] : null;
+    final after = to < text.length ? text[to] : null;
+    if (before == ' ' && (after == null || _closing.contains(after))) {
+      from--;
+    } else if (after == ' ' && (before == null || before == '\n')) {
+      to++;
+    }
+    text = text.substring(0, from) + text.substring(to);
+    int moved(int at) => at <= from ? at : (at >= to ? at - (to - from) : from);
+    spans = [
+      for (final s in spans)
+        if (moved(s.start) < moved(s.end))
+          Span(moved(s.start), moved(s.end), s.kind, noteId: s.noteId),
+    ];
+  }
+  if (text.trim().isEmpty) return null;
+  return switch (block) {
+    HeadingBlock(:final level) => HeadingBlock(
+      text: text,
+      level: level,
+      spans: spans,
+    ),
+    ParagraphBlock(:final style) => ParagraphBlock(
+      text: text,
+      style: style,
+      spans: spans,
+    ),
+  };
+}
+
+/// After these a space before a dropped mark goes too: `слово [7], ещё`.
+const _closing = ' \n,.;:!?)]»…';
 
 /// A line of the contents as written: [href] is null for a label without
 /// a link (`<span>Часть 1</span>` over its chapters).
@@ -1555,17 +1995,19 @@ final class _Chapters {
     // A file not in the contents that starts with a heading is a chapter
     // of its own, next to the one before.
     if (blocks.where((b) => b is! ImageBlock).firstOrNull
-        case HeadingBlock(:final text) when _byContents && starts[0] == null) {
+        case HeadingBlock(:final text, :final spans)
+        when _byContents && starts[0] == null) {
+      final title = tocTitle(withoutMarks(text, spans));
       if (entries.isEmpty) {
         final level = _numberLevel < 1 ? 0 : _numberLevel - 1;
-        final entry = _Entry(tocTitle(text), level, '', null);
+        final entry = _Entry(title, level, '', null);
         _contents.insert(_foundAt++, entry);
         starts[0] = [entry];
         _numberLevel = level + 1;
         _nextNumber = 1;
       } else {
         // Before the links further down the file.
-        final entry = _Entry(tocTitle(text), entries.first.level, '', null);
+        final entry = _Entry(title, entries.first.level, '', null);
         _contents.insert(_contents.indexOf(entries.first), entry);
         _foundAt++;
         starts[0] = [entry];
@@ -1671,7 +2113,9 @@ final class _Chapters {
     final first = chapter[at];
     // A heading further down (`Примечания` after the text) is not the
     // title of the file.
-    final heading = first is HeadingBlock ? tocTitle(first.text) : null;
+    final heading = first is HeadingBlock
+        ? tocTitle(withoutMarks(first.text, first.spans))
+        : null;
     final link = own.firstOrNull;
     _title = link?.title ?? heading;
     // `I` as a plain paragraph (Wikisource): the contents says it is the

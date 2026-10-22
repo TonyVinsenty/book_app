@@ -1,0 +1,172 @@
+{
+  "meta": {
+    "title": "Сноски aside",
+    "authors": [],
+    "lang": "ru",
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Сноски в главе",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Вторая глава",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Сноски в главе",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Сноски в главе",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Первая сноска1 рядом со словом, вторая2, третья через звёздочку*.",
+          "style": "normal",
+          "spans": [
+            [
+              13,
+              14,
+              "noteRef",
+              "ch1.xhtml#fn1"
+            ],
+            [
+              38,
+              39,
+              "noteRef",
+              "ch1.xhtml#fn2"
+            ],
+            [
+              63,
+              64,
+              "noteRef",
+              "ch1.xhtml#fn3"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Метка без цели7 и метка на другой файл без файла8.",
+          "style": "normal",
+          "spans": [
+            [
+              14,
+              15,
+              "noteRef",
+              "ch1.xhtml#nope"
+            ],
+            [
+              48,
+              49,
+              "noteRef",
+              "gone.xhtml#x"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Текст после сносок продолжается.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Вторая глава",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Вторая глава",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Сноска в другой главе, но с целью в первой1.",
+          "style": "normal",
+          "spans": [
+            [
+              42,
+              43,
+              "noteRef",
+              "ch1.xhtml#fn1"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Конец.",
+          "style": "normal"
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "ch1.xhtml#fn1": {
+      "label": "1",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Текст первой сноски.",
+          "style": "normal"
+        }
+      ]
+    },
+    "ch1.xhtml#fn2": {
+      "label": "2",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Вторая сноска из двух абзацев.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Второй абзац, и вложенная сноска4.",
+          "style": "normal",
+          "spans": [
+            [
+              32,
+              33,
+              "noteRef",
+              "ch1.xhtml#fn4"
+            ]
+          ]
+        }
+      ]
+    },
+    "ch1.xhtml#fn3": {
+      "label": "*",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "3) Третья, в стиле endnote.",
+          "style": "normal"
+        }
+      ]
+    },
+    "ch1.xhtml#fn4": {
+      "label": "4",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Вложенная, она ссылается обратно на вторую2.",
+          "style": "normal",
+          "spans": [
+            [
+              42,
+              43,
+              "noteRef",
+              "ch1.xhtml#fn2"
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}

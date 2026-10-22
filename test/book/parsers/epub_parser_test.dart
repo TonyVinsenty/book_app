@@ -120,6 +120,23 @@ List<String> wordsOf(BookContent book) {
   return List.generate(tokens.length, tokens.textOf);
 }
 
+/// Marks of the text as `label → file#id`.
+List<String> marksOf(BookContent book) => [
+  for (final s in book.sections)
+    for (final b in s.blocks)
+      if (b is TextBlock)
+        for (final s in b.spans)
+          if (s.kind == SpanKind.noteRef)
+            '${b.text.substring(s.start, s.end)} → ${s.noteId}',
+];
+
+/// Notes as `file#id: text | text`.
+List<String> notesOf(BookContent book) => [
+  for (final MapEntry(:key, :value) in book.notes.entries)
+    '$key: ${[for (final b in value.blocks)
+      if (b is TextBlock) b.text].join(' | ')}',
+];
+
 /// Blocks of one file as short strings: `#level text`, `[style] text`.
 List<String> blocksOf(String body) =>
     bookBlocksOf(parseEpub(epubOf({'a.xhtml': body}), title: 'x'));
@@ -147,6 +164,8 @@ void main() {
       'calibre_split.epub',
       'epub_images.epub',
       'epub_images_only.epub',
+      'epub_notes_aside.epub',
+      'epub_notes_files.epub',
     ]) {
       test(name, () => expectSnapshot(parseFile(name), '$fixtures/$name'));
     }
@@ -178,12 +197,24 @@ void main() {
     });
 
     test('footnote marks and texts are not words of the book', () {
-      final words = tokenize(book).length;
-      final text = jsonEncode(book.toJson());
+      final words = wordsOf(book);
+      final text = jsonEncode([for (final s in book.sections) s.toJson()]);
       for (final gone in ['сноска', 'Сноска', '[2]', 'notText', 'Обложка']) {
         expect(text, isNot(contains(gone)), reason: gone);
       }
-      expect(words, greaterThan(60));
+      expect(words, containsAll(['туман.', 'всех?']));
+      expect(words.length, greaterThan(60));
+      expect(
+        {
+          for (final MapEntry(:key, :value) in book.notes.entries)
+            key: (value.blocks.single as TextBlock).text,
+        },
+        {
+          'oebps/text/notes.xhtml#n1': 'Первая сноска.',
+          'oebps/text/notes.xhtml#n2': 'Вторая сноска.',
+          'oebps/text/ch1.xhtml#n3': 'Сноска внутри главы.',
+        },
+      );
     });
   });
 
@@ -379,16 +410,42 @@ void main() {
       );
     });
 
-    test('a note link is dropped only when it looks like a mark', () {
+    test('a note link becomes a mark only when it looks like one', () {
+      final book = parseEpub(
+        epubOf({
+          'a.xhtml':
+              '<p>Раз<a href="n.xhtml#1">[1]</a>, два<a href="n.xhtml#2">*</a>, '
+              'три<a href="n.xhtml#x"><sup>3</sup></a>, '
+              'четыре<a href="notes.xhtml#x">4</a>, пять<a href="#n_5">5</a>, '
+              'шесть<span class="footnote"><a href="#z">6</a></span>, '
+              'см. <a href="c.xhtml#c3">главу 3</a>, '
+              'в <a href="#y1812">1812</a> году.</p>',
+        }),
+        title: 'x',
+      );
+      expect(bookBlocksOf(book), [
+        'Раз1, два*, три3, четыре4, пять5, шесть6, см. главу 3, в 1812 году.',
+      ]);
+      expect(marksOf(book), [
+        '1 → n.xhtml#1',
+        '* → n.xhtml#2',
+        '3 → n.xhtml#x',
+        '4 → notes.xhtml#x',
+        '5 → a.xhtml#n_5',
+        '6 → a.xhtml#z',
+      ]);
       expect(
-        blocksOf(
-          '<p>Раз<a href="n.xhtml#1">[1]</a>, два<a href="n.xhtml#2">*</a>, '
-          'три<a href="n.xhtml#x"><sup>3</sup></a>, '
-          'четыре<a href="notes.xhtml#x">4</a>, пять<a href="#n_5">5</a>, '
-          'см. <a href="c.xhtml#c3">главу 3</a>, '
-          'в <a href="#y1812">1812</a> году.</p>',
-        ),
-        ['Раз, два, три, четыре, пять, см. главу 3, в 1812 году.'],
+        wordsOf(book),
+        [
+          'Раз,',
+          'два,',
+          'три,',
+          'четыре,',
+          'пять,',
+          'шесть,',
+          'см.',
+          'главу',
+        ].followedBy(['3,', 'в', '1812', 'году.']),
       );
     });
 
@@ -427,18 +484,23 @@ void main() {
       );
     });
 
-    test('spans stay on their words after a dropped mark and indents', () {
+    test('spans stay on their words after a mark and indents', () {
       final book = parseEpub(
         epubOf({
           'a.xhtml':
-              '<p>&nbsp;&nbsp;Он<a href="#n1">1</a> <em>шёл</em> домой</p>',
+              '<p>&nbsp;&nbsp;Он<a href="#n1">[1]</a> <em>шёл</em> домой</p>',
         }),
         title: 'x',
       );
       final block = book.sections.single.blocks.single as ParagraphBlock;
-      expect(block.text, 'Он шёл домой');
-      final span = block.spans.single;
-      expect(block.text.substring(span.start, span.end), 'шёл');
+      expect(block.text, 'Он1 шёл домой');
+      expect(
+        [
+          for (final s in block.spans)
+            (block.text.substring(s.start, s.end), s.kind),
+        ],
+        [('1', SpanKind.noteRef), ('шёл', SpanKind.emphasis)],
+      );
     });
 
     test('poems, epigraphs and quotes by class or tag', () {
@@ -923,6 +985,204 @@ void main() {
       expect(book.meta.coverAssetId, '1.jpg');
       expect(cover?.extension, 'jpg');
       expect(sink.files.keys, ['1.jpg', '2.png']);
+    });
+  });
+
+  group('notes', () {
+    /// An EPUB of [files] in the spine and [hidden] files out of it.
+    BookContent parseNotes(
+      Map<String, String> files, [
+      Map<String, String> hidden = const {},
+    ]) => parseEpub(
+      epubOf(
+        files,
+        extra: {
+          for (final MapEntry(:key, :value) in hidden.entries)
+            key: '<html><body>$value</body></html>',
+        },
+      ),
+      title: 'x',
+    );
+
+    test('epub_notes_aside: asides are notes, not text', () {
+      final book = parseFile('epub_notes_aside.epub');
+      expect(marksOf(book), [
+        '1 → ch1.xhtml#fn1',
+        '2 → ch1.xhtml#fn2',
+        '* → ch1.xhtml#fn3',
+        '7 → ch1.xhtml#nope',
+        '8 → gone.xhtml#x',
+        '1 → ch1.xhtml#fn1',
+      ]);
+      expect(notesOf(book), [
+        'ch1.xhtml#fn1: Текст первой сноски.',
+        'ch1.xhtml#fn2: Вторая сноска из двух абзацев. | '
+            'Второй абзац, и вложенная сноска4.',
+        'ch1.xhtml#fn3: 3) Третья, в стиле endnote.',
+        'ch1.xhtml#fn4: Вложенная, она ссылается обратно на вторую2.',
+      ]);
+      expect(book.notes['ch1.xhtml#fn3']!.label, '*');
+      expect(textsOf(book).join(), isNot(contains('сноски.')));
+    });
+
+    test('epub_notes_files: notes by anchor, in the spine or not', () {
+      final book = parseFile('epub_notes_files.epub');
+      expect(marksOf(book), [
+        '1 → text/notes.xhtml#n1',
+        '2 → text/notes.xhtml#n2',
+        '3 → text/hidden_notes.xhtml#h1',
+        '4 → text/hidden_notes.xhtml#h2',
+        '5 → text/hidden_notes.xhtml#h3',
+        '6 → text/hidden_notes.xhtml#h4',
+        '7 → text/notes.xhtml#n3',
+        '8 → text/notes.xhtml#missing',
+        '9 → text/text/zzz.xhtml#a',
+        '3 → text/hidden_notes.xhtml#h1',
+      ]);
+      expect(notesOf(book), [
+        'text/notes.xhtml#n1: Первое примечание в spine.',
+        'text/notes.xhtml#n2: Второе примечание.',
+        'text/hidden_notes.xhtml#h1: Скрытое примечание, один абзац.',
+        'text/hidden_notes.xhtml#h2: Определение-примечание.',
+        'text/hidden_notes.xhtml#h3: Примечание в div, абзац первый. | '
+            'Абзац второй.',
+        'text/hidden_notes.xhtml#h4: Примечание в li.',
+        'text/notes.xhtml#n3: Примечание со ссылкой на другое3.',
+      ]);
+      // The notes file stays a chapter; the hidden one is not read as text.
+      expect(
+        [for (final s in book.sections) s.title],
+        ['Сноски в файлах', 'Примечания'],
+      );
+      expect(
+        textsOf(book),
+        contains('Обычная ссылка на файл и на сайт — не сноски.'),
+      );
+    });
+
+    test('Calibre: the mark and the link back lead to each other', () {
+      final book = parseNotes({
+        'text.xhtml':
+            '<p>Слово<a id="r1" href="notes.xhtml#n1">[1]</a> дальше.</p>',
+        'notes.xhtml':
+            '<p id="n1"><a href="text.xhtml#r1">[1]</a> Примечание.</p>',
+      });
+      expect(marksOf(book), ['1 → notes.xhtml#n1']);
+      expect(notesOf(book), ['notes.xhtml#n1: Примечание.']);
+      // In the notes chapter the link back is gone too.
+      expect(textsOf(book), ['Слово1 дальше.', 'Примечание.']);
+    });
+
+    test('Gutenberg: an empty anchor block, the note next, (return)', () {
+      final book = parseNotes({
+        'a.xhtml':
+            '<p>Текст <a href="#note-1" id="ref-1">1</a> и ещё '
+            '<a href="#note-2" id="ref-2">2</a>.</p>'
+            '<p><a id="note-1"><!-- Note --></a></p>'
+            '<p class="foot">1 (<a href="#ref-1">return</a>)<br/> '
+            '[ Первая. ] <a id="note-2"/></p>'
+            '<p class="foot">2 (<a href="#ref-2">return</a>)<br/> '
+            '[ Вторая. ]</p>',
+      });
+      expect(notesOf(book), [
+        'a.xhtml#note-1: [ Первая. ]',
+        'a.xhtml#note-2: [ Вторая. ]',
+      ]);
+    });
+
+    test('an anchor inside a paragraph: the note is that paragraph', () {
+      final book = parseNotes(
+        {'a.xhtml': '<p>Текст<a href="n.xhtml#x">[1]</a>.</p>'},
+        {'n.xhtml': '<p>1] (<a id="x"/> <a href="a.xhtml">↩</a>) Сноска.</p>'},
+      );
+      expect(notesOf(book), ['n.xhtml#x: Сноска.']);
+    });
+
+    test('a link back next to the mark (`<span class="footnote">`)', () {
+      final book = parseNotes({
+        'a.xhtml':
+            '<p>Слово<span class="footnote"><a href="#p1">1</a>'
+            '<a id="p1b"/></span> дальше.</p>'
+            '<p><span class="footnote"><a id="p1"/><a href="#p1b">1</a>'
+            '</span> Примечание.</p>',
+      });
+      expect(marksOf(book), ['1 → a.xhtml#p1']);
+      expect(notesOf(book), ['a.xhtml#p1: Примечание.']);
+    });
+
+    test('noteref labels: brackets dropped, an empty one is *', () {
+      final book = parseNotes({
+        'a.xhtml':
+            '<p>А<a epub:type="noteref" href="#n">[12]</a> Б'
+            '<a role="doc-noteref" href="#n"></a> В'
+            '<a epub:type="noteref" href="#n">прим.</a> Г'
+            '<a epub:type="noteref" href="n.xhtml">5</a>.</p>'
+            '<aside epub:type="footnote" id="n"><p>Сноска.</p></aside>',
+      });
+      expect(bookBlocksOf(book), ['А12 Б* Вприм. Г.']);
+      expect(notesOf(book), ['a.xhtml#n: Сноска.']);
+    });
+
+    test('notes in notes: followed, a loop does not hang', () {
+      final book = parseNotes({
+        'a.xhtml':
+            '<p>Т<a epub:type="noteref" href="#n1">1</a>.</p>'
+            '<aside epub:type="footnote" id="n1"><p>Один'
+            '<a epub:type="noteref" href="#n2">2</a>.</p></aside>'
+            '<aside epub:type="footnote" id="n2"><p>Два'
+            '<a epub:type="noteref" href="#n1">1</a>.</p></aside>'
+            '<aside epub:type="footnote" id="n3"><p>Ничья.</p></aside>',
+      });
+      // n3 has no mark: it is not kept.
+      expect(notesOf(book), ['a.xhtml#n1: Один2.', 'a.xhtml#n2: Два1.']);
+    });
+
+    test('a heading of a note is a paragraph; marks are not in titles', () {
+      final book = parseNotes({
+        'a.xhtml':
+            '<h1>Глава<a epub:type="noteref" href="#n">1</a></h1><p>Текст.</p>'
+            '<aside epub:type="footnote" id="n"><h3>Примечание</h3>'
+            '<p>Текст сноски.</p></aside>',
+      });
+      expect(book.sections.single.title, 'Глава');
+      expect(
+        [for (final b in book.notes['a.xhtml#n']!.blocks) b.runtimeType],
+        [ParagraphBlock, ParagraphBlock],
+      );
+    });
+
+    test('a whole chapter behind a mark is not a note', () {
+      final long = '<p>${'слово ' * 2000}</p>' * 3;
+      final book = parseNotes({
+        'a.xhtml': '<p>См.<a href="b.xhtml#ch">[2]</a></p>',
+        'b.xhtml': '<section id="ch">$long</section>',
+      });
+      expect(marksOf(book), ['2 → b.xhtml#ch']);
+      expect(book.notes, isEmpty);
+    });
+
+    test('pictures of notes are kept, others of a notes file are not', () {
+      final sink = MemoryImageSink();
+      final book = parseEpub(
+        epubOf(
+          {'a.xhtml': '<p>Т<a href="n.xhtml#x">[1]</a>.</p>'},
+          extra: {
+            'n.xhtml':
+                '<html><body><p><img src="big.png"/></p>'
+                '<div id="x"><p>Сноска.</p><img src="small.jpg"/></div>'
+                '</body></html>',
+            'big.png': png(300, 200),
+            'small.jpg': jpeg(40, 30),
+          },
+        ),
+        title: 'x',
+        images: sink,
+      );
+      expect(
+        [for (final b in book.notes['n.xhtml#x']!.blocks) b.runtimeType],
+        [ParagraphBlock, ImageBlock],
+      );
+      expect(sink.files.keys, ['1.jpg']);
     });
   });
 }

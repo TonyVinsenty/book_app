@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "title": "Сноски в файлах",
+    "authors": [],
+    "lang": "ru",
+    "sourceFormat": "epub"
+  },
+  "toc": [
+    {
+      "title": "Сноски в файлах",
+      "level": 0,
+      "section": 0
+    },
+    {
+      "title": "Примечания",
+      "level": 0,
+      "section": 1
+    }
+  ],
+  "sections": [
+    {
+      "title": "Сноски в файлах",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Сноски в файлах",
+          "level": 1
+        },
+        {
+          "type": "paragraph",
+          "text": "Сноска в файле из spine1 и вторая2.",
+          "style": "normal",
+          "spans": [
+            [
+              23,
+              24,
+              "noteRef",
+              "text/notes.xhtml#n1"
+            ],
+            [
+              33,
+              34,
+              "noteRef",
+              "text/notes.xhtml#n2"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Сноска в файле вне spine3, в стиле dd4, в div5 и в li6.",
+          "style": "normal",
+          "spans": [
+            [
+              24,
+              25,
+              "noteRef",
+              "text/hidden_notes.xhtml#h1"
+            ],
+            [
+              37,
+              38,
+              "noteRef",
+              "text/hidden_notes.xhtml#h2"
+            ],
+            [
+              45,
+              46,
+              "noteRef",
+              "text/hidden_notes.xhtml#h3"
+            ],
+            [
+              53,
+              54,
+              "noteRef",
+              "text/hidden_notes.xhtml#h4"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Вложенная цепочка7 и цель без элемента8 и файл не найден9.",
+          "style": "normal",
+          "spans": [
+            [
+              17,
+              18,
+              "noteRef",
+              "text/notes.xhtml#n3"
+            ],
+            [
+              38,
+              39,
+              "noteRef",
+              "text/notes.xhtml#missing"
+            ],
+            [
+              56,
+              57,
+              "noteRef",
+              "text/text/zzz.xhtml#a"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Обычная ссылка на файл и на сайт — не сноски.",
+          "style": "normal"
+        }
+      ]
+    },
+    {
+      "title": "Примечания",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Примечания",
+          "level": 2
+        },
+        {
+          "type": "paragraph",
+          "text": "1) Первое примечание в spine.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Второе примечание. ↩",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Примечание со ссылкой на другое3.",
+          "style": "normal",
+          "spans": [
+            [
+              31,
+              32,
+              "noteRef",
+              "text/hidden_notes.xhtml#h1"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "text/notes.xhtml#n1": {
+      "label": "1",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Первое примечание в spine.",
+          "style": "normal"
+        }
+      ]
+    },
+    "text/notes.xhtml#n2": {
+      "label": "2",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Второе примечание.",
+          "style": "normal"
+        }
+      ]
+    },
+    "text/hidden_notes.xhtml#h1": {
+      "label": "3",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Скрытое примечание, один абзац.",
+          "style": "normal"
+        }
+      ]
+    },
+    "text/hidden_notes.xhtml#h2": {
+      "label": "4",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Определение-примечание.",
+          "style": "normal"
+        }
+      ]
+    },
+    "text/hidden_notes.xhtml#h3": {
+      "label": "5",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Примечание в div, абзац первый.",
+          "style": "normal"
+        },
+        {
+          "type": "paragraph",
+          "text": "Абзац второй.",
+          "style": "normal"
+        }
+      ]
+    },
+    "text/hidden_notes.xhtml#h4": {
+      "label": "6",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Примечание в li.",
+          "style": "normal"
+        }
+      ]
+    },
+    "text/notes.xhtml#n3": {
+      "label": "7",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Примечание со ссылкой на другое3.",
+          "style": "normal",
+          "spans": [
+            [
+              31,
+              32,
+              "noteRef",
+              "text/hidden_notes.xhtml#h1"
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}
