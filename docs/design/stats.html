@@ -1,0 +1,472 @@
+<title>Статистика ReadingAPP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap">
+<style>
+/* Layout: заголовок страницы, затем секции с рядами телефонных рамок (360px, переносятся столбиком). Стиль — «Бумага» из concepts.html */
+:root{--pg:#F2F0EC;--pgtx:#2B2926;--pgmut:#6A645B;--pg2:#E4E0D8;--pgline:#D2CDC3;--ui:'Manrope',system-ui,sans-serif;--book:'Literata',Georgia,serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg:#171615;--pgtx:#EAE6DF;--pgmut:#A29B90;--pg2:#242220;--pgline:#37342F;color-scheme:dark}}
+:root[data-theme="dark"]{--pg:#171615;--pgtx:#EAE6DF;--pgmut:#A29B90;--pg2:#242220;--pgline:#37342F;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pgtx);font:15px/1.5 var(--ui);padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1{font-size:30px;line-height:1.15;margin:0 0 8px;text-wrap:balance;font-weight:800}
+h2{font-size:21px;margin:0 0 4px;text-wrap:balance;font-weight:700}
+.lead,.note{color:var(--pgmut);max-width:68ch;margin:0}
+.row{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start;margin-top:20px}
+.cell{width:360px;max-width:100%;display:flex;flex-direction:column;gap:10px;min-width:0}
+.cap{font-size:13.5px;color:var(--pgmut);margin:0}
+.cap b{color:var(--pgtx)}
+.pm{display:flex;gap:8px;flex-direction:column;font-size:13.5px}
+.pm span{display:block}
+.rec{display:inline-block;background:var(--pg2);border:1px solid var(--pgline);border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;margin-left:6px;vertical-align:middle}
+.box{background:var(--pg2);border:1px solid var(--pgline);border-radius:16px;padding:20px 22px;max-width:760px}
+.box ul,.box ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.cols{display:flex;flex-wrap:wrap;gap:18px}
+.cols>div{flex:1 1 260px;min-width:0}
+.cols h3{margin:0 0 6px;font-size:15px}
+
+/* ---------- phone ---------- */
+.ph{--bg:#F6F0E4;--tx:#3A332B;--t2:#6E6455;--sf:#EBE2D0;--ac:#9A6B43;--acx:#7C5230;--orp:#C2492F;--line:#DACDB5;--c1:#C49A66;--c2:#6E9F7E;--c3:#9885C9;--shadow:rgba(58,51,43,.18);
+ width:360px;max-width:100%;background:var(--bg);color:var(--tx);border-radius:34px;border:1px solid var(--pgline);box-shadow:0 10px 30px var(--shadow);overflow:hidden;position:relative;font-family:var(--ui);font-size:14px;line-height:1.4}
+.ph.night{--bg:#1F1B17;--tx:#E6DCCB;--t2:#A09484;--sf:#2D2822;--ac:#D0A070;--acx:#D0A070;--orp:#FF8A6B;--line:#443C32;--c1:#D0A070;--c2:#8FB597;--c3:#A99BD3;--shadow:rgba(0,0,0,.5)}
+.sb{display:flex;justify-content:space-between;padding:12px 22px 4px;font-size:12px;font-weight:700;color:var(--t2)}
+.fixed{height:640px}
+.pad{padding:6px 18px 22px;display:flex;flex-direction:column;gap:14px}
+.t2{color:var(--t2)}
+.num{font-variant-numeric:tabular-nums}
+.btn{min-height:44px;min-width:44px;border:0;background:transparent;color:var(--tx);font:600 14px var(--ui);display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;padding:0 10px;cursor:default}
+.btn.pill{background:var(--ac);color:var(--bg);padding:0 16px;border-radius:99px}
+.night .btn.pill{color:#1F1B17}
+.btn.line{border:1.5px solid var(--ac);color:var(--acx)}
+.ico{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.topbar,.botbar{position:absolute;left:0;right:0;background:var(--bg);z-index:2}
+.topbar{top:34px;display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-bottom:1px solid var(--line)}
+.topbar .grp{display:flex;align-items:center;gap:2px}
+.botbar{bottom:0;padding:10px 18px 16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.chap{font-weight:700;font-size:14px}
+.meta{font-size:12.5px;color:var(--t2)}
+.slider{height:4px;border-radius:2px;background:var(--line);position:relative;margin:12px 0 4px}
+.slider i{position:absolute;left:0;top:0;bottom:0;width:32%;background:var(--ac);border-radius:2px}
+.slider b{position:absolute;left:32%;top:-7px;width:18px;height:18px;border-radius:50%;background:var(--ac);transform:translateX(-50%)}
+.bbrow{display:flex;justify-content:space-between;align-items:center}
+.book{font-family:var(--book);font-size:16px;line-height:1.62;padding:96px 22px 0;color:var(--tx);margin:0;text-align:left}
+.book p{margin:0 0 10px;text-indent:1.2em}
+.etabl{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:2px 0;border:0;background:none;color:var(--tx);font:600 13.5px var(--ui);text-align:left;width:100%}
+.etabl .eta{display:flex;align-items:center;gap:8px;min-width:0}
+.etabl .chev{color:var(--acx);flex:none}
+.hint{position:absolute;right:14px;top:84px;background:var(--tx);color:var(--bg);font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:8px;z-index:3}
+.dim{position:absolute;inset:0;background:rgba(30,25,18,.42);z-index:3}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:26px 26px 0 0;z-index:4;padding:8px 18px 22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 4px}
+h4{margin:0;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--t2);font-weight:700}
+.ttl{font-size:22px;font-weight:800;margin:0;line-height:1.2}
+.sub{color:var(--t2);font-size:13px}
+.card{background:var(--sf);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.big{font-size:34px;font-weight:800;line-height:1.05;letter-spacing:-.01em}
+.mid{font-size:26px;font-weight:800;line-height:1.1}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two>*{min-width:0}
+.tile{background:var(--sf);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.unit{font-size:12.5px;color:var(--t2);font-weight:600}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.k1{background:var(--c1)}.k2{background:var(--c2)}.k3{background:var(--c3)}
+.prog{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;width:64%;background:var(--c2);border-radius:4px}
+.pro{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--acx);border:1.5px solid var(--ac);border-radius:6px;padding:0 5px;line-height:16px;margin-left:6px;vertical-align:2px}
+.seg{display:flex;background:var(--sf);border-radius:99px;padding:3px}
+.seg span{flex:1;text-align:center;font-weight:600;font-size:13px;min-height:38px;display:flex;align-items:center;justify-content:center;border-radius:99px;color:var(--t2)}
+.seg .on{background:var(--bg);color:var(--tx);box-shadow:0 1px 3px var(--shadow)}
+.cmp{display:flex;flex-direction:column;gap:6px}
+.cmp .r{display:grid;grid-template-columns:96px 1fr 62px;gap:8px;align-items:center;font-size:12.5px}
+.cmp .bar{height:14px;border-radius:7px;background:var(--c1)}
+.cmp .bar.g{background:var(--c2)}
+.rsvp{font-weight:800;letter-spacing:.02em}
+.orp{color:var(--orp)}
+.wk{display:flex;align-items:flex-end;gap:8px;height:104px}
+.wk .d{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;height:100%;font-size:11.5px;color:var(--t2);font-weight:600}
+.wk .st{display:flex;flex-direction:column-reverse;width:100%;gap:2px}
+.wk .st i{display:block;width:100%;border-radius:4px}
+.wk .today{color:var(--tx)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;font-size:10.5px;color:var(--t2);text-align:center}
+.cal i{aspect-ratio:1;border-radius:7px;background:transparent;border:1px dashed var(--line);display:block}
+.cal i.l1{background:var(--c2);opacity:.35;border:0}.cal i.l2{background:var(--c2);opacity:.65;border:0}.cal i.l3{background:var(--c2);border:0}
+.cal i.now{outline:2px solid var(--tx);outline-offset:1px}
+.cal i.e{border:0}
+.cb{display:flex;align-items:flex-end;gap:8px;height:92px}
+.cb .c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:11.5px;color:var(--t2);font-weight:600}
+.cb .c i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--line)}
+.cb .c.hi i{background:var(--c3)}
+.cb .c.ok{color:var(--tx)}
+.tod{display:flex;flex-direction:column;gap:7px}
+.tod .r{display:grid;grid-template-columns:54px 1fr 38px;gap:8px;align-items:center;font-size:12.5px}
+.tod .b{height:12px;border-radius:6px;background:var(--c1);opacity:.55}
+.tod .b.best{background:var(--c2);opacity:1}
+.sp{font-size:11px;fill:var(--t2);font-family:var(--ui);font-weight:600}
+.sp.tx{fill:var(--tx)}
+svg.ch{display:block;width:100%;height:auto}
+.ln1{fill:none;stroke:var(--c1);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.ln2{fill:none;stroke:var(--c2);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.f1{fill:var(--c1)}.f2{fill:var(--c2)}
+.gl{stroke:var(--line);stroke-width:1}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:30px 12px 6px}
+.ghost{opacity:.55;border:1.5px dashed var(--line);background:transparent}
+.sk{height:10px;border-radius:5px;background:var(--line)}
+@media (max-width:420px){.ph{border-radius:26px}}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-stat" viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></symbol>
+<symbol id="i-toc" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+</svg>
+
+<main>
+<header>
+<h1>Статистика</h1>
+<p class="lead">Три места для входа, лист «Эта книга», общий экран и пустое состояние. Цифры выдуманные. Палитра «Бумага»; одна рамка в ночном варианте.</p>
+</header>
+
+<!-- ============ 1. PLACEMENT ============ -->
+<section>
+<h2>1. Где разместить</h2>
+<p class="note">Показаны панели читалки после тапа по экрану. В режиме чтения кнопок по-прежнему нет.</p>
+<div class="row">
+
+<div class="cell">
+<div class="ph fixed">
+ <div class="sb"><span>9:41</span><span>82%</span></div>
+ <div class="topbar">
+  <button class="btn" type="button"><svg class="ico"><use href="#i-back"/></svg>Библиотека</button>
+  <div class="grp">
+   <button class="btn line" type="button" aria-label="Статистика"><svg class="ico"><use href="#i-stat"/></svg></button>
+   <button class="btn" type="button" aria-label="Оглавление"><svg class="ico"><use href="#i-toc"/></svg></button>
+   <button class="btn pill" type="button"><svg class="ico"><use href="#i-bolt"/></svg>Скорочтение</button>
+  </div>
+ </div>
+ <div class="book"><p>Никогда не разговаривайте с неизвестными. В час жаркого весеннего заката на Патриарших прудах появились два гражданина.</p><p>Первый из них, одетый в летнюю серенькую пару, был маленького роста, упитан, лыс.</p></div>
+ <div class="botbar">
+  <div class="chap">Глава 1. Никогда не разговаривайте</div>
+  <div class="meta num">стр. 124 / 380 · 32% · до конца главы 6 стр.</div>
+  <div class="slider"><i></i><b></b></div>
+  <div class="bbrow"><span class="btn">A−</span><span class="btn">A+</span><span class="btn">Настройки</span></div>
+ </div>
+</div>
+<p class="cap"><b>A. Иконка в верхней панели</b></p>
+<div class="pm"><span>+ Один тап, понятно что это.</span><span>− Третья кнопка в шапке, тесно; цифры спрятаны за кнопкой, пока не нажмёте.</span></div>
+</div>
+
+<div class="cell">
+<div class="ph fixed">
+ <div class="sb"><span>9:41</span><span>82%</span></div>
+ <div class="topbar">
+  <button class="btn" type="button"><svg class="ico"><use href="#i-back"/></svg>Библиотека</button>
+  <div class="grp">
+   <button class="btn" type="button" aria-label="Оглавление"><svg class="ico"><use href="#i-toc"/></svg></button>
+   <button class="btn pill" type="button"><svg class="ico"><use href="#i-bolt"/></svg>Скорочтение</button>
+  </div>
+ </div>
+ <div class="book"><p>Никогда не разговаривайте с неизвестными. В час жаркого весеннего заката на Патриарших прудах появились два гражданина.</p><p>Первый из них, одетый в летнюю серенькую пару, был маленького роста, упитан, лыс.</p></div>
+ <div class="botbar">
+  <div class="chap">Глава 1. Никогда не разговаривайте</div>
+  <div class="meta num">стр. 124 / 380 · 32% · до конца главы 6 стр.</div>
+  <button class="etabl" type="button"><span class="eta"><svg class="ico"><use href="#i-clock"/></svg><span class="num">≈ 9 мин до конца главы · 3 ч 40 мин до конца книги</span></span><svg class="ico chev"><use href="#i-up"/></svg></button>
+  <div class="slider"><i></i><b></b></div>
+  <div class="bbrow"><span class="btn">A−</span><span class="btn">A+</span><span class="btn">Настройки</span></div>
+ </div>
+</div>
+<p class="cap"><b>B. Строка времени в нижней панели</b></p>
+<div class="pm"><span>+ Ноль новых кнопок; нужная цифра уже на виду. Тап открывает лист «Эта книга».</span><span>− Общая статистика живёт только в библиотеке (иконка в шапке): её надо найти.</span></div>
+</div>
+
+<div class="cell">
+<div class="ph fixed">
+ <div class="sb"><span>9:41</span><span>82%</span></div>
+ <div style="padding:10px 18px 0;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center"><span class="ttl">Библиотека</span><span class="btn" aria-hidden="true">Поиск</span></div>
+  <div class="seg"><span class="on">Книги</span><span>Подборки</span><span>Статистика</span></div>
+  <div class="card" style="gap:6px">
+   <h4>Месяц</h4>
+   <div class="mid">Сэкономлено 4 ч 20 мин</div>
+   <div class="sub">скорочтением · 18 дней чтения</div>
+  </div>
+  <div class="two">
+   <div class="tile"><span class="unit">обычное</span><span class="mid num">232</span><span class="unit">сл/мин</span></div>
+   <div class="tile"><span class="unit">скорочтение</span><span class="mid num">405</span><span class="unit">сл/мин</span></div>
+  </div>
+  <p class="sub" style="margin:0">Так выглядит вкладка. В читалке остаётся только строка времени из варианта B.</p>
+ </div>
+</div>
+<p class="cap"><b>C. Строка в читалке + вкладка в библиотеке</b><span class="rec">рекомендую</span></p>
+<div class="pm"><span>+ Общая статистика у всех книг рядом, не прячется за иконкой.</span><span>− Третья вкладка в библиотеке; чуть больше работы.</span></div>
+</div>
+
+</div>
+<p class="note" style="margin-top:18px"><b>Рекомендация: C.</b> В читалке — строка из B (одна полезная цифра, лист «Эта книга»), в библиотеке — вкладка «Статистика». Если нужен самый дешёвый старт, достаточно B с иконкой в шапке библиотеки.</p>
+</section>
+
+<!-- ============ 2. BOOK SHEET ============ -->
+<section>
+<h2>2. Лист «Эта книга»</h2>
+<p class="note">Выезжает снизу по тапу на строку времени. Слева день, справа ночь.</p>
+<div class="row">
+
+<div class="cell">
+<div class="ph fixed">
+ <div class="sb"><span>9:41</span><span>82%</span></div>
+ <div class="book" style="padding-top:60px"><p>Никогда не разговаривайте с неизвестными. В час жаркого весеннего заката на Патриарших прудах появились два гражданина.</p></div>
+ <div class="dim"></div>
+ <div class="sheet">
+  <div class="grab"></div>
+  <div><h4>Эта книга</h4><p class="ttl">Мастер и Маргарита</p></div>
+  <div class="card">
+   <span class="unit">Осталось читать</span>
+   <div class="big num">≈ 3 ч 40 мин</div>
+   <div class="prog" role="img" aria-label="Прочитано 32%"><i style="width:32%"></i></div>
+   <div class="sub num">При вашем темпе дочитаете ≈ <b style="color:var(--tx)">2 ноября</b></div>
+  </div>
+  <div class="two">
+   <div class="tile"><span class="unit"><span class="dot k1"></span>Обычное</span><span class="mid num">232</span><span class="unit">сл/мин</span></div>
+   <div class="tile"><span class="unit"><span class="dot k2"></span>Скорочтение</span><span class="mid num">405</span><span class="unit">сл/мин</span></div>
+  </div>
+  <div class="two">
+   <div class="tile"><span class="unit">Вы читаете</span><span class="mid num">6 ч 12 мин</span></div>
+   <div class="tile"><span class="unit">Сэкономлено</span><span class="mid num">48 мин</span></div>
+  </div>
+  <button class="btn line" type="button" style="width:100%">Вся статистика</button>
+ </div>
+</div>
+<p class="cap">Главное — сколько осталось и когда дочитаете. «Сэкономлено» — приятный итог для этой книги.</p>
+</div>
+
+<div class="cell">
+<div class="ph night fixed">
+ <div class="sb"><span>23:12</span><span>64%</span></div>
+ <div class="book" style="padding-top:60px"><p>Никогда не разговаривайте с неизвестными. В час жаркого весеннего заката на Патриарших прудах появились два гражданина.</p></div>
+ <div class="dim"></div>
+ <div class="sheet">
+  <div class="grab"></div>
+  <div><h4>Эта книга</h4><p class="ttl">Мастер и Маргарита</p></div>
+  <div class="card">
+   <span class="unit">Осталось читать</span>
+   <div class="big num">≈ 3 ч 40 мин</div>
+   <div class="prog" role="img" aria-label="Прочитано 32%"><i style="width:32%"></i></div>
+   <div class="sub num">При вашем темпе дочитаете ≈ <b style="color:var(--tx)">2 ноября</b></div>
+  </div>
+  <div class="two">
+   <div class="tile"><span class="unit"><span class="dot k1"></span>Обычное</span><span class="mid num">232</span><span class="unit">сл/мин</span></div>
+   <div class="tile"><span class="unit"><span class="dot k2"></span>Скорочтение</span><span class="mid num">405</span><span class="unit">сл/мин</span></div>
+  </div>
+  <div class="two">
+   <div class="tile"><span class="unit">Вы читаете</span><span class="mid num">6 ч 12 мин</span></div>
+   <div class="tile"><span class="unit">Сэкономлено</span><span class="mid num">48 мин</span></div>
+  </div>
+  <button class="btn line" type="button" style="width:100%">Вся статистика</button>
+ </div>
+</div>
+<p class="cap">Ночной вариант: акцентные цвета светлеют, буква-ориентир остаётся ярко-коралловой.</p>
+</div>
+
+</div>
+</section>
+
+<!-- ============ 3. GENERAL ============ -->
+<section>
+<h2>3. Общий экран</h2>
+<p class="note">Один длинный экран с прокруткой, показан двумя кусками. Сверху самое важное; Pro-блоки ниже.</p>
+<div class="row">
+
+<div class="cell">
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>82%</span></div>
+ <div class="pad">
+  <div style="display:flex;align-items:center;gap:4px"><button class="btn" type="button" aria-label="Назад"><svg class="ico"><use href="#i-back"/></svg></button><span class="ttl">Статистика</span></div>
+  <div class="seg"><span>Неделя</span><span class="on">Месяц</span><span>Год</span></div>
+
+  <div class="card" style="gap:12px">
+   <h4>Скорочтение сэкономило</h4>
+   <div class="big num">4 ч 20 мин</div>
+   <div class="sub num">за октябрь · 143 000 слов в скорочтении</div>
+   <div class="cmp" role="img" aria-label="Обычным чтением 10 ч 20 мин, скорочтением 6 ч">
+    <div class="r"><span>Обычно</span><span class="bar" style="width:100%"></span><span class="num">10 ч 20 м</span></div>
+    <div class="r"><span>У вас</span><span class="bar g" style="width:58%"></span><span class="num">6 ч</span></div>
+   </div>
+   <div class="sub">Считаем так: слова × (время на слово обычно − время на слово в скорочтении).</div>
+  </div>
+
+  <div class="card">
+   <h4>Ваша скорость, сл/мин</h4>
+   <div class="two" style="gap:8px">
+    <div><span class="unit"><span class="dot k1"></span>Обычное</span><div class="mid num">232</div></div>
+    <div><span class="unit"><span class="dot k2"></span>Скорочтение</span><div class="mid num">405</div></div>
+   </div>
+   <svg class="ch" viewBox="0 0 300 100" role="img" aria-label="За 8 недель скорочтение выросло с 340 до 405, обычное с 218 до 232">
+    <line class="gl" x1="10" x2="290" y1="90" y2="90"/>
+    <polyline class="ln2" points="10,36 50,32.4 90,30 130,25.5 170,24 210,20.4 250,18.6 290,16.5"/>
+    <polyline class="ln1" points="10,72.6 50,71.4 90,70.5 130,69.6 170,70.2 210,69 250,68.7 290,68.4"/>
+    <circle class="f2" cx="290" cy="16.5" r="4.5"/><circle class="f1" cx="290" cy="68.4" r="4.5"/>
+    <text class="sp tx" x="282" y="11" text-anchor="end">405</text>
+    <text class="sp tx" x="282" y="62" text-anchor="end">232</text>
+    <text class="sp" x="10" y="100">8 недель назад</text><text class="sp" x="290" y="100" text-anchor="end">сейчас</text>
+   </svg>
+   <div class="sub">За два месяца скорочтение выросло на 65 сл/мин.</div>
+  </div>
+
+  <div class="card">
+   <h4>Комфортный темп</h4>
+   <div class="sub" style="color:var(--tx);font-size:14px">На 450 сл/мин вы чаще возвращаетесь назад и ставите паузу. Ваш комфортный темп — около <b>400</b>.</div>
+   <div class="cb" role="img" aria-label="Возвраты назад на 100 слов: на 300 — 1,1; на 350 — 1,4; на 400 — 1,9; на 450 — 4,8; на 500 — 8,2">
+    <div class="c ok"><span class="num">1,1</span><i style="height:12%"></i><span>300</span></div>
+    <div class="c ok"><span class="num">1,4</span><i style="height:16%"></i><span>350</span></div>
+    <div class="c ok"><span class="num">1,9</span><i style="height:22%;background:var(--c2)"></i><span><b>400</b></span></div>
+    <div class="c hi"><span class="num">4,8</span><i style="height:55%"></i><span>450</span></div>
+    <div class="c hi"><span class="num">8,2</span><i style="height:94%"></i><span>500</span></div>
+   </div>
+   <div class="sub">Возвраты назад на 100 слов, по темпу.</div>
+   <button class="btn pill" type="button" style="width:100%">Поставить 400 сл/мин</button>
+  </div>
+ </div>
+</div>
+<p class="cap">Часть 1. Герой — сэкономленное время. «Комфортный темп» — про «быстро без потери понимания».</p>
+</div>
+
+<div class="cell">
+<div class="ph night">
+ <div class="sb"><span>23:12</span><span>64%</span></div>
+ <div class="pad">
+  <div class="card">
+   <h4>Дни чтения</h4>
+   <div class="wk" role="img" aria-label="Минуты по дням недели">
+    <div class="d"><span class="num">25</span><div class="st" style="height:31px"><i class="k1" style="height:15px"></i><i class="k2" style="height:14px"></i></div><span>Пн</span></div>
+    <div class="d"><span class="num">40</span><div class="st" style="height:50px"><i class="k1" style="height:22px"></i><i class="k2" style="height:26px"></i></div><span>Вт</span></div>
+    <div class="d"><span class="num">0</span><div class="st" style="height:3px"><i style="height:3px;background:var(--line)"></i></div><span>Ср</span></div>
+    <div class="d"><span class="num">35</span><div class="st" style="height:44px"><i class="k2" style="height:44px"></i></div><span>Чт</span></div>
+    <div class="d"><span class="num">20</span><div class="st" style="height:25px"><i class="k1" style="height:25px"></i></div><span>Пт</span></div>
+    <div class="d"><span class="num">70</span><div class="st" style="height:70px"><i class="k1" style="height:28px"></i><i class="k3" style="height:12px"></i><i class="k2" style="height:26px"></i></div><span>Сб</span></div>
+    <div class="d today"><span class="num">55</span><div class="st" style="height:62px"><i class="k1" style="height:22px"></i><i class="k2" style="height:36px"></i></div><span><b>Вс</b></span></div>
+   </div>
+   <div class="sub"><span class="dot k1"></span>обычное <span class="dot k2" style="margin-left:8px"></span>скорочтение <span class="dot k3" style="margin-left:8px"></span>по фразам</div>
+   <div class="sub num">Минуты по дням. В среднем 35 мин в день.</div>
+  </div>
+
+  <div class="card">
+   <h4>Октябрь · 18 дней чтения</h4>
+   <div class="cal" id="cal" role="img" aria-label="Календарь октября, закрашены дни чтения"></div>
+   <div class="sub">Чем темнее, тем дольше читали. Пропуски — это нормально.</div>
+  </div>
+
+  <div class="card">
+   <h4>Когда вы читаете быстрее<span class="pro">Pro</span></h4>
+   <div class="tod" role="img" aria-label="Скорочтение по времени суток: утро 361, день 372, вечер 398, ночь 340">
+    <div class="r"><span>Утро</span><span class="b" style="width:80%"></span><span class="num">361</span></div>
+    <div class="r"><span>День</span><span class="b" style="width:85%"></span><span class="num">372</span></div>
+    <div class="r"><span><b>Вечер</b></span><span class="b best" style="width:100%"></span><span class="num"><b>398</b></span></div>
+    <div class="r"><span>Ночь</span><span class="b" style="width:72%"></span><span class="num">340</span></div>
+   </div>
+   <div class="sub">Скорость скорочтения, сл/мин.</div>
+  </div>
+
+  <div class="card">
+   <h4>Мягкая цель<span class="pro">Pro</span></h4>
+   <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="mid num">20 мин в день</span><span class="sub num">сегодня 55</span></div>
+   <div class="prog"><i style="width:100%"></i></div>
+   <div class="sub">Цель можно пропустить, ничего не сбросится.</div>
+  </div>
+
+  <div class="card">
+   <h4>Итоги · 2026 год</h4>
+   <div class="two" style="gap:8px">
+    <div><div class="mid num">9</div><span class="unit">книг прочитано</span></div>
+    <div><div class="mid num">812 тыс.</div><span class="unit">слов</span></div>
+    <div><div class="mid num">63 ч</div><span class="unit">за чтением</span></div>
+    <div><div class="mid num">24 ч</div><span class="unit">сэкономлено</span></div>
+   </div>
+  </div>
+ </div>
+</div>
+<p class="cap">Часть 2 (ночной вариант). Дни, привычки, итоги. Без серий и «огней».</p>
+</div>
+
+<div class="cell">
+<div class="ph fixed">
+ <div class="sb"><span>9:41</span><span>100%</span></div>
+ <div class="pad">
+  <div style="display:flex;align-items:center;gap:4px"><button class="btn" type="button" aria-label="Назад"><svg class="ico"><use href="#i-back"/></svg></button><span class="ttl">Статистика</span></div>
+  <div class="empty">
+   <svg width="96" height="72" viewBox="0 0 96 72" aria-hidden="true"><rect x="8" y="40" width="14" height="24" rx="4" class="f1" opacity=".35"/><rect x="30" y="26" width="14" height="38" rx="4" class="f2" opacity=".35"/><rect x="52" y="14" width="14" height="50" rx="4" class="f1" opacity=".35"/><rect x="74" y="30" width="14" height="34" rx="4" class="f2" opacity=".35"/></svg>
+   <div class="ttl">Здесь появятся ваши цифры</div>
+   <div class="sub" style="max-width:280px">Почитайте несколько страниц. Первые 10 страниц приложение только присматривается к вашему темпу, потом покажет скорость.</div>
+   <button class="btn pill" type="button">Открыть книгу</button>
+  </div>
+  <div class="card ghost"><div class="sk" style="width:40%"></div><div class="sk" style="width:70%;height:22px"></div><div class="sk" style="width:55%"></div></div>
+  <div class="two"><div class="card ghost"><div class="sk" style="width:60%"></div><div class="sk" style="height:18px"></div></div><div class="card ghost"><div class="sk" style="width:60%"></div><div class="sk" style="height:18px"></div></div></div>
+ </div>
+</div>
+<p class="cap">Пустое состояние: первый день. В листе «Эта книга» вместо скорости — надпись «скорость уточняется».</p>
+</div>
+
+</div>
+</section>
+
+<!-- ============ 4. EXPLAIN ============ -->
+<section>
+<h2>4. Как мы меряем скорость</h2>
+<div class="box">
+<h3 style="margin:0;font-size:16px">Обычное чтение</h3>
+<p class="note" style="margin-top:6px">Слов на странице мы знаем. Остаётся узнать, сколько времени вы на ней провели.</p>
+<ul>
+ <li>Время идёт, только если приложение на экране и меню закрыто.</li>
+ <li>Страница пролистана быстрее 2 секунд — это листание, она не считается.</li>
+ <li>Дольше примерно 3 обычных страниц — вы отвлеклись, время обрезается.</li>
+ <li>Скорость — типичное значение (медиана), а не среднее: один длинный перерыв её не ломает.</li>
+ <li>Первые ~10 страниц показываем «скорость уточняется».</li>
+</ul>
+<h3 style="margin:16px 0 0;font-size:16px">Скорочтение</h3>
+<ul><li>Скорость фактическая, с паузами на знаках препинания; время на паузу «стоп» не считается.</li>
+<li>Понимание оцениваем косвенно: сколько раз вы перематывали назад и ставили паузу на каждый темп.</li></ul>
+</div>
+</section>
+
+<!-- ============ 5. PLAN ============ -->
+<section>
+<h2>5. Что делаем и когда</h2>
+<div class="cols">
+<div><h3>v1, бесплатно</h3><ul class="note" style="padding-left:18px">
+ <li>Строка «≈ 9 мин до конца главы…» в читалке.</li>
+ <li>Лист «Эта книга»: осталось, дата, скорости, сэкономлено.</li>
+ <li>Общий экран: герой «Сэкономлено», две скорости, график по неделям, столбики дней.</li>
+ <li>Подсказка «Комфортный темп» (текст и кнопка).</li>
+ <li>Итоги за год, пустое состояние.</li>
+</ul></div>
+<div><h3>Pro</h3><ul class="note" style="padding-left:18px">
+ <li>Когда вы читаете быстрее (утро/день/вечер/ночь).</li>
+ <li>Мягкая цель «20 мин в день».</li>
+ <li>Автоподбор темпа по комфортному.</li>
+ <li>Календарь за весь год и история по месяцам.</li>
+</ul></div>
+<div><h3>Отложить</h3><ul class="note" style="padding-left:18px">
+ <li>Сравнение с другими читателями.</li>
+ <li>Серии дней, значки, уведомления.</li>
+ <li>Статистика по жанрам и авторам.</li>
+</ul></div>
+</div>
+</section>
+</main>
+
+<script>
+(function(){
+ var el=document.getElementById('cal');if(!el)return;
+ var h='';['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(function(d){h+='<span>'+d+'</span>'});
+ for(var i=0;i<3;i++)h+='<i class="e"></i>';
+ var lv={1:2,2:3,3:0,4:1,5:2,6:3,7:3,8:0,9:1,10:2,11:0,12:2,13:3,14:3,15:1,16:0,17:2,18:2,19:0,20:3,21:2,22:3,23:3};
+ for(var d=1;d<=31;d++){
+  if(d>23){h+='<i class="e" style="border:1px dashed var(--line)"></i>';continue}
+  var l=lv[d];h+='<i class="'+(l?'l'+l:'')+(d===23?' now':'')+'"></i>';
+ }
+ el.innerHTML=h;
+ el.querySelectorAll('span').forEach(function(s){s.style.fontWeight=600});
+})();
+</script>
