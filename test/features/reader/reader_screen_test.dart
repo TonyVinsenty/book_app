@@ -30,6 +30,7 @@ import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/features/speed/speed_controls.dart';
+import 'package:book_app/features/stats/book_stats_sheet.dart';
 import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
@@ -2063,5 +2064,78 @@ void main() {
     final stats = await speedStats(tester, SpeedMode.word);
     expect(stats.reading[ReadingMode.word]!.$1, inInclusiveRange(1000, 3000));
     expect(stats.pace[SpeedLimits.max]!.$4, 0, reason: 'no pauses');
+  });
+
+  testWidgets('stage 13: the time left line opens the sheet; the setting '
+      'hides it', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => StatsRepository(db).add(
+        reading: [
+          for (final day in [20261023, 20261022, 20261020])
+            ReadingDelta(
+              day: day,
+              bookId: bookId,
+              mode: ReadingMode.page,
+              dayPart: 2,
+              activeMs: 30 * 60000,
+              words: 7350,
+              pageSpeeds: const {24: 12},
+            ),
+        ],
+      ),
+    );
+    await openBook(tester);
+    await tapAt(tester, 0.5);
+    await settle(tester);
+    final line = find.textContaining('до конца книги');
+    expect(line, findsOneWidget);
+    expect(
+      tester.widget<Text>(line).data,
+      startsWith('≈ '),
+      reason: 'the time to the chapter end first',
+    );
+
+    await tester.tap(line);
+    await tester.pumpAndSettle();
+    expect(find.byType(BookStatsSheet), findsOneWidget);
+    expect(find.text('Эта книга'.toUpperCase()), findsOneWidget);
+    expect(find.text('245'), findsOneWidget, reason: 'the median by eye');
+    expect(
+      find.text('скорость уточняется'),
+      findsOneWidget,
+      reason: 'no speed reading yet',
+    );
+    expect(find.text('1 ч 30 мин'), findsOneWidget, reason: 'time spent');
+    expect(find.textContaining('дочитаете'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(BookStatsSheet), findsNothing);
+    expect(reader(tester).panelsShown, isTrue, reason: 'the panels stay');
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    final notifier = container.read(readingSettingsProvider.notifier);
+    notifier.set(
+      container.read(readingSettingsProvider).copyWith(showStats: false),
+    );
+    await tester.pumpAndSettle();
+    expect(line, findsNothing);
+    await closeApp(tester);
+  });
+
+  testWidgets('stage 13: a new book has the line at once, at a stand-in '
+      'speed', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await tapAt(tester, 0.5);
+    await settle(tester);
+    expect(find.textContaining('до конца книги'), findsOneWidget);
+    await tester.tap(find.textContaining('до конца книги'));
+    await tester.pumpAndSettle();
+    expect(find.text('скорость уточняется'), findsNWidgets(2));
+    expect(find.textContaining('дочитаете'), findsNothing);
+    await closeApp(tester);
   });
 }

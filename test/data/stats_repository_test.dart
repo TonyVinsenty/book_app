@@ -132,6 +132,40 @@ void main() {
     expect([for (final r in book1) r.day], [20261022, 20261025, 20261101]);
   });
 
+  test('rows come back as the deltas they sum', () async {
+    const reading = ReadingDelta(
+      day: 20261023,
+      bookId: 3,
+      mode: ReadingMode.page,
+      dayPart: 1,
+      activeMs: 9000,
+      words: 40,
+      pageSpeeds: {25: 2},
+    );
+    const pace = PaceDelta(
+      day: 20261023,
+      mode: SpeedMode.phrase,
+      wpm: 375,
+      words: 90,
+      activeMs: 15000,
+      backs: 2,
+      pauses: 1,
+    );
+    await stats.add(reading: [reading], pace: [pace]);
+
+    final r = (await stats.readingDays()).single.toDelta();
+    expect(
+      (r.day, r.bookId, r.mode, r.dayPart, r.activeMs, r.words),
+      (20261023, 3, ReadingMode.page, 1, 9000, 40),
+    );
+    expect(r.pageSpeeds, {25: 2});
+    final p = (await stats.paceDays()).single.toDelta();
+    expect(
+      (p.day, p.mode, p.wpm, p.words, p.activeMs, p.backs, p.pauses),
+      (20261023, SpeedMode.phrase, 375, 90, 15000, 2, 1),
+    );
+  });
+
   test('a failing write leaves nothing behind', () async {
     await stats.add(reading: [page(20261023, words: 10)]);
     await expectLater(

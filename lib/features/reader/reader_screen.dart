@@ -25,6 +25,8 @@ import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
+import 'package:book_app/features/stats/book_stats_sheet.dart';
+import 'package:book_app/features/stats/stats_format.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/book_pagination.dart';
 import 'package:book_app/layout/chapter_layout.dart';
@@ -36,10 +38,12 @@ import 'package:book_app/speed/guide.dart';
 import 'package:book_app/speed/rewind.dart';
 import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/speed/timing.dart';
+import 'package:book_app/stats/book_stats.dart';
 import 'package:book_app/stats/page_meter.dart';
 import 'package:book_app/stats/play_meter.dart';
 import 'package:book_app/stats/speed_histogram.dart';
 import 'package:book_app/stats/stats_buffer.dart';
+import 'package:book_app/stats/stats_calc.dart';
 import 'package:book_app/stats/stats_records.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -218,6 +222,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   late final StatsBuffer _statsBuffer;
   late final PageMeter _pageMeter;
 
+  /// The line "time left" and the sheet "This book"; null until read.
+  BookStats? _bookStats;
+
   /// The highlight's time and words (ADR 0009 п. 4), while it is on.
   PlayMeter? _guideMeter;
 
@@ -281,7 +288,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       buffer: _statsBuffer,
       now: now,
     );
-    unawaited(_loadPageSpeed());
+    unawaited(_loadStats());
     _lifecycle = AppLifecycleListener(
       onInactive: () {
         _pauseGuide();
@@ -318,17 +325,29 @@ class ReaderViewState extends ConsumerState<ReaderView>
     super.dispose();
   }
 
-  /// The owner's page speed sets how long a page is expected to take.
-  Future<void> _loadPageSpeed() async {
-    var speeds = const <int, int>{};
-    for (final row in await _stats.readingDays()) {
-      if (row.mode == ReadingMode.page) {
-        speeds = mergeBuckets(speeds, row.pageSpeedHist);
-      }
-    }
+  /// The owner's page speed sets how long a page is expected to take; the
+  /// numbers of this book go to the line "time left" and its sheet.
+  Future<void> _loadStats() async {
+    final speedSettings = ref.read(speedSettingsProvider);
+    final today = ref.read(statsClockProvider)();
+    final rows = [for (final r in await _stats.readingDays()) r.toDelta()];
+    final setWpm = {
+      for (final mode in SpeedMode.values)
+        ReadingMode.ofSpeed(mode): await speedSettings.wordsPerMinute(mode),
+    };
+    final speeds = pageSpeedsOf(rows);
     if (pageCount(speeds) >= minPagesForSpeed) {
       _pageMeter.medianWpm = medianWpm(speeds);
     }
+    if (!mounted) return;
+    setState(
+      () => _bookStats = BookStats.of(
+        widget.opened.book.id,
+        rows: rows,
+        today: today,
+        setWpmOf: (mode) => setWpm[mode]!,
+      ),
+    );
   }
 
   /// The page is seen only with nothing over it and the highlight off (that
@@ -596,11 +615,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// long chapter after this one.
   PageNumber _pagesLeftInChapter(ChapterLayout chapter) {
     final left = chapter.pages.length - _page - 1;
-    final sections = widget.opened.tokens.content.sections;
-    var end = _section + 1;
-    while (end < sections.length && sections[end].continued) {
-      end++;
-    }
+    final end = _chapterEnd();
     final pagination = _pagination;
     if (end == _section + 1 || pagination == null) {
       return (value: left, exact: true);
@@ -609,6 +624,45 @@ class ReaderViewState extends ConsumerState<ReaderView>
     return (
       value: left + after.value - pagination.pagesBefore(_section + 1).value,
       exact: after.exact,
+    );
+  }
+
+  /// The section after the chapter shown: the parts of a long chapter
+  /// belong to it.
+  int _chapterEnd() {
+    final sections = widget.opened.tokens.content.sections;
+    var end = _section + 1;
+    while (end < sections.length && sections[end].continued) {
+      end++;
+    }
+    return end;
+  }
+
+  /// Words from the shown page to the chapter's end and the book's end.
+  ({int chapter, int book}) _wordsLeft() {
+    final tokens = widget.opened.tokens;
+    final from = min(page.firstWord, tokens.length);
+    final end = _chapterEnd();
+    final chapterEnd = end < tokens.content.sections.length
+        ? tokens.firstWordOfSection(end)
+        : tokens.length;
+    return (chapter: max(chapterEnd - from, 0), book: tokens.length - from);
+  }
+
+  /// The sheet "This book", from the line "time left".
+  void _openBookStats(BookStats stats) {
+    final tokens = widget.opened.tokens;
+    unawaited(
+      _over(
+        showBookStatsSheet(
+          context,
+          title: widget.opened.book.title,
+          stats: stats,
+          wordsLeft: _wordsLeft().book,
+          progress: tokens.isEmpty ? 1 : page.firstWord / tokens.length,
+          today: ref.read(statsClockProvider)(),
+        ),
+      ),
     );
   }
 
@@ -984,6 +1038,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _settingsShown = false;
     });
     unawaited(_showStatusBar(shown));
+    // The numbers as of now, with what was gathered on the way.
+    if (shown) unawaited(_stats.flush(_statsBuffer).then((_) => _loadStats()));
   }
 
   void _onTapUp(TapUpDetails details, double width) {
@@ -1250,6 +1306,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       pageLabel: pageLabel,
                       pagesLeft: _pagesLeftInChapter(chapter),
                       fontSize: style.fontSize,
+                      showStats: settings.showStats,
                     ),
                   ),
                 ],
@@ -1329,6 +1386,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     required String pageLabel,
     required PageNumber pagesLeft,
     required double fontSize,
+    required bool showStats,
   }) {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
@@ -1400,6 +1458,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   : dragLabel(drag),
               style: text.bodySmall?.copyWith(color: colors.textSecondary),
             ),
+            if (_bookStats case final stats? when showStats)
+              _timeLeftLine(context, stats),
             if (last > 1)
               Semantics(
                 label: l10n.readerBookPages,
@@ -1447,6 +1507,42 @@ class ReaderViewState extends ConsumerState<ReaderView>
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// «≈ 9 мин до конца главы · 3 ч 40 мин до конца книги»; a tap opens the
+  /// sheet "This book".
+  Widget _timeLeftLine(BuildContext context, BookStats stats) {
+    final l10n = AppLocalizations.of(context);
+    final colors = context.readingColors;
+    final words = _wordsLeft();
+    return Semantics(
+      hint: l10n.readerTimeLeftHint,
+      child: InkWell(
+        onTap: () => _openBookStats(stats),
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Row(
+            spacing: 8,
+            children: [
+              Icon(Icons.schedule, size: 18, color: colors.textSecondary),
+              Expanded(
+                child: Text(
+                  l10n.readerTimeLeft(
+                    formatDuration(l10n, stats.left(words.chapter)),
+                    formatDuration(l10n, stats.left(words.book)),
+                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.keyboard_arrow_up, color: colors.accent),
+            ],
+          ),
         ),
       ),
     );

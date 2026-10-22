@@ -127,16 +127,23 @@ Speed readingSpeed(
   if (mode == ReadingMode.page) {
     return pageSpeed([pageSpeedsOf(recent), pageSpeedsOf(all)]);
   }
+  return switch (playWpm(recent.where((r) => r.mode == mode))) {
+    final wpm? => (wpm: wpm, known: true),
+    null => (wpm: setWpm, known: false),
+  };
+}
+
+/// The actual speed of the speed reading [rows] (page rows are skipped);
+/// null below [minWordsForPlaySpeed].
+int? playWpm(Iterable<ReadingDelta> rows) {
   var words = 0;
   var ms = 0;
-  for (final r in recent.where((r) => r.mode == mode)) {
+  for (final r in rows.where((r) => r.mode != ReadingMode.page)) {
     words += r.words;
     ms += r.activeMs;
   }
-  if (words < minWordsForPlaySpeed || ms == 0) {
-    return (wpm: setWpm, known: false);
-  }
-  return (wpm: (words * 60000 / ms).round(), known: true);
+  if (words < minWordsForPlaySpeed || ms == 0) return null;
+  return (words * 60000 / ms).round();
 }
 
 /// How long [words] take at [wpm].

@@ -202,6 +202,15 @@ class ReadingSettingsPanel extends ConsumerWidget {
                         ),
                       ),
                       section(
+                        l10n.settingsShowStats,
+                        choices(
+                          const [false, true],
+                          settings.showStats,
+                          (on) => on ? l10n.showStatsOn : l10n.showStatsOff,
+                          (on) => settings.copyWith(showStats: on),
+                        ),
+                      ),
+                      section(
                         l10n.settingsPalette,
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,

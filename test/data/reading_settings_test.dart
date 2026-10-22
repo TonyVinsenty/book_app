@@ -25,6 +25,7 @@ void main() {
       night: NightMode.night,
       texture: PageTexture.twill,
       hyphenate: false,
+      showStats: false,
     );
     expect(ReadingSettings.fromStored(settings.toStored()), settings);
     expect(ReadingSettings.fromStored(defaults.toStored()), defaults);

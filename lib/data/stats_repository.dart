@@ -125,3 +125,29 @@ final class StatsRepository {
     await _db.delete(_db.paceDays).go();
   });
 }
+
+/// A stored row as the calculations of `lib/stats/` take it: the sum of
+/// the deltas added to it.
+extension ReadingDayRowDelta on ReadingDayRow {
+  ReadingDelta toDelta() => ReadingDelta(
+    day: day,
+    bookId: bookId,
+    mode: mode,
+    dayPart: dayPart,
+    activeMs: activeMs,
+    words: words,
+    pageSpeeds: pageSpeedHist,
+  );
+}
+
+extension PaceDayRowDelta on PaceDayRow {
+  PaceDelta toDelta() => PaceDelta(
+    day: day,
+    mode: mode,
+    wpm: wpm,
+    words: words,
+    activeMs: activeMs,
+    backs: backs,
+    pauses: pauses,
+  );
+}
