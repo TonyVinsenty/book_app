@@ -3,7 +3,9 @@ import 'dart:isolate';
 
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/book/model/book_content.dart';
+import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
+import 'package:book_app/book/tokenizer/relocate.dart';
 import 'package:book_app/book/tokenizer/tokenizer.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
@@ -20,8 +22,8 @@ final class OpenedBook {
 
 /// Loads a book for the reader: the stored model, or a fresh parse of the
 /// source file when the parser changed. Words are rebuilt on every open; a
-/// position saved by another tokenizer or parser moves by its anchor (after
-/// a reparse that kept the word count — by its word index).
+/// position saved by another tokenizer moves by its anchor; after a reparse
+/// it moves by the words around it (`relocateWord`).
 final class BookOpener {
   BookOpener(this._books);
 
@@ -51,16 +53,21 @@ final class BookOpener {
     }
 
     final images = await _books.newImagesDir(id);
-    final (parsed, tokens) = await _parseInIsolate(
+    final (parsed, tokens, moved) = await _parseInIsolate(
       _books.sourceFile(book).path,
       book.sourceName,
       images.path,
+      await _oldContent(book),
+      book.position,
     );
-    // Note labels and pictures shift blocks and offsets but add no words
-    // (ADR 0008): the same number of words means the same words.
-    final word = tokens.length == book.wordCount
-        ? tokens.positionOf(book.positionWord).wordIndex
-        : tokens.resolve(book.position);
+    // Without the old model: note labels and pictures shift blocks and
+    // offsets but add no words (ADR 0008), so the same number of words
+    // means the same words.
+    final word =
+        moved ??
+        (tokens.length == book.wordCount
+            ? tokens.positionOf(book.positionWord).wordIndex
+            : tokens.resolve(book.position));
     await _books.replaceContent(
       id,
       content: parsed.content,
@@ -72,20 +79,35 @@ final class BookOpener {
     );
     return OpenedBook((await _books.findById(id))!, tokens, word);
   }
+
+  /// The model of the previous parse, if it is still readable.
+  Future<BookContent?> _oldContent(BookRow book) async {
+    try {
+      return await _books.loadContent(book);
+    } on Object {
+      return null;
+    }
+  }
 }
 
 // Top-level, so the isolate closures capture only their arguments.
-Future<(ParsedBook, BookTokens)> _parseInIsolate(
+/// Also the word where reading goes on, found in [old] by [position].
+Future<(ParsedBook, BookTokens, int?)> _parseInIsolate(
   String path,
   String name,
   String images,
+  BookContent? old,
+  ReadingPosition position,
 ) => Isolate.run(() {
   final parsed = parseBook(
     File(path).readAsBytesSync(),
     fileName: name,
     images: FileImageSink(Directory(images)),
   );
-  return (parsed, tokenize(parsed.content));
+  final tokens = tokenize(parsed.content);
+  if (old == null) return (parsed, tokens, null);
+  final before = tokenize(old);
+  return (parsed, tokens, relocateWord(before, before.resolve(position), tokens));
 });
 
 Future<BookTokens> _tokenizeInIsolate(BookContent content) =>

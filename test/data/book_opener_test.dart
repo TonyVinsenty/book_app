@@ -148,6 +148,46 @@ void main() {
     expect((await repo.findById(row.id))!.position.anchor.blockIndex, 1);
   });
 
+  test('a reparse with new words keeps the place by the words', () async {
+    // The new parse adds a paragraph before: by its anchor «пять» would
+    // land in that paragraph, by proportion — off by a few words.
+    final source = File('${temp.path}/Книга.fb2')
+      ..writeAsStringSync(
+        '<FictionBook><body><section><p>Вступление, которого раньше не '
+        'было.</p><p>Раз два три четыре пять шесть семь восемь.</p>'
+        '</section></body></FictionBook>',
+      );
+    const text = 'Раз два три четыре пять шесть семь восемь.';
+    final row = await repo.addBook(
+      content: const BookContent(
+        meta: BookMeta(title: 'Книга', sourceFormat: SourceFormat.fb2),
+        sections: [
+          Section(blocks: [ParagraphBlock(text: text)]),
+        ],
+      ),
+      source: source,
+      sourceName: 'Книга.fb2',
+      sourceHash: 'hash',
+      parserVersion: fb2ParserVersion - 1,
+      wordCount: 8,
+    );
+    await repo.savePosition(
+      row.id,
+      ReadingPosition(
+        wordIndex: 4,
+        anchor: TextAnchor(
+          sectionIndex: 0,
+          blockIndex: 0,
+          charOffset: text.indexOf('пять'),
+        ),
+      ),
+    );
+
+    final opened = await BookOpener(repo).open(row.id);
+
+    expect(opened.tokens.textOf(opened.wordIndex), 'пять');
+  });
+
   test('a position from an older tokenizer moves by its anchor', () async {
     const text = 'Вот полуавтоматы-получеловеки идут домой.';
     const content = BookContent(
