@@ -119,6 +119,18 @@ final class StatsRepository {
             ..orderBy([(r) => OrderingTerm.asc(r.day)]))
           .get();
 
+  /// All reading rows, again after every write.
+  Stream<List<ReadingDelta>> watchReadingDays() => _db
+      .select(_db.readingDays)
+      .watch()
+      .map((rows) => [for (final r in rows) r.toDelta()]);
+
+  /// All pace rows, again after every write.
+  Stream<List<PaceDelta>> watchPaceDays() => _db
+      .select(_db.paceDays)
+      .watch()
+      .map((rows) => [for (final r in rows) r.toDelta()]);
+
   /// Forgets all statistics (the debug menu, ADR 0009 п. 8).
   Future<void> clear() => _db.transaction(() async {
     await _db.delete(_db.readingDays).go();

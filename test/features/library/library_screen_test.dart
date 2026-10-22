@@ -15,6 +15,7 @@ import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_screen.dart';
 import 'package:book_app/features/library/folders_screen.dart';
 import 'package:book_app/features/library/library_screen.dart';
+import 'package:book_app/features/stats/stats_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:drift/drift.dart'
@@ -291,6 +292,22 @@ void main() {
     await tester.fling(find.byType(ShelfBar), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
     expect(scans, 1);
+  });
+
+  testWidgets('the tab "Статистика": empty at first, leads to the books', (
+    tester,
+  ) async {
+    await pumpLibrary(tester, books: [_book(1, title: 'Война и мир')]);
+    await tester.tap(find.text('Статистика'));
+    await settleUntil(tester, find.byType(StatsView));
+    await settleUntil(tester, find.text('Здесь появятся ваши цифры'));
+    // The add button goes away with an animation.
+    await tester.pumpAndSettle();
+    expect(find.text('Здесь появятся ваши цифры'), findsOneWidget);
+    expect(find.text('Добавить книгу'), findsNothing);
+    await tester.tap(find.text('Открыть книгу'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfBar), findsOneWidget);
   });
 
   testWidgets('the folder button opens "Папки"', (tester) async {

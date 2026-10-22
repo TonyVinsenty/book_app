@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:book_app/app/notice.dart';
+import 'package:book_app/app/pill_tabs.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/book/import/book_importer.dart';
 import 'package:book_app/data/folders/folder_scanner.dart';
@@ -13,6 +14,7 @@ import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/collection_pick_screen.dart';
 import 'package:book_app/features/library/collection_screen.dart';
+import 'package:book_app/features/stats/stats_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:flutter/material.dart';
@@ -20,8 +22,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// The tabs "Книги" (statuses, list or grid, "Продолжить", the "Add book"
-/// button) and "Подборки" (stage 9.11, mockup `docs/design/library-v2.html`,
-/// variant Б).
+/// button), "Подборки" (stage 9.11, mockup `docs/design/library-v2.html`,
+/// variant Б) and "Статистика" (ADR 0009 п. 6).
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
@@ -108,13 +110,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         child: Column(
           children: [
             const _BackToBook(),
-            _Tabs(
+            PillTabs(
+              tabs: {
+                _Tab.books: l10n.libraryTabBooks,
+                _Tab.collections: l10n.libraryTabCollections,
+                _Tab.stats: l10n.libraryTabStats,
+              },
               selected: _tab,
               onChanged: (tab) => setState(() => _tab = tab),
             ),
             if (queue.busy) _ImportProgress(queue: queue),
             Expanded(
               child: switch (view) {
+                _ when _tab == _Tab.stats => StatsView(
+                  onOpenBooks: () => setState(() => _tab = _Tab.books),
+                ),
                 AsyncData(:final value) when books && value.libraryIsEmpty =>
                   EmptyMessage(
                     title: l10n.libraryEmpty,
@@ -173,74 +183,7 @@ class _BackToBook extends ConsumerWidget {
   }
 }
 
-enum _Tab { books, collections }
-
-/// "Книги" | "Подборки".
-class _Tabs extends StatelessWidget {
-  const _Tabs({required this.selected, required this.onChanged});
-
-  final _Tab selected;
-  final ValueChanged<_Tab> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final colors = context.readingColors;
-    Widget tab(_Tab tab, String name) {
-      final on = tab == selected;
-      return Expanded(
-        child: Semantics(
-          selected: on,
-          button: true,
-          child: Material(
-            color: on ? colors.accent : Colors.transparent,
-            shape: const StadiumBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: on ? null : () => onChanged(tab),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w700,
-                        color: on ? colors.background : colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-      padding: const EdgeInsets.all(4),
-      decoration: ShapeDecoration(
-        color: colors.surface,
-        shape: const StadiumBorder(),
-      ),
-      child: Row(
-        children: [
-          tab(_Tab.books, l10n.libraryTabBooks),
-          tab(_Tab.collections, l10n.libraryTabCollections),
-        ],
-      ),
-    );
-  }
-}
+enum _Tab { books, collections, stats }
 
 /// "Продолжить", the status button with the look and order buttons, then
 /// the books; all of it scrolls together.

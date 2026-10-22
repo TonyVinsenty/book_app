@@ -65,11 +65,35 @@ const paceStepWpm = 50;
 /// Fewer words at a step tell nothing about it.
 const minWordsPerStep = 1500;
 
-/// The comfortable pace: the mode read most in [rows] (the last 90 days)
+/// Days the comfortable pace is taken from, whatever the period shown.
+const paceDays = 90;
+
+/// The comfortable pace of [mode] and what it is found from.
+final class ComfortablePace {
+  const ComfortablePace({
+    required this.mode,
+    required this.wpm,
+    required this.rates,
+    required this.limit,
+  });
+
+  final SpeedMode mode;
+
+  /// The step, words per minute.
+  final int wpm;
+
+  /// Backs and pauses per 100 words by step, slowest first.
+  final Map<int, double> rates;
+
+  /// Rates above it are "too fast".
+  final double limit;
+}
+
+/// The comfortable pace: the mode read most in [rows] (the last [paceDays])
 /// and the fastest step of it where the backs and pauses per 100 words stay
 /// within max(2 × r_min, r_min + 1); null — fewer than 2 steps with
 /// [minWordsPerStep].
-({SpeedMode mode, int wpm})? comfortablePace(Iterable<PaceDelta> rows) {
+ComfortablePace? comfortablePace(Iterable<PaceDelta> rows) {
   final wordsOf = <SpeedMode, int>{};
   for (final r in rows) {
     wordsOf[r.mode] = (wordsOf[r.mode] ?? 0) + r.words;
@@ -87,8 +111,10 @@ const minWordsPerStep = 1500;
     );
   }
   final rates = {
-    for (final MapEntry(key: step, value: s) in steps.entries)
-      if (s.words >= minWordsPerStep) step: s.signals / s.words * 100,
+    for (final step in steps.keys.toList()..sort())
+      if (steps[step]! case (:final words, :final signals)
+          when words >= minWordsPerStep)
+        step: signals / words * 100,
   };
   if (rates.length < 2) return null;
   final rMin = rates.values.reduce(math.min);
@@ -97,7 +123,7 @@ const minWordsPerStep = 1500;
       .where((e) => e.value <= limit)
       .map((e) => e.key)
       .reduce(math.max);
-  return (mode: mode, wpm: wpm);
+  return ComfortablePace(mode: mode, wpm: wpm, rates: rates, limit: limit);
 }
 
 /// The mode a book is read in most, by time; a new book — by eye.

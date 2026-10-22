@@ -1,5 +1,6 @@
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/features/stats/stats_format.dart';
+import 'package:book_app/features/stats/stats_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/stats/book_stats.dart';
 import 'package:flutter/material.dart';
@@ -136,6 +137,16 @@ class BookStatsSheet extends StatelessWidget {
                     ? l10n.statsNotFaster
                     : null,
               ),
+            ),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              // Over the sheet: back returns to it.
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const StatsScreen()),
+              ),
+              child: Text(l10n.bookStatsAll),
             ),
           ],
         ),

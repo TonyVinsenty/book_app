@@ -15,6 +15,7 @@ import 'package:book_app/data/speed_settings.dart';
 import 'package:book_app/data/stats_repository.dart';
 import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/platform/share_channel.dart';
+import 'package:book_app/stats/stats_records.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -70,6 +71,16 @@ final collectionLinksProvider = StreamProvider<List<BookCollectionRow>>(
 /// Reading statistics by day (ADR 0009).
 final statsRepositoryProvider = Provider<StatsRepository>(
   (ref) => StatsRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// All reading rows, for the statistics screen.
+final readingDaysProvider = StreamProvider<List<ReadingDelta>>(
+  (ref) => ref.watch(statsRepositoryProvider).watchReadingDays(),
+);
+
+/// All pace rows, for the comfortable pace.
+final paceDaysProvider = StreamProvider<List<PaceDelta>>(
+  (ref) => ref.watch(statsRepositoryProvider).watchPaceDays(),
 );
 
 /// The clock of the reading meters; tests put a fake one here.
