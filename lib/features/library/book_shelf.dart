@@ -251,56 +251,58 @@ class ShelfBar extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
       child: Row(
         children: [
-          Flexible(
-            child: Material(
-              color: on ? colors.surface : Colors.transparent,
-              shape: StadiumBorder(
-                side: BorderSide(
-                  color: on
-                      ? colors.accent
-                      : colors.text.withValues(alpha: 0.14),
-                  width: 1.5,
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Material(
+                color: on ? colors.surface : Colors.transparent,
+                shape: StadiumBorder(
+                  side: BorderSide(
+                    color: on
+                        ? colors.accent
+                        : colors.text.withValues(alpha: 0.14),
+                    width: 1.5,
+                  ),
                 ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => unawaited(_chooseStatus(context)),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 44),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 6, 10, 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            l10n.libraryFilterButton(
-                              statusFilterName(l10n, status),
-                              view.books.length,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: on ? colors.accent : colors.text,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => unawaited(_chooseStatus(context)),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 6, 10, 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              l10n.libraryFilterButton(
+                                statusFilterName(l10n, status),
+                                view.books.length,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: on ? colors.accent : colors.text,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.expand_more,
-                          size: 20,
-                          color: colors.textSecondary,
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.expand_more,
+                            size: 20,
+                            color: colors.textSecondary,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          const Spacer(),
           IconButton(
             tooltip: l10n.folders,
             color: colors.textSecondary,
