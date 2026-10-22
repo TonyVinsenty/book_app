@@ -322,6 +322,11 @@
     "description": "Page number in the whole book, at the bottom of the reader; either number may be approximate (readerApproxNumber)",
     "placeholders": {"page": {"type": "String"}, "count": {"type": "String"}}
   },
+  "readerPageAndPercent": "{page} · {percent} %",
+  "@readerPageAndPercent": {
+    "description": "Bottom of the reader page: the page label (readerPageOfBook) and the whole percent of the book read",
+    "placeholders": {"page": {"type": "String"}, "percent": {"type": "int"}}
+  },
   "readerBookPages": "Страницы книги",
   "@readerBookPages": {
     "description": "Reader bottom panel: name of the slider over the pages of the whole book, for screen readers"

@@ -9,6 +9,7 @@ import 'package:book_app/book/model/table_of_contents.dart';
 import 'package:book_app/book/tokenizer/token.dart';
 import 'package:book_app/data/book_opener.dart';
 import 'package:book_app/data/book_pages.dart';
+import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
@@ -855,9 +856,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
             final chapter = layout;
             final guide = _guide;
             final numbers = _pageNumbers(l10n);
-            final pageLabel = l10n.readerPageOfBook(
-              numbers.page,
-              numbers.total,
+            // The share read is always shown by the page (owner, 11а.3).
+            final pageLabel = l10n.readerPageAndPercent(
+              l10n.readerPageOfBook(numbers.page, numbers.total),
+              percentOf(_word, widget.opened.tokens.length),
             );
             return Stack(
               children: [

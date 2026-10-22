@@ -107,9 +107,12 @@ BookStatus statusOf(BookRow book) {
 /// never opened.
 int? percentRead(BookRow book) {
   if (book.openedAt == null) return null;
-  if (book.wordCount <= 0) return 0;
-  return (book.positionWord * 100 ~/ book.wordCount).clamp(0, 100);
+  return percentOf(book.positionWord, book.wordCount);
 }
+
+/// Whole percent of [wordCount] words read up to [word], rounded down.
+int percentOf(int word, int wordCount) =>
+    wordCount <= 0 ? 0 : (word * 100 ~/ wordCount).clamp(0, 100);
 
 /// The books of [filter] in [sort] order. [links] — all book-in-collection
 /// rows.

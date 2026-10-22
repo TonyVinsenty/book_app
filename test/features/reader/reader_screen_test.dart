@@ -12,6 +12,7 @@ import 'package:book_app/data/book_pages.dart';
 import 'package:book_app/data/book_repository.dart';
 import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
+import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
@@ -150,6 +151,12 @@ void main() {
   ReaderViewState reader(WidgetTester tester) =>
       tester.state<ReaderViewState>(find.byType(ReaderView));
 
+  /// « · N %» after the page number: the share read up to the shown page.
+  String percent(WidgetTester tester) {
+    final r = reader(tester);
+    return ' · ${percentOf(r.page.firstWord, r.widget.opened.tokens.length)} %';
+  }
+
   Future<void> tapAt(WidgetTester tester, double x) async {
     final size = tester.getSize(find.byType(ReaderView));
     await tester.tapAt(Offset(size.width * x, size.height / 2));
@@ -192,11 +199,12 @@ void main() {
     expect(book.isComplete, isTrue);
     final total = book.pageCount.value;
     expect(total, greaterThan(pages + reader(tester).layout.pages.length));
-    expect(find.text('стр. ${pages + 1} / $total'), findsOne);
+    expect(find.text('стр. ${pages + 1} / $total${percent(tester)}'), findsOne);
+    expect(percent(tester), isNot(' · 0 %'));
 
     await tapAt(tester, 0.05);
     expect(reader(tester).layout.sectionIndex, 0);
-    expect(find.text('стр. $pages / $total'), findsOneWidget);
+    expect(find.text('стр. $pages / $total${percent(tester)}'), findsOneWidget);
 
     // The middle shows the panels; «Библиотека» returns to the library.
     await tapAt(tester, 0.5);
@@ -401,8 +409,8 @@ void main() {
     expect(find.text('Глава 1'), findsOneWidget);
     expect(
       find.text(
-        'стр. 5 / ${reader(tester).pagination.pageCount.value} · '
-        'до конца главы ${pages - 5} стр.',
+        'стр. 5 / ${reader(tester).pagination.pageCount.value}'
+        '${percent(tester)} · до конца главы ${pages - 5} стр.',
       ),
       findsOneWidget,
     );
@@ -1422,7 +1430,10 @@ void main() {
     );
     expect(pages.current, 5);
     await tapAt(tester, 0.5);
-    expect(find.text('стр. ${pages.current} / ${pages.total}'), findsOneWidget);
+    expect(
+      find.text('стр. ${pages.current} / ${pages.total}${percent(tester)}'),
+      findsOneWidget,
+    );
     await closeApp(tester);
   });
 
