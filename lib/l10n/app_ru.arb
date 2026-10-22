@@ -374,6 +374,10 @@
   "@readerContents": {
     "description": "Reader top panel button and the title of the table of contents"
   },
+  "readerImageClose": "Закрыть картинку",
+  "@readerImageClose": {
+    "description": "Screen reader label of the picture shown over the whole screen: a tap closes it"
+  },
   "readerFontSmaller": "Шрифт меньше",
   "@readerFontSmaller": {
     "description": "Reader bottom panel button A−: smaller book text"

@@ -5,7 +5,7 @@ import 'package:book_app/layout/chapter_layout.dart';
 import 'package:flutter/material.dart';
 
 /// Night pictures are a little darker, not to glare (ADR 0008 п. 6).
-const _nightDim = Color(0x2E000000);
+const nightImageDim = Color(0x2E000000);
 
 /// The pictures of [page] at their places over the page text (ADR 0008
 /// п. 6): decoded no larger than shown, a frame with an icon if the file
@@ -44,7 +44,7 @@ class PageImages extends StatelessWidget {
                 image: pageImageProvider(imagesDir, image, ratio),
                 fit: BoxFit.fill,
                 gaplessPlayback: true,
-                color: dim ? _nightDim : null,
+                color: dim ? nightImageDim : null,
                 colorBlendMode: dim ? BlendMode.srcATop : null,
                 excludeFromSemantics: true,
                 errorBuilder: (_, _, _) => DecoratedBox(
@@ -93,4 +93,12 @@ void precachePageImages(
       );
     }
   }
+}
+
+/// The picture of [page] under [point] (page coordinates), if any.
+PageImage? pageImageAt(ChapterLayout chapter, int page, Offset point) {
+  for (final image in chapter.pageImages(page)) {
+    if (image.rect.contains(point)) return image;
+  }
+  return null;
 }

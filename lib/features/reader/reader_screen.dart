@@ -18,6 +18,7 @@ import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
+import 'package:book_app/features/reader/image_viewer.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
@@ -793,6 +794,22 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _previous();
     } else if (x > width * 2 / 3) {
       _next();
+    } else if (pageImageAt(
+          layout,
+          _page,
+          details.localPosition - Offset(_margin.left, _margin.top),
+        )
+        case final image?) {
+      // A tap on a picture opens it over the whole screen (owner, 12.0).
+      unawaited(
+        ImageViewerScreen.open(
+          context,
+          file: File('${_imagesDir.path}/${image.assetId}'),
+          width: image.width,
+          height: image.height,
+          dim: Theme.of(context).brightness == Brightness.dark,
+        ),
+      );
     } else {
       _setPanels(true);
     }

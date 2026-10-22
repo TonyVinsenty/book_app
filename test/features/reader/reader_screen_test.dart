@@ -21,6 +21,7 @@ import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
 import 'package:book_app/features/reader/guide_panel.dart';
+import 'package:book_app/features/reader/image_viewer.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
@@ -1542,6 +1543,15 @@ void main() {
     }
     expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    // A tap on the picture opens it over the whole screen, not the panels.
+    await tapAt(tester, 0.5);
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageViewerScreen), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageViewerScreen), findsNothing);
+    expect(reader(tester).panelsShown, isFalse);
 
     // On to the text: the place is its first word; back to the cover.
     await tapAt(tester, 0.95);
