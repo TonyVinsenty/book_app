@@ -285,6 +285,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   @visibleForTesting
   BookPagination get pagination => _pagination!;
 
+  /// The word the place is kept on.
+  @visibleForTesting
+  int get placeWord => _word;
+
   @visibleForTesting
   int? get litWord => _litWord;
 
@@ -542,6 +546,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         (_word == 0 && _page == 0 ? (section: _section, page: 0) : null);
     _stripTarget = null;
     _stripPlaced = true;
+    _stripScrolled = false;
     var map = _strip = _newStrip(_section);
     final offset = target != null
         ? map.pageTop(target.section, target.page) - map.windowTop
@@ -614,9 +619,19 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (_panelsShown) _rebuild();
   }
 
-  /// The scroll stopped: the place is saved, chapters far away go.
-  bool _onStripEnd(ScrollEndNotification end) {
-    if (end.depth != 0) return false;
+  /// The strip moved by a finger or a side tap since it was placed.
+  bool _stripScrolled = false;
+
+  bool _onStripNotification(ScrollNotification note) {
+    if (note.depth != 0) return false;
+    if (note is UserScrollNotification) _stripScrolled = true;
+    if (note is ScrollEndNotification) _onStripEnd();
+    return false;
+  }
+
+  /// The scroll stopped: the place is saved, chapters far away go; the last
+  /// line of the book seen after scrolling marks it read (п. 11).
+  void _onStripEnd() {
     // A touch stops a moving strip within its own pointer-down dispatch.
     _stripEndedNow = true;
     scheduleMicrotask(() => _stripEndedNow = false);
@@ -633,9 +648,20 @@ class ReaderViewState extends ConsumerState<ReaderView>
       );
     }
     if (_statsBuffer.due) _flushStats();
+    final map = _strip;
+    final scroll = _stripScroll;
+    if (_stripScrolled && map != null && scroll != null && scroll.hasClients) {
+      final last = map.sectionCount - 1;
+      final end = map.chapterTop(last) + map.chapterExtent(last);
+      if (map.pagesOf(last) != null &&
+          end <= scroll.offset + map.windowBottom + 1) {
+        unawaited(
+          ref.read(bookRepositoryProvider).markFinished(widget.opened.book.id),
+        );
+      }
+    }
     // Not within a frame: the release rebuilds.
     Timer.run(_releaseFarChapters);
-    return false;
   }
 
   /// Chapters with no tiles in or near the window go (п. 5); the strip keeps
@@ -772,6 +798,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ? map.forward(position.pixels)
         : map.backward(position.pixels);
     if (to == null) return;
+    _stripScrolled = true;
     final target = to.clamp(position.minScrollExtent, position.maxScrollExtent);
     if (MediaQuery.disableAnimationsOf(context)) {
       scroll.jumpTo(target);
@@ -840,12 +867,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// [turned]: reached by turning the page forward, not by a jump.
+  /// [turned]: reached by turning the page forward, not by a jump; [word]
+  /// — the place on the page, its first word by default (the strip shows its
+  /// row at the top, otherwise the page's top).
   void _show(
     int section,
     int pageIndex, {
     bool keepReturn = false,
     bool turned = false,
+    int? word,
   }) {
     // A jump (contents, slider) does not carry a slide over; a turn starts
     // its own after this.
@@ -857,10 +887,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
     setState(() {
       _section = section;
       _page = pageIndex;
-      _word = shown.firstWord;
+      _word = word ?? shown.firstWord;
       if (!keepReturn) _returnTo = null;
       if (_stripOn) {
-        _stripTarget = (section: section, page: pageIndex);
+        _stripTarget = word == null
+            ? (section: section, page: pageIndex)
+            : null;
         _stripPlaced = false;
       }
     });
@@ -996,7 +1028,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     // The section is kept with the word: a page without words has the next
     // chapter's first word, or none at the book's end.
     final (:section, :word, page: _) = _returnTo!;
-    _show(section, _layoutOf(section).pageOfWord(word));
+    _show(section, _layoutOf(section).pageOfWord(word), word: word);
   }
 
   /// The note of the label at [position] (in the tap area), if any.
@@ -1676,30 +1708,26 @@ class ReaderViewState extends ConsumerState<ReaderView>
                                   // After the strip's own hold of the touch.
                                   onPointerDown: (_) =>
                                       _stripStopped = _stripEndedNow,
-                                  child:
-                                      NotificationListener<
-                                        ScrollEndNotification
-                                      >(
-                                        onNotification: _onStripEnd,
-                                        child: PageStrip(
-                                          key: ObjectKey(_stripScroll),
-                                          map: _strip!,
-                                          controller: _stripScroll!,
-                                          // While the highlight plays, swipes
-                                          // change its speed (п. 10).
-                                          physics:
-                                              guide != null && guide.isPlaying
-                                              ? const NeverScrollableScrollPhysics()
-                                              : null,
-                                          tile: (section, pages, index) =>
-                                              _stripTile(
-                                                pages as ChapterLayout,
-                                                index,
-                                                colors,
-                                                dark: dark,
-                                              ),
-                                        ),
-                                      ),
+                                  child: NotificationListener<ScrollNotification>(
+                                    onNotification: _onStripNotification,
+                                    child: PageStrip(
+                                      key: ObjectKey(_stripScroll),
+                                      map: _strip!,
+                                      controller: _stripScroll!,
+                                      // While the highlight plays, swipes
+                                      // change its speed (п. 10).
+                                      physics: guide != null && guide.isPlaying
+                                          ? const NeverScrollableScrollPhysics()
+                                          : null,
+                                      tile: (section, pages, index) =>
+                                          _stripTile(
+                                            pages as ChapterLayout,
+                                            index,
+                                            colors,
+                                            dark: dark,
+                                          ),
+                                    ),
+                                  ),
                                 ),
                               ),
                               ValueListenableBuilder(

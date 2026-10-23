@@ -2308,4 +2308,64 @@ void main() {
     expect(offset(), closeTo(held, 1), reason: 'the tap only stopped it');
     await closeApp(tester);
   });
+
+  testWidgets('14.14: in the strip A+ A+ A− A− and the mode keep the top '
+      'row; speed reading comes back to its word; the end marks the book '
+      'read', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    final notifier = container.read(readingSettingsProvider.notifier);
+    Future<void> change(ReadingSettings Function(ReadingSettings) edit) async {
+      notifier.set(edit(container.read(readingSettingsProvider)));
+      await tester.pumpAndSettle();
+    }
+
+    await change((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    for (var i = 0; i < 5; i++) {
+      await tester.drag(strip, const Offset(0, -470));
+      await tester.pumpAndSettle();
+    }
+    final word = reader(tester).placeWord;
+    expect(word, greaterThan(reader(tester).page.firstWord), reason: 'mid-page');
+    const scale = TextScaler.noScaling;
+    await change((s) => s.larger(scale));
+    expect(reader(tester).placeWord, word);
+    await change((s) => s.larger(scale));
+    await change((s) => s.smaller(scale));
+    await change((s) => s.smaller(scale));
+    expect(reader(tester).placeWord, word, reason: 'the same top row');
+    await change((s) => s.copyWith(verticalScroll: false));
+    await change((s) => s.copyWith(verticalScroll: true));
+    expect(reader(tester).placeWord, word, reason: 'the mode keeps it');
+
+    // Speed reading from the top row comes back with its row at the top.
+    await tester.tap(find.byType(CustomScrollView), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Скорочтение'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    final read = rsvp(tester).widget.startWord;
+    await tapRsvp(tester);
+    await tester.pump(const Duration(seconds: 3));
+    await tapRsvp(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await settle(tester);
+    final back = reader(tester).placeWord;
+    expect(back, greaterThan(read));
+    expect(reader(tester).litWord, back);
+
+    expect(await finishedAt(tester), isNull);
+    for (var i = 0; i < 30 && await finishedAt(tester) == null; i++) {
+      await tester.fling(strip, const Offset(0, -500), 5000);
+      await tester.pumpAndSettle();
+      await settle(tester);
+    }
+    expect(await finishedAt(tester), isNotNull, reason: 'scrolled to the end');
+    await closeApp(tester);
+  });
 }
