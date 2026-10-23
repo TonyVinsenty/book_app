@@ -5,8 +5,9 @@ import 'package:book_app/stats/stats_overview.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// A month from Monday: a day the darker, the longer it was read; today
-/// outlined, the days to come only drawn round.
+/// A month from Monday, in the palette accent (owner, 14.6 B4): a day the
+/// darker, the longer it was read; today outlined, the days to come only
+/// drawn round.
 class ReadingCalendar extends StatelessWidget {
   const ReadingCalendar({
     super.key,
@@ -82,7 +83,7 @@ class ReadingCalendar extends StatelessWidget {
     final now = DateUtils.isSameDay(day.from, today);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: level == 0 ? null : colors.play.withValues(alpha: _alpha[level]),
+        color: level == 0 ? null : colors.eye.withValues(alpha: _alpha[level]),
         borderRadius: BorderRadius.circular(7),
         border: now
             ? Border.all(color: text, width: 2)
