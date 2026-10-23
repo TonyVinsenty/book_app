@@ -170,10 +170,14 @@ class BookPagination extends ChangeNotifier {
   int _pagesUpTo(int section) {
     var pages = 0;
     for (var s = 0; s < section; s++) {
-      pages += _firstWords[s]?.length ?? _estimate(s);
+      pages += pagesIn(s);
     }
     return pages;
   }
+
+  /// Pages of [section]: known once it is split, estimated before.
+  int pagesIn(int section) =>
+      _firstWords[section]?.length ?? _estimate(section);
 
   /// Pages of a chapter not split yet: its length at the density of the
   /// chapters split so far (or a rough guess from the page size).

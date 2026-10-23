@@ -24,6 +24,7 @@ import 'package:book_app/features/reader/guide_panel.dart';
 import 'package:book_app/features/reader/image_viewer.dart';
 import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
+import 'package:book_app/features/reader/page_strip.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/features/stats/book_stats_sheet.dart';
@@ -33,6 +34,7 @@ import 'package:book_app/layout/book_pagination.dart';
 import 'package:book_app/layout/chapter_layout.dart';
 import 'package:book_app/layout/page_cache.dart';
 import 'package:book_app/layout/page_style.dart';
+import 'package:book_app/layout/strip_map.dart';
 import 'package:book_app/platform/screen_channel.dart';
 import 'package:book_app/platform/system_bars.dart';
 import 'package:book_app/speed/guide.dart';
@@ -243,6 +245,32 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Screens open over the page: speed reading, contents, a note, a picture.
   int _covers = 0;
 
+  /// The pages as a seamless scroll (ADR 0003, addendum 5), while on: its
+  /// map around the chapter [StripMap.center] and its scroll.
+  bool _stripOn = false;
+  StripMap? _strip;
+  ScrollController? _stripScroll;
+  double _stripBottom = 0;
+
+  /// The strip is placed again at the next build: on [_stripTarget]'s top,
+  /// or with the row of [_word] at the window top.
+  bool _stripPlaced = false;
+  ({int section, int page})? _stripTarget;
+
+  /// Content heights of the chapters laid out at this layout, kept after
+  /// they are let go: the scroll does not move (ADR 0003, addendum 5 п. 5).
+  final _chapterExtents = <int, double>{};
+
+  /// The top row (section, page, row) as last placed or seen: another one
+  /// moves the place.
+  (int, int, int)? _stripTop;
+
+  /// The place last saved from the strip.
+  int _stripSaved = 0;
+
+  /// Bumped as the top row moves: the footer follows without a rebuild.
+  final _stripMoved = ValueNotifier<int>(0);
+
   @visibleForTesting
   ChapterLayout get layout => _layoutOf(_section);
 
@@ -328,6 +356,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guideTicker?.dispose();
     _guideWord.dispose();
     _lifecycle.dispose();
+    _stripScroll?.dispose();
+    _stripMoved.dispose();
     _pageMeter.close();
     _guideMeter?.stop();
     _flushStats();
@@ -416,12 +446,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final cached = _layouts[section];
     if (cached != null) return cached;
     // Keep only the neighbours of the chapter asked for, and the shown one:
-    // the page beside a turn may be chapters away (empty ones between).
-    _layouts.removeWhere((s, layout) {
-      final far = (s - section).abs() > 1 && s != _section;
-      if (far) layout.dispose();
-      return far;
-    });
+    // the page beside a turn may be chapters away (empty ones between). The
+    // strip lets its chapters go itself ([_releaseFarChapters]).
+    if (!_stripOn) {
+      _layouts.removeWhere((s, layout) {
+        final far = (s - section).abs() > 1 && s != _section;
+        if (far) layout.dispose();
+        return far;
+      });
+    }
     final layout = ChapterLayout.build(
       tokens: widget.opened.tokens,
       sectionIndex: section,
@@ -431,7 +464,196 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _pagination!.addChapter(section, [
       for (final page in layout.pages) page.firstWord,
     ]);
+    var extent = 0.0;
+    for (var p = 0; p < layout.pageCount; p++) {
+      extent += layout.pageExtent(p);
+    }
+    _chapterExtents[section] = extent;
     return _layouts[section] = layout;
+  }
+
+  /// The strip around [center] for the chapters laid out now; others
+  /// take their height once laid out, or their pages × the mean page.
+  StripMap _newStrip(int center) {
+    final pagination = _pagination!;
+    var height = 0.0;
+    var pages = 0;
+    for (final MapEntry(key: s, value: h) in _chapterExtents.entries) {
+      height += h;
+      pages += pagination.pagesIn(s);
+    }
+    final mean = pages == 0 ? _pageSize!.height : height / pages;
+    final sections = widget.opened.tokens.content.sections;
+    return StripMap(
+      center: center,
+      sectionCount: sections.length,
+      laidOut: Map.of(_layouts),
+      estimate: (s) => _chapterExtents[s] ?? pagination.pagesIn(s) * mean,
+      continued: (s) => sections[s].continued,
+      // Three lines, as a chapter starts in a book (п. 2).
+      chapterGap: 3 * _style!.bodyLine,
+      windowTop: readerTopMargin,
+      windowBottom: _stripBottom,
+    );
+  }
+
+  /// Turns the strip on or off; the place stays on [_word] (п. 12).
+  void _switchStrip(bool on) {
+    _stripOn = on;
+    _settleTurn();
+    _stripPlaced = false;
+    if (!on) {
+      _dropStripScroll();
+      _strip = null;
+    }
+  }
+
+  void _dropStripScroll() {
+    final scroll = _stripScroll;
+    if (scroll == null) return;
+    _stripScroll = null;
+    scroll.removeListener(_onStripScroll);
+    // Its scroll view goes in the next build.
+    SchedulerBinding.instance.addPostFrameCallback((_) => scroll.dispose());
+  }
+
+  /// Keeps the strip for a window down to [bottom]: placed anew on a jump,
+  /// a new layout or window, otherwise refreshed with the chapters now.
+  void _keepStrip(double bottom) {
+    if (bottom != _stripBottom) {
+      _stripBottom = bottom;
+      _stripPlaced = false;
+    }
+    if (_stripPlaced) {
+      _strip = _newStrip(_strip!.center);
+      return;
+    }
+    // A new strip around the chapter shown (п. 7): a page asked for at the
+    // window top, or the row of the place word; the book's start shows its
+    // first page, the cover too.
+    final target =
+        _stripTarget ??
+        (_word == 0 && _page == 0 ? (section: _section, page: 0) : null);
+    _stripTarget = null;
+    _stripPlaced = true;
+    var map = _strip = _newStrip(_section);
+    final offset = target != null
+        ? map.pageTop(target.section, target.page) - map.windowTop
+        : map.offsetOf(_section, _word) ?? -map.windowTop;
+    _dropStripScroll();
+    _stripScroll = ScrollController(initialScrollOffset: offset)
+      ..addListener(_onStripScroll);
+    _layOutAround(offset);
+    map = _strip!;
+    final top = map.topRow(offset);
+    _stripTop = top == null ? null : (top.section, top.page, top.row);
+    _stripSaved = _word;
+  }
+
+  /// Lays out the chapters within a screen of the window (п. 5); true if
+  /// any was.
+  bool _layOutAround(double offset) {
+    var laid = false;
+    while (true) {
+      final map = _strip!;
+      final reach = map.windowHeight;
+      final first = map.sectionAt(offset + map.windowTop - reach);
+      final last = map.sectionAt(offset + map.windowBottom + reach);
+      final missing = [
+        for (var s = first; s <= last; s++)
+          if (map.pagesOf(s) == null) s,
+      ];
+      if (missing.isEmpty) return laid;
+      missing.forEach(_layoutOf);
+      _strip = _newStrip(map.center);
+      laid = true;
+    }
+  }
+
+  void _onStripScroll() {
+    final scroll = _stripScroll;
+    if (scroll == null || !scroll.hasClients || _strip == null) return;
+    final offset = scroll.offset;
+    if (_layOutAround(offset)) _rebuild();
+    _followStrip(offset);
+  }
+
+  /// A rebuild, after the frame if the scroll moved while laid out.
+  void _rebuild() {
+    final binding = SchedulerBinding.instance;
+    if (binding.schedulerPhase != SchedulerPhase.persistentCallbacks) {
+      return setState(() {});
+    }
+    binding.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  /// The page of the top row is the page shown: its number, the place and
+  /// the page meter follow it (п. 7, 11).
+  void _followStrip(double offset) {
+    final top = _strip!.topRow(offset);
+    if (top == null) return;
+    final id = (top.section, top.page, top.row);
+    if (id == _stripTop) return;
+    _stripTop = id;
+    _word = top.firstWord;
+    _stripMoved.value++;
+    if (top.section != _section || top.page != _page) {
+      _section = top.section;
+      _page = top.page;
+      _returnTo = null;
+      if (_guide == null) _openPage();
+    }
+    if (_panelsShown) _rebuild();
+  }
+
+  /// The scroll stopped: the place is saved, chapters far away go.
+  bool _onStripEnd(ScrollEndNotification end) {
+    if (end.depth != 0) return false;
+    if (_word != _stripSaved) {
+      _stripSaved = _word;
+      _readOn();
+      unawaited(
+        ref
+            .read(bookRepositoryProvider)
+            .savePosition(
+              widget.opened.book.id,
+              widget.opened.tokens.positionOf(_word),
+            ),
+      );
+    }
+    if (_statsBuffer.due) _flushStats();
+    // Not within a frame: the release rebuilds.
+    Timer.run(_releaseFarChapters);
+    return false;
+  }
+
+  /// Chapters with no tiles in or near the window go (п. 5); the strip keeps
+  /// their heights. Disposed after the frame that drops their tiles.
+  void _releaseFarChapters() {
+    final map = _strip;
+    final scroll = _stripScroll;
+    if (!mounted || map == null || scroll == null || !scroll.hasClients) {
+      return;
+    }
+    final reach = 2 * map.windowHeight;
+    final first = map.sectionAt(scroll.offset - reach);
+    final last = map.sectionAt(scroll.offset + map.windowBottom + reach);
+    final far = [
+      for (final s in _layouts.keys)
+        if ((s < first || s > last) && s != map.center && s != _section) s,
+    ];
+    if (far.isEmpty) return;
+    final gone = [for (final s in far) _layouts.remove(s)!];
+    setState(() => _strip = _newStrip(map.center));
+    unawaited(
+      SchedulerBinding.instance.endOfFrame.then((_) {
+        for (final layout in gone) {
+          layout.dispose();
+        }
+      }),
+    );
   }
 
   /// New page size or style: lay out again and find the same word. The
@@ -443,6 +665,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final guided = guide != null && _onShownPage(guide.word);
     if (guided) _word = guide.word;
     _clearLayouts();
+    _chapterExtents.clear();
+    _stripPlaced = false;
     if (pageSize != _pageSize || !(_style?.sameLayoutAs(style) ?? false)) {
       _pagination?.dispose();
       final tokens = widget.opened.tokens;
@@ -600,6 +824,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _page = pageIndex;
       _word = shown.firstWord;
       if (!keepReturn) _returnTo = null;
+      if (_stripOn) {
+        _stripTarget = (section: section, page: pageIndex);
+        _stripPlaced = false;
+      }
     });
     if (guide == null) _openPage();
     if (_statsBuffer.due) _flushStats();
@@ -757,6 +985,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   );
 
   Future<void> _onLongPress(LongPressStartDetails details) async {
+    if (_stripOn) return;
     // A label is above long presses too (ADR 0008 п. 8).
     if (_guide?.isPlaying != true && !_panelsShown) {
       if (_noteAt(details.localPosition) case final id?) return _openNote(id);
@@ -1073,6 +1302,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _litWord = lit ? word : null;
       _litEnd = end;
       _returnTo = null;
+      _stripPlaced = false;
     });
     _openPage(from: end);
     _setPanels(false);
@@ -1117,6 +1347,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _settleTurn();
     final x = details.localPosition.dx;
     final guide = _guide;
+    if (_stripOn && guide == null && !_settingsShown) {
+      // The strip: the middle shows the panels, any tap hides them.
+      return _setPanels(!_panelsShown && x >= width / 3 && x <= width * 2 / 3);
+    }
     if (_settingsShown && !_panelsShown) {
       // The settings opened from the highlight's pause panel.
       setState(() => _settingsShown = false);
@@ -1306,6 +1540,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final secondary = Theme.of(context).textTheme.bodySmall
         ?.copyWith(color: colors.textSecondary);
     final dark = Theme.of(context).brightness == Brightness.dark;
+    if (settings.verticalScroll != _stripOn) {
+      _switchStrip(settings.verticalScroll);
+    }
     _syncPageMeter();
     return PopScope(
       // Back closes the panels first.
@@ -1329,6 +1566,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             final area = insets.deflateSize(constraints.biggest);
             final pageSize = readerPageOf(area, side);
             _relayoutIfNeeded(pageSize, style);
+            if (_stripOn) _keepStrip(area.height - readerFooterHeight);
             final chapter = layout;
             final guide = _guide;
             final numbers = _pageNumbers(l10n);
@@ -1341,9 +1579,23 @@ class ReaderViewState extends ConsumerState<ReaderView>
               ], _imagesDir);
             }
             // The percent read is always shown by the page (owner, 11а.3).
-            final pageLabel = l10n.readerPageAndPercent(
-              l10n.readerPageOfBook(numbers.page, numbers.total),
-              tenthPercentOf(_word, widget.opened.tokens.length),
+            String labelOf(({String page, String total}) numbers) =>
+                l10n.readerPageAndPercent(
+                  l10n.readerPageOfBook(numbers.page, numbers.total),
+                  tenthPercentOf(_word, widget.opened.tokens.length),
+                );
+            final pageLabel = labelOf(numbers);
+            Widget footerOf(String label) => SizedBox(
+              height: readerFooterHeight,
+              child: Center(
+                // A new speed shows here for a moment.
+                child: Text(
+                  _guideSpeedHint
+                      ? l10n.speedWordsPerMinute(_guidePace.wordsPerMinute)
+                      : label,
+                  style: secondary,
+                ),
+              ),
             );
             return Stack(
               children: [
@@ -1352,86 +1604,108 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (d) => _onTapUp(d, area.width),
-                    onHorizontalDragStart: _onDragStart,
-                    onHorizontalDragUpdate: _onDragUpdate,
-                    onHorizontalDragEnd: _onSwipe,
-                    onHorizontalDragCancel: _onDragCancel,
+                    // In the strip a swipe sideways does not turn (п. 8).
+                    onHorizontalDragStart: _stripOn ? null : _onDragStart,
+                    onHorizontalDragUpdate: _stripOn ? null : _onDragUpdate,
+                    onHorizontalDragEnd: _stripOn ? null : _onSwipe,
+                    onHorizontalDragCancel: _stripOn ? null : _onDragCancel,
                     onVerticalDragEnd: guide != null && guide.isPlaying
                         ? (d) => _onGuideSwipe(d, vertical: true)
                         : null,
                     onLongPressStart: _onLongPress,
-                    child: Padding(
-                      padding: _margin,
-                      child: Column(
-                        children: [
-                          _turning(
-                            pageSize,
-                            dark,
-                            colors,
-                            page: Semantics(
-                              container: true,
-                              label: chapter.pageText(_page),
-                              child: Stack(
-                                children: [
-                                  if (guide != null)
-                                    GuideLayer(
-                                      chapter: chapter,
-                                      page: _page,
-                                      word: _guideWord,
-                                      color: colors.highlight,
-                                    ),
-                                  RepaintBoundary(
-                                    child: CustomPaint(
-                                      size: pageSize,
-                                      painter: _PagePainter(
-                                        chapter,
-                                        _page,
-                                        lit: _litWord == null
-                                            ? const []
-                                            : _joinLines([
-                                                for (
-                                                  var w = _litWord!;
-                                                  w < _litEnd;
-                                                  w++
-                                                )
-                                                  ...chapter.wordBoxes(
-                                                    _page,
-                                                    w,
-                                                  ),
-                                              ]),
-                                        litColor: colors.highlight,
-                                        litAnimation: _lit,
+                    child: _stripOn
+                        ? Column(
+                            children: [
+                              Expanded(
+                                child:
+                                    NotificationListener<ScrollEndNotification>(
+                                      onNotification: _onStripEnd,
+                                      child: PageStrip(
+                                        key: ObjectKey(_stripScroll),
+                                        map: _strip!,
+                                        controller: _stripScroll!,
+                                        // While the highlight plays, swipes
+                                        // change its speed (п. 10).
+                                        physics:
+                                            guide != null && guide.isPlaying
+                                            ? const NeverScrollableScrollPhysics()
+                                            : null,
+                                        tile: (section, pages, index) =>
+                                            _stripTile(
+                                              pages as ChapterLayout,
+                                              index,
+                                              colors,
+                                              dark: dark,
+                                            ),
                                       ),
                                     ),
-                                  ),
-                                  PageImages(
-                                    chapter: chapter,
-                                    page: _page,
-                                    imagesDir: _imagesDir,
-                                    dim: dark,
-                                    frameColor: colors.textSecondary,
-                                  ),
-                                ],
                               ),
+                              ValueListenableBuilder(
+                                valueListenable: _stripMoved,
+                                builder: (context, _, _) =>
+                                    footerOf(labelOf(_pageNumbers(l10n))),
+                              ),
+                            ],
+                          )
+                        : Padding(
+                            padding: _margin,
+                            child: Column(
+                              children: [
+                                _turning(
+                                  pageSize,
+                                  dark,
+                                  colors,
+                                  page: Semantics(
+                                    container: true,
+                                    label: chapter.pageText(_page),
+                                    child: Stack(
+                                      children: [
+                                        if (guide != null)
+                                          GuideLayer(
+                                            chapter: chapter,
+                                            page: _page,
+                                            word: _guideWord,
+                                            color: colors.highlight,
+                                          ),
+                                        RepaintBoundary(
+                                          child: CustomPaint(
+                                            size: pageSize,
+                                            painter: _PagePainter(
+                                              chapter,
+                                              _page,
+                                              lit: _litWord == null
+                                                  ? const []
+                                                  : _joinLines([
+                                                      for (
+                                                        var w = _litWord!;
+                                                        w < _litEnd;
+                                                        w++
+                                                      )
+                                                        ...chapter.wordBoxes(
+                                                          _page,
+                                                          w,
+                                                        ),
+                                                    ]),
+                                              litColor: colors.highlight,
+                                              litAnimation: _lit,
+                                            ),
+                                          ),
+                                        ),
+                                        PageImages(
+                                          chapter: chapter,
+                                          page: _page,
+                                          imagesDir: _imagesDir,
+                                          dim: dark,
+                                          frameColor: colors.textSecondary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                footerOf(pageLabel),
+                              ],
                             ),
                           ),
-                          SizedBox(
-                            height: readerFooterHeight,
-                            child: Center(
-                              // A new speed shows here for a moment.
-                              child: Text(
-                                _guideSpeedHint
-                                    ? l10n.speedWordsPerMinute(
-                                        _guidePace.wordsPerMinute,
-                                      )
-                                    : pageLabel,
-                                style: secondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
                 if (_settingsShown)
@@ -1491,6 +1765,71 @@ class ReaderViewState extends ConsumerState<ReaderView>
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  /// Page [index] of [chapter] in the strip: only as tall as its text,
+  /// painted as on a turned page; the next page goes on right under it.
+  Widget _stripTile(
+    ChapterLayout chapter,
+    int index,
+    ReadingColors colors, {
+    required bool dark,
+  }) {
+    final guide = _guide;
+    final lit = _litWord;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _margin.left),
+      child: Semantics(
+        container: true,
+        label: chapter.pageText(index),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              width: chapter.pageSize.width,
+              height: chapter.pageSize.height,
+              child: Stack(
+                children: [
+                  if (guide != null)
+                    GuideLayer(
+                      chapter: chapter,
+                      page: index,
+                      word: _guideWord,
+                      color: colors.highlight,
+                    ),
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      size: chapter.pageSize,
+                      painter: _PagePainter(
+                        chapter,
+                        index,
+                        lit: lit == null
+                            ? const []
+                            : _joinLines([
+                                for (var w = lit; w < _litEnd; w++)
+                                  ...chapter.wordBoxes(index, w),
+                              ]),
+                        litColor: colors.highlight,
+                        litAnimation: _lit,
+                      ),
+                    ),
+                  ),
+                  PageImages(
+                    chapter: chapter,
+                    page: index,
+                    imagesDir: _imagesDir,
+                    dim: dark,
+                    frameColor: colors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

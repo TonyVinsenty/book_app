@@ -207,6 +207,17 @@ class ReadingSettingsPanel extends ConsumerWidget {
                         ),
                       ),
                       section(
+                        l10n.settingsVerticalScroll,
+                        choices(
+                          const [false, true],
+                          settings.verticalScroll,
+                          (on) => on
+                              ? l10n.verticalScrollOn
+                              : l10n.verticalScrollOff,
+                          (on) => settings.copyWith(verticalScroll: on),
+                        ),
+                      ),
+                      section(
                         l10n.settingsShowStats,
                         choices(
                           const [false, true],

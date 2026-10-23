@@ -2188,4 +2188,60 @@ void main() {
     expect(find.textContaining('дочитаете'), findsNothing);
     await closeApp(tester);
   });
+
+  testWidgets('14.14: the strip scrolls across chapters; its top row gives '
+      'the page and the place, kept when it goes off', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    final notifier = container.read(readingSettingsProvider.notifier);
+    void strip({required bool on}) => notifier.set(
+      container.read(readingSettingsProvider).copyWith(verticalScroll: on),
+    );
+    strip(on: true);
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomScrollView), findsOne);
+    expect(reader(tester).page.firstWord, 0);
+    final pages = reader(tester).layout.pages.length;
+
+    final height = tester.getSize(find.byType(ReaderView)).height;
+    var page = 0;
+    for (var i = 0; i < 40 && reader(tester).layout.sectionIndex == 0; i++) {
+      await tester.drag(
+        find.byType(CustomScrollView),
+        Offset(0, -height * 0.8),
+      );
+      await tester.pumpAndSettle();
+      await settle(tester);
+      final shown = reader(tester).layout.pages.indexOf(reader(tester).page);
+      if (reader(tester).layout.sectionIndex == 0) {
+        expect(shown, greaterThanOrEqualTo(page), reason: 'no page skipped');
+        page = shown;
+      }
+    }
+    expect(page, pages - 1);
+    final r = reader(tester);
+    expect(r.layout.sectionIndex, greaterThan(0), reason: 'next chapter');
+    final saved = await tester.runAsync(savedWord);
+    expect(saved, inInclusiveRange(r.page.firstWord, r.page.endWord - 1));
+    final number = r.pagination.pagesBefore(r.layout.sectionIndex).value + 1;
+    expect(
+      find.textContaining('стр. ${number + r.layout.pages.indexOf(r.page)} /'),
+      findsOne,
+    );
+
+    await tapAt(tester, 0.5);
+    expect(reader(tester).panelsShown, isTrue);
+    await tapAt(tester, 0.5);
+    expect(reader(tester).panelsShown, isFalse);
+
+    strip(on: false);
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomScrollView), findsNothing);
+    final shown = reader(tester).page;
+    expect(saved, inInclusiveRange(shown.firstWord, shown.endWord - 1));
+    await closeApp(tester);
+  });
 }
