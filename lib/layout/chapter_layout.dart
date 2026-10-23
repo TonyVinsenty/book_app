@@ -46,6 +46,9 @@ final class ChapterPage {
 /// pixels (the screen decodes it no larger than shown).
 typedef PageImage = ({String assetId, Rect rect, int width, int height});
 
+/// A line (or a picture) of a page: `[top, bottom)` in page coordinates.
+typedef PageRow = ({double top, double bottom, int firstWord});
+
 /// A chapter split into pages of [pageSize] (ADR 0003): every block is laid
 /// out whole by a [TextPainter], pages take whole lines, and a page paints
 /// the same painters shifted and clipped, so line breaks match exactly.
@@ -176,6 +179,54 @@ final class ChapterLayout {
           height: height,
         ),
   ];
+
+  /// Lines and pictures of page [index], top to bottom, in page coordinates
+  /// (a picture or separator is one row). A row's [PageRow.firstWord] is
+  /// the first word starting on it or after, kept within the page's words.
+  List<PageRow> pageRows(int index) {
+    final page = pages[index];
+    final rows = <PageRow>[];
+    for (final slice in page.slices.reversed) {
+      final block = _blocks[slice.blockIndex]!.metrics;
+      final shift = slice.top - block.tops[slice.firstLine];
+      for (var line = slice.endLine - 1; line >= slice.firstLine; line--) {
+        // A picture or separator row takes the word of the row below it.
+        final word = block.isText
+            ? _wordAtOrAfter(
+                _tokens,
+                sectionIndex,
+                slice.blockIndex,
+                block.lineStarts[line],
+              )
+            : rows.lastOrNull?.firstWord ?? page.endWord;
+        rows.add((
+          top: shift + block.tops[line],
+          bottom: shift + block.tops[line + 1],
+          firstWord: word.clamp(page.firstWord, page.endWord),
+        ));
+      }
+    }
+    return rows.reversed.toList();
+  }
+
+  /// The height page [index] takes in a seamless scroll (ADR 0003, addendum
+  /// 5 п. 1): its text, then the gap the split dropped at the top of the
+  /// next page — none inside a paragraph, none after the chapter's last page.
+  double pageExtent(int index) {
+    final slices = pages[index].slices;
+    if (slices.isEmpty) return 0;
+    final last = slices.last;
+    final block = _blocks[last.blockIndex]!.metrics;
+    final bottom =
+        last.top + block.tops[last.endLine] - block.tops[last.firstLine];
+    if (index + 1 >= pages.length || pages[index + 1].slices.isEmpty) {
+      return bottom;
+    }
+    final next = pages[index + 1].slices.first;
+    if (next.blockIndex == last.blockIndex) return bottom;
+    final nextBlock = _blocks[next.blockIndex]!.metrics;
+    return bottom + math.max(block.spaceAfter, nextBlock.spaceBefore);
+  }
 
   /// The word on page [index] under [point] (page coordinates), or null if
   /// no word is within about a letter of it (ADR 0003 п. 3).

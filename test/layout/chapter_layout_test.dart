@@ -345,6 +345,89 @@ void main() {
     }
   });
 
+  group('seamless scroll (ADR 0003, addendum 5)', () {
+    /// Rows go down the page in order, inside it, their first words in
+    /// order and within the page's words; the stitched pages give the same
+    /// rows at the same distances as one tall page (no seams).
+    void expectSeamless(BookContent content, Size size, PageStyle st) {
+      final tokens = tokenize(content);
+      for (var s = 0; s < content.sections.length; s++) {
+        final layout = build(tokens, s, size, st);
+        final stitched = <PageRow>[];
+        var offset = 0.0;
+        for (var p = 0; p < layout.pages.length; p++) {
+          final page = layout.pages[p];
+          final rows = layout.pageRows(p);
+          var previous = (top: 0.0, bottom: 0.0, firstWord: page.firstWord);
+          for (final row in rows) {
+            expect(row.top, greaterThanOrEqualTo(previous.bottom - 0.01));
+            expect(row.bottom, greaterThan(row.top));
+            expect(row.firstWord, greaterThanOrEqualTo(previous.firstWord));
+            expect(row.firstWord, lessThanOrEqualTo(page.endWord));
+            previous = row;
+          }
+          if (rows.length > 1) {
+            expect(rows.last.bottom, lessThanOrEqualTo(size.height + 0.01));
+          }
+          final extent = layout.pageExtent(p);
+          expect(extent, greaterThanOrEqualTo(previous.bottom - 0.01));
+          if (p == layout.pages.length - 1) {
+            expect(extent, closeTo(previous.bottom, 0.01));
+          }
+          for (final row in rows) {
+            stitched.add((
+              top: offset + row.top,
+              bottom: offset + row.bottom,
+              firstWord: row.firstWord,
+            ));
+          }
+          offset += extent;
+        }
+        final blocks = content.sections[s].blocks;
+        // Picture sizes depend on the page height.
+        if (layout.pages.isNotEmpty && !blocks.any((b) => b is ImageBlock)) {
+          final tall = build(tokens, s, Size(size.width, 1e7), st);
+          expect(tall.pages, hasLength(1));
+          final rows = tall.pageRows(0);
+          expect(stitched, hasLength(rows.length));
+          for (var i = 0; i < rows.length; i++) {
+            expect(stitched[i].top, closeTo(rows[i].top, 0.01));
+            expect(stitched[i].bottom, closeTo(rows[i].bottom, 0.01));
+          }
+          expect(offset, closeTo(rows.last.bottom, 0.01));
+          tall.dispose();
+        }
+        layout.dispose();
+      }
+    }
+
+    test('a generated book and settings mixes stitch without seams', () {
+      for (final size in _sizes) {
+        expectSeamless(sampleBook(), size, style());
+      }
+      for (final mix in mixes) {
+        expectSeamless(sampleBook(), const Size(320, 520), hyphenated(mix));
+      }
+    });
+
+    test('test books stitch without seams', () {
+      final files = [
+        ...Directory('test/fixtures/fb2').listSync(),
+        ...Directory('test/fixtures/txt').listSync(),
+        File('test/fixtures/epub/epub3_ru.epub'),
+        File('test/fixtures/epub/epub2_gutenberg.epub'),
+      ].whereType<File>().where((f) => !f.path.endsWith('.json'));
+      for (final file in files) {
+        final name = file.uri.pathSegments.last;
+        expectSeamless(
+          parseBook(file.readAsBytesSync(), fileName: name).content,
+          const Size(320, 520),
+          hyphenated(mixes.first),
+        );
+      }
+    });
+  });
+
   test('a word broken at a line end: two boxes, one word, a drawn «-»', () {
     const text =
         'Сельскохозяйственный рыцарь подъезжал к замку, '
