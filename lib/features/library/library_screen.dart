@@ -18,6 +18,7 @@ import 'package:book_app/features/stats/stats_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +33,21 @@ class LibraryScreen extends ConsumerStatefulWidget {
 }
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  /// "Добавить книгу" is a round «+» while the books are scrolled down
+  /// (owner, 14.6 B2).
+  var _addShort = false;
+
+  bool _onScroll(UserScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    final short = switch (notification.direction) {
+      ScrollDirection.reverse => true,
+      ScrollDirection.forward => false,
+      ScrollDirection.idle => _addShort,
+    };
+    if (short != _addShort) setState(() => _addShort = short);
+    return false;
+  }
+
   var _tab = _Tab.books;
 
   Future<void> _addBooks() async {
@@ -105,49 +121,60 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final books = _tab == _Tab.books;
     return Scaffold(
       // No app bar: the name is not needed here (owner, 2026-10-20).
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            const _BackToBook(),
-            PillTabs(
-              tabs: {
-                _Tab.books: l10n.libraryTabBooks,
-                _Tab.collections: l10n.libraryTabCollections,
-                _Tab.stats: l10n.libraryTabStats,
-              },
-              selected: _tab,
-              onChanged: (tab) => setState(() => _tab = tab),
-            ),
-            if (queue.busy) _ImportProgress(queue: queue),
-            Expanded(
-              child: switch (view) {
-                _ when _tab == _Tab.stats => StatsView(
-                  onOpenBooks: () => setState(() => _tab = _Tab.books),
-                ),
-                AsyncData(:final value) when books && value.libraryIsEmpty =>
-                  EmptyMessage(
-                    title: l10n.libraryEmpty,
-                    hint: l10n.libraryEmptyHint,
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: _onScroll,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const _BackToBook(),
+              PillTabs(
+                tabs: {
+                  _Tab.books: l10n.libraryTabBooks,
+                  _Tab.collections: l10n.libraryTabCollections,
+                  _Tab.stats: l10n.libraryTabStats,
+                },
+                selected: _tab,
+                onChanged: (tab) => setState(() => _tab = tab),
+              ),
+              if (queue.busy) _ImportProgress(queue: queue),
+              Expanded(
+                child: switch (view) {
+                  _ when _tab == _Tab.stats => StatsView(
+                    onOpenBooks: () => setState(() => _tab = _Tab.books),
                   ),
-                AsyncData(:final value) when books => _BooksTab(view: value),
-                AsyncData(:final value) => _CollectionsTab(view: value),
-                _ => const SizedBox.shrink(),
-              },
-            ),
-          ],
+                  AsyncData(:final value) when books && value.libraryIsEmpty =>
+                    EmptyMessage(
+                      title: l10n.libraryEmpty,
+                      hint: l10n.libraryEmptyHint,
+                    ),
+                  AsyncData(:final value) when books => _BooksTab(view: value),
+                  AsyncData(:final value) => _CollectionsTab(view: value),
+                  _ => const SizedBox.shrink(),
+                },
+              ),
+            ],
+          ),
         ),
       ),
       // The picker replaces its previous copies, so it waits for the queue.
       floatingActionButton: queue.busy || !books
           ? null
-          : FloatingActionButton.extended(
-              // It hides and comes back with the queue; two of them in one
-              // page transition would clash as heroes.
-              heroTag: null,
-              onPressed: _addBooks,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addBook),
+          : AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              alignment: Alignment.centerRight,
+              clipBehavior: Clip.none,
+              child: FloatingActionButton.extended(
+                // It hides and comes back with the queue; two of them in
+                // one page transition would clash as heroes.
+                heroTag: null,
+                onPressed: _addBooks,
+                tooltip: _addShort ? l10n.addBook : null,
+                isExtended: !_addShort,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.addBook),
+              ),
             ),
     );
   }

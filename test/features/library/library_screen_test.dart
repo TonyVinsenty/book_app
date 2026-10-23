@@ -287,6 +287,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('"Добавить книгу" is a round «+» while scrolled down', (
+    tester,
+  ) async {
+    await pumpLibrary(
+      tester,
+      books: [for (var i = 1; i <= 20; i++) _book(i, title: 'Книга $i')],
+    );
+    expect(find.text('Добавить книгу'), findsOneWidget);
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Добавить книгу'), findsNothing);
+    expect(find.byTooltip('Добавить книгу'), findsOneWidget);
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, 100),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Добавить книгу'), findsOneWidget);
+  });
+
   testWidgets('pulling the list down looks in the folders', (tester) async {
     await pumpLibrary(tester, books: [_book(1, title: 'Война и мир')]);
     await tester.fling(find.byType(ShelfBar), const Offset(0, 300), 1000);
