@@ -32,7 +32,7 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: BookApp(reopenBookId: last?.id),
+      child: BookApp(reopenBookId: last?.id, splash: true),
     ),
   );
   unawaited(container.read(bookRepositoryProvider).removeLostFiles());

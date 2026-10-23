@@ -1,5 +1,6 @@
 import 'package:book_app/app/folder_scans.dart';
 import 'package:book_app/app/incoming_books.dart';
+import 'package:book_app/app/launch_splash.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/features/library/library_screen.dart';
@@ -11,10 +12,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Root widget: localization, theme, the first screen and books coming
 /// from other apps and folders.
 class BookApp extends ConsumerStatefulWidget {
-  const BookApp({super.key, this.reopenBookId});
+  const BookApp({super.key, this.reopenBookId, this.splash = false});
 
   /// The book to open on start, over the library ("back" leads there).
   final int? reopenBookId;
+
+  /// Shows the launch animation ([LaunchSplash]); off in tests.
+  final bool splash;
 
   @override
   ConsumerState<BookApp> createState() => _BookAppState();
@@ -31,9 +35,12 @@ class _BookAppState extends ConsumerState<BookApp> {
     final settings = ref.watch(readingSettingsProvider);
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      builder: (context, child) => FolderScans(
-        child: IncomingBooks(navigatorKey: _navigatorKey, child: child!),
-      ),
+      builder: (context, child) {
+        final app = FolderScans(
+          child: IncomingBooks(navigatorKey: _navigatorKey, child: child!),
+        );
+        return widget.splash ? LaunchSplash(child: app) : app;
+      },
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

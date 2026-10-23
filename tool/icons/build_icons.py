@@ -47,7 +47,8 @@ DOT_CENTER, DOT_RADIUS = (512, 300), 46
 MIDDLE = (512, 497)
 
 # The launch screen: the background of «Бумага» and the book without its
-# square; at night darker pages and a lighter cover.
+# square and without the dot (the app's animation lets the dot fly out,
+# lib/app/launch_splash.dart); at night darker pages and a lighter cover.
 SPLASH = {
     "day": {"background": "#F6F0E4", "cover": COVER, "left": LEFT_PAGE,
             "right": RIGHT_PAGE, "dot": DOT},
@@ -193,9 +194,13 @@ def ios():
         save(full, folder / item["filename"], round(side * scale), rgb=True)
 
 
+# The launch book's box, dp and points; launchBookBox in launch_splash.dart.
+SPLASH_BOX = 176
+
+
 def splash_motif(mode, scale):
     c = SPLASH[mode]
-    return motif(scale, colors=(c["cover"], c["left"], c["right"], c["dot"]))
+    return motif(scale, colors=(c["cover"], c["left"], c["right"], (0, 0, 0, 0)))
 
 
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
@@ -213,14 +218,14 @@ def android_splash():
             "</resources>\n",
             encoding="utf-8",
         )
-        # Before Android 12: the book 144 dp in the middle of the page color.
+        # Before Android 12: the book's box in the middle of the page color.
         small = splash_motif(mode, 1.0)
-        # Android 12 and later: a 288 dp icon, the book inside its 192 dp
-        # circle.
-        large = splash_motif(mode, 0.62)
+        # Android 12 and later: a 288 dp icon, the box inside it (the book
+        # well within its 192 dp circle).
+        large = splash_motif(mode, SPLASH_BOX / 288)
         for name, scale in DENSITIES.items():
             folder = res / f"drawable{night}-{name}"
-            save(small, folder / "splash_icon.png", round(144 * scale))
+            save(small, folder / "splash_icon.png", round(SPLASH_BOX * scale))
             save(large, folder / "splash_icon_android12.png", round(288 * scale))
     background = (
         '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -289,11 +294,11 @@ def ios_splash():
     book = {}
     page = {}
     for mode in SPLASH:
-        # The book 160 points across, the background a one-point color.
+        # The book's box in points, the background a one-point color.
         image = splash_motif(mode, 1.0)
         plain = Image.new("RGBA", (MASTER, MASTER), SPLASH[mode]["background"])
         for scale in (1, 2, 3):
-            book[(mode, scale)] = (image, 160 * scale)
+            book[(mode, scale)] = (image, SPLASH_BOX * scale)
             page[(mode, scale)] = (plain, scale)
     imageset(assets / "LaunchImage.imageset", book)
     imageset(assets / "LaunchBackground.imageset", page)
