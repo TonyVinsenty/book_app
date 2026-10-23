@@ -94,6 +94,11 @@ void main() {
     // A row cut at the top is not the top row.
     expect(m.topRow(55)?.firstWord, 201);
     expect(m.topRow(50.3)?.firstWord, 200, reason: 'less than half a point');
+    // ...but it is seen while its top is in the margin above the window.
+    expect(m.seenRow(55)?.firstWord, 200);
+    expect(m.seenRow(50)?.firstWord, 200);
+    expect(m.seenRow(61)?.firstWord, 201, reason: 'cut at the screen top');
+    expect(m.seenRow(m.offsetOf(2, 207)!)?.firstWord, 207);
     expect(m.offsetOf(4, 400), isNull, reason: 'not laid out');
     expect(m.offsetOf(1, 100), isNull, reason: 'shows nothing');
   });

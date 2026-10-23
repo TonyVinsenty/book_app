@@ -572,7 +572,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _dropStripScroll();
     _stripScroll = ScrollController(initialScrollOffset: offset)
       ..addListener(_onStripScroll);
-    final top = map.topRow(offset);
+    final top = map.seenRow(offset);
     _stripTop = top == null ? null : (top.section, top.page, top.row);
     _stripSaved = _word;
   }
@@ -617,10 +617,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     });
   }
 
-  /// The page of the top row is the page shown: its number, the place and
-  /// the page meter follow it (п. 7, 11).
+  /// The page of the first row seen is the page shown: its number, the
+  /// place and the page meter follow it (п. 7, 11).
   void _followStrip(double offset) {
-    final top = _strip!.topRow(offset);
+    final top = _strip!.seenRow(offset);
     if (top == null) return;
     final id = (top.section, top.page, top.row);
     if (id == _stripTop) return;

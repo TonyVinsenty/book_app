@@ -191,6 +191,15 @@ final class StripMap {
     return n != null && n.top < offset + windowBottom ? n : r;
   }
 
+  /// The first row seen whole on screen at scroll [offset]: like [topRow],
+  /// but a row in the margin above the window counts, as it is not hidden.
+  StripRow? seenRow(double offset) {
+    final r = rowAt(offset + _eps);
+    final inMargin =
+        r != null && r.top >= offset - _eps && r.top < offset + windowTop;
+    return inMargin ? r : topRow(offset);
+  }
+
   /// The offset that puts the row of word [wordIndex] at the window top;
   /// null if its chapter is not laid out or shows nothing.
   double? offsetOf(int section, int wordIndex) {
