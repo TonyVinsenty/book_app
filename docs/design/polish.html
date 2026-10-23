@@ -1,0 +1,293 @@
+<title>Verso — полировка экранов</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&display=swap">
+<style>
+/* Layout: one column of sections; phone frames wrap in rows; one palette/mode switch drives every frame. */
+:root{--pg:#F4F1EC;--pf:#2A2823;--pf2:#625E54;--pl:#D8D3C7;--pc:#FFFFFF;--pa:#6B4E9E;
+--sans:'Manrope',system-ui,sans-serif;--serif:'Literata',Georgia,serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg:#171613;--pf:#ECE9E1;--pf2:#A9A598;--pl:#3A3830;--pc:#22211D;--pa:#B8A6E6;color-scheme:dark}}
+:root[data-theme="dark"]{--pg:#171613;--pf:#ECE9E1;--pf2:#A9A598;--pl:#3A3830;--pc:#22211D;--pa:#B8A6E6;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--pg);color:var(--pf);font:15px/1.5 var(--sans);padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1180px;margin:0 auto}
+h1{font:800 28px/1.15 var(--sans);margin:0 0 6px}
+h2{font:800 20px/1.2 var(--sans);margin:44px 0 4px;text-wrap:balance}
+h3{font:700 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--pf2);margin:0 0 8px}
+p.lead{margin:0 0 4px;color:var(--pf2);max-width:68ch}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;flex-wrap:wrap;gap:8px 16px;padding:10px 0;background:var(--pg);border-bottom:1px solid var(--pl)}
+.bar::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--pg);z-index:30}
+.grp{display:flex;gap:2px;background:var(--pc);border:1px solid var(--pl);border-radius:12px;padding:3px}
+.grp button{font:600 14px var(--sans);min-height:44px;padding:0 14px;border:0;border-radius:9px;background:none;color:var(--pf);cursor:pointer}
+.grp button[aria-pressed="true"]{background:var(--pa);color:var(--pc)}
+button:focus-visible{outline:2px solid var(--pa);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:20px 24px;align-items:flex-start;margin-top:14px}
+.cell{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cap{font:600 13px var(--sans);color:var(--pf2);max-width:300px}
+.cap b{color:var(--pf)}
+.opt{display:flex;flex-direction:column;gap:6px}
+.rec{display:inline-block;font:700 12px var(--sans);padding:2px 8px;border-radius:10px;background:var(--pa);color:var(--pc)}
+.note{max-width:68ch;color:var(--pf2);margin:8px 0 0}
+.tbl{overflow-x:auto;margin-top:12px}
+table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+td,th{padding:6px 10px;border-bottom:1px solid var(--pl);text-align:left;white-space:nowrap}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;border:1px solid rgba(0,0,0,.2)}
+
+/* palettes: new values (after) and old ones (before) */
+.stage{--rad:24px}
+.paper.day{--bg:#F6F0E4;--tx:#3A332B;--sf:#EBE2D0;--orp:#C2492F;--hl:#F3DFA2;--ac:#8F6038;--t2:#665C4E;--acO:#9A6B43;--t2O:#6E6455;--eye:#8F6038;--play:#3F7F5A;--fast:#7B63B8;--guide:#4A6FA8}
+.paper.night{--bg:#1F1B17;--tx:#E6DCCB;--sf:#2D2822;--orp:#FF8A6B;--hl:#5A4A25;--ac:#D0A070;--t2:#A09484;--acO:#D0A070;--t2O:#A09484;--eye:#D0A070;--play:#5FA67B;--fast:#A394DA;--guide:#7CA2DA}
+.sage.day{--bg:#EAF0E6;--tx:#2F3A31;--sf:#DAE5D4;--orp:#BF4A38;--hl:#CDE5B0;--ac:#3F6B49;--t2:#556458;--acO:#4F7A59;--t2O:#5F6E61;--eye:#3F6B49;--play:#2A7C8C;--fast:#7B63B8;--guide:#4A6FA8}
+.sage.night{--bg:#182019;--tx:#DDE7DA;--sf:#243026;--orp:#FF8F77;--hl:#3A5236;--ac:#8FB597;--t2:#8FA091;--acO:#8FB597;--t2O:#8FA091;--eye:#8FB597;--play:#4FB0C0;--fast:#A394DA;--guide:#7CA2DA}
+.lav.day{--bg:#F0ECF6;--tx:#342F42;--sf:#E2DAEE;--orp:#BC4A3C;--hl:#DFD2F4;--ac:#66559A;--t2:#5F5878;--acO:#7462A6;--t2O:#6B6483;--eye:#66559A;--play:#3F7F5A;--fast:#B0517F;--guide:#4A6FA8}
+.lav.night{--bg:#1C1925;--tx:#E4DFF0;--sf:#2A253C;--orp:#FF8F7A;--hl:#4A3F6B;--ac:#A99BD3;--t2:#9D95B3;--acO:#A99BD3;--t2O:#9D95B3;--eye:#A99BD3;--play:#5FA67B;--fast:#D68AB0;--guide:#7CA2DA}
+.mist.day{--bg:#E9EFF4;--tx:#2B3541;--sf:#D8E3EC;--orp:#C4472F;--hl:#FBD9C4;--ac:#3F6A8E;--t2:#515E6D;--acO:#4A7499;--t2O:#5C6978;--eye:#3F6A8E;--play:#3F7F5A;--fast:#7B63B8;--guide:#8F6A1C}
+.mist.night{--bg:#151C24;--tx:#DCE5EE;--sf:#222D39;--orp:#FF9272;--hl:#5A4234;--ac:#86AACB;--t2:#8D9BAA;--acO:#86AACB;--t2O:#8D9BAA;--eye:#86AACB;--play:#5FA67B;--fast:#A394DA;--guide:#C9A24B}
+.stage{--ln:color-mix(in srgb,var(--tx) 16%,transparent)}
+
+/* phone */
+.ph{width:300px;height:600px;flex:none;position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--pl);background:var(--bg);color:var(--tx);font:13px/1.35 var(--sans);box-shadow:0 8px 28px rgba(0,0,0,.14);isolation:isolate}
+.ph.old{--ac:var(--acO);--t2:var(--t2O)}
+.ph.sm{height:420px}
+.sb{height:22px;display:flex;justify-content:space-between;align-items:center;padding:0 16px;font:600 10px var(--sans)}
+.sb i{width:18px;height:8px;border:1.3px solid var(--tx);border-radius:2px;display:block}
+.t2{color:var(--t2)}
+.tabs{display:flex;margin:6px 12px;background:var(--sf);border-radius:22px;padding:3px}
+.tabs span{flex:1;height:34px;display:grid;place-items:center;border-radius:18px;font:700 12px var(--sans);color:var(--t2)}
+.tabs span.on{background:var(--ac);color:var(--bg)}
+.cont{margin:6px 12px;background:var(--sf);border-radius:16px;padding:10px;display:flex;gap:10px;height:76px}
+.cov{border-radius:5px;background:var(--sf);display:grid;place-items:center;font:700 22px var(--serif);color:var(--tx);box-shadow:0 2px 5px rgba(0,0,0,.22);position:relative;overflow:hidden;aspect-ratio:2/3}
+.cov.ph1{background:color-mix(in srgb,var(--tx) 14%,var(--bg))}
+.cov::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tx) 14%,transparent)}
+.cov.bright{background:linear-gradient(#fff 0 38%,#e000dc 38%);color:#222;font-size:8px;align-items:start;padding:5px}
+.cov.blue{background:linear-gradient(135deg,#2c6e91,#c9b27a);color:#fff}
+.gridv{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px;padding:0 12px}
+.bk{display:flex;flex-direction:column;min-width:0}
+.bk .tt{font:700 10.5px/1.25 var(--serif);margin-top:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.bk .au{font-size:9.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk .st{font:700 9.5px var(--sans);color:var(--ac);display:flex;align-items:center;gap:4px}
+.bk .st::before{content:"";width:6px;height:6px;border-radius:3px;background:var(--orp)}
+.bk .st.rd::before{display:none}
+.fab{position:absolute;right:12px;bottom:14px;height:44px;padding:0 16px 0 12px;border-radius:22px;background:var(--ac);color:var(--bg);display:flex;align-items:center;gap:6px;font:700 12px var(--sans);box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:3}
+.fab.round{width:44px;padding:0;justify-content:center;font-size:20px}
+.fab.fl{background:var(--ac)}
+.fade{position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(transparent,var(--bg));z-index:2}
+.book{font:15px/1.55 var(--serif);padding:0 18px}
+.book p{margin:0 0 6px}
+sup.o{font-size:.5em;vertical-align:.7em;color:color-mix(in srgb,var(--ac) 60%,var(--bg));line-height:0}
+sup.n{font:600 .72em var(--sans);vertical-align:.45em;color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent);padding:1px 4px;border-radius:4px;line-height:0}
+sup.n.dead{color:var(--t2);background:color-mix(in srgb,var(--t2) 12%,transparent)}
+sup.br{font:600 .8em var(--sans);color:var(--ac);vertical-align:.3em;line-height:0}
+sup.ci{font:700 .6em var(--sans);vertical-align:.55em;color:var(--bg);background:var(--ac);width:1.45em;height:1.45em;border-radius:50%;display:inline-grid;place-items:center;line-height:0;margin:0 1px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:24px 24px 0 0;padding:8px 18px 22px;box-shadow:0 -4px 24px rgba(0,0,0,.25);z-index:5}
+.sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--ln);margin:0 auto 10px}
+.scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--tx) 32%,transparent);z-index:4}
+.scrim.old{background:rgba(0,0,0,.55)}
+.panel{position:absolute;left:0;right:0;bottom:0;background:var(--sf);padding:12px 14px 14px;z-index:3}
+.panel .t{font:600 12px var(--sans)}
+.panel .s{font-size:10.5px;color:var(--t2)}
+.slider{height:4px;border-radius:2px;background:var(--ln);margin:10px 4px;position:relative}
+.slider i{position:absolute;left:0;top:-6px;width:16px;height:16px;border-radius:8px;background:var(--ac)}
+.btns{display:flex;gap:8px;align-items:center}
+.btn{min-height:44px;min-width:56px;border-radius:22px;border:1.3px solid var(--t2);display:grid;place-items:center;font:700 12px var(--sans);color:var(--ac);padding:0 12px}
+.btn.f{background:var(--ac);color:var(--bg);border-color:var(--ac)}
+.ivw{position:absolute;inset:0;display:grid;place-items:center}
+.close{position:absolute;left:8px;top:28px;width:44px;height:44px;border-radius:22px;background:color-mix(in srgb,var(--sf) 92%,transparent);display:grid;place-items:center;font:400 22px var(--sans);color:var(--tx)}
+.hd{position:sticky;top:0;background:var(--bg)}
+.chartcard{margin:8px 12px;background:var(--sf);border-radius:16px;padding:12px}
+.chartcard h4{margin:0 0 8px;font:700 12px var(--sans)}
+.bars{display:flex;align-items:flex-end;gap:3px;height:80px}
+.bars div{flex:1;display:flex;flex-direction:column-reverse;gap:1.5px;justify-content:flex-start;min-width:0}
+.bars b{display:block;border-radius:2px 2px 0 0}
+.bars .e{height:3px;background:color-mix(in srgb,var(--sf) 70%,var(--t2));border-radius:2px}
+.mon{display:flex;gap:3px;margin-top:4px}
+.mon span{flex:1;text-align:center;font:500 8.5px var(--sans);color:var(--t2);min-width:0;overflow:hidden}
+.mon span.cur{color:var(--tx);font-weight:800}
+.leg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:10px;color:var(--t2)}
+.leg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px}
+.pill{display:flex;margin:0 12px;background:var(--sf);border-radius:22px;padding:3px;height:44px}
+.pill span{flex:1;display:grid;place-items:center;border-radius:18px;font:700 12px var(--sans);color:var(--t2)}
+.pill span.on{background:var(--ac);color:var(--bg)}
+.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:6px 12px}
+.hm i{aspect-ratio:1;border-radius:6px;border:1px solid var(--ln)}
+.splash{display:grid;place-items:center}
+.ico{width:96px;height:96px;border-radius:22px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.mini{width:216px;height:300px;font-size:11px}
+@media (prefers-reduced-motion:no-preference){.fab{transition:width .18s}}
+</style>
+
+<main>
+<h1>Verso: полировка экранов</h1>
+<p class="lead">Шаг 14.2. Сверху можно переключить палитру и день/ночь: все макеты ниже меняются разом. «Было» взято со скриншотов, «Стало» — по <code>docs/design/polish.md</code>.</p>
+
+<div class="bar" role="group" aria-label="Тема макетов">
+  <div class="grp" id="gp"><button data-p="paper" aria-pressed="true">Бумага</button><button data-p="sage" aria-pressed="false">Шалфей</button><button data-p="lav" aria-pressed="false">Лаванда</button><button data-p="mist" aria-pressed="false">Дымка</button></div>
+  <div class="grp" id="gm"><button data-m="day" aria-pressed="true">День</button><button data-m="night" aria-pressed="false">Ночь</button></div>
+</div>
+
+<div class="stage paper day" id="stage">
+
+<h2>Часть A: что чиним без вопросов (самое заметное)</h2>
+
+<div class="row">
+ <div class="cell"><h3>A2 · Сетка и кнопка «Добавить»</h3>
+  <div class="row" style="margin:0">
+   <div class="cell"><div class="ph old sm" id="gOld"></div><div class="cap"><b>Было.</b> Кнопка закрывает название и статус нижнего ряда.</div></div>
+   <div class="cell"><div class="ph sm" id="gNew"></div><div class="cap"><b>Стало.</b> Запас снизу 96 dp, кнопка сжимается до круга при прокрутке вниз, статусы на одной линии.</div></div>
+  </div></div>
+</div>
+
+<div class="row">
+ <div class="cell"><h3>A3 · Метки сносок</h3>
+  <div class="row" style="margin:0">
+   <div class="cell"><div class="ph old sm"><div class="sb"><span>9:41</span><i></i></div><div class="book" style="padding-top:26px"><p>Первая сноска стоит после слова<sup class="o">1</sup> и идёт дальше. Вторая<sup class="o">2</sup>, с запятой сразу после метки.</p><p>Метка без цели<sup class="o" style="opacity:.5">9</sup> и звёздочка<sup class="o">*</sup>.</p></div></div><div class="cap"><b>Было.</b> Метка 1–2 мм, бледная, нажать трудно.</div></div>
+   <div class="cell"><div class="ph sm"><div class="sb"><span>9:41</span><i></i></div><div class="book" style="padding-top:26px"><p>Первая сноска стоит после слова<sup class="n">1</sup> и идёт дальше. Вторая<sup class="n">2</sup>, с запятой сразу после метки.</p><p>Метка без цели<sup class="n dead">9</sup> и звёздочка<sup class="n">*</sup>.</p></div>
+    <div class="scrim" style="top:230px;bottom:0;background:none"></div>
+    <div class="sheet"><div class="t2" style="font-size:11px;font-weight:600">Сноска 1</div><div style="font:15px var(--serif);margin-top:4px">Первая сноска.</div></div></div><div class="cap"><b>Стало.</b> Метка 0,72 em, цвет акцента, подложка; зона нажатия 44×44. Лист сноски с тенью.</div></div>
+  </div></div>
+</div>
+
+<div class="row">
+ <div class="cell"><h3>A4 · Просмотр картинки</h3>
+  <div class="row" style="margin:0">
+   <div class="cell"><div class="ph old sm" style="background:#000"><div class="ivw"><div class="cov bright" style="width:210px;aspect-ratio:2/3;border-radius:0">Московия в представлении иностранцев</div></div></div><div class="cap"><b>Было.</b> Чёрный фон не по теме, кнопки закрыть нет.</div></div>
+   <div class="cell"><div class="ph sm"><div class="sb"><span>9:41</span><i></i></div><div class="close" aria-label="Закрыть">×</div><div class="ivw"><div class="cov bright" style="width:190px;aspect-ratio:2/3;border-radius:12px">Московия в представлении иностранцев</div></div></div><div class="cap"><b>Стало.</b> Фон темы, круглая кнопка 48 dp, смахивание вниз закрывает.</div></div>
+  </div></div>
+</div>
+
+<div class="row">
+ <div class="cell"><h3>A5, A6 · Статистика: панель и месяцы</h3>
+  <div class="row" style="margin:0">
+   <div class="cell"><div class="ph old sm" id="sOld"></div><div class="cap"><b>Было.</b> Закреплённая панель режет карточку, подписи «И И».</div></div>
+   <div class="cell"><div class="ph sm" id="sNew"></div><div class="cap"><b>Стало.</b> Закреплены только Неделя/Месяц/Год, фон сплошной, линия снизу; месяцы по три буквы.</div></div>
+  </div></div>
+</div>
+
+<div class="row">
+ <div class="cell"><h3>A7 · Нижняя панель читалки</h3>
+  <div class="row" style="margin:0">
+   <div class="cell"><div class="ph old sm"><div class="book" style="padding-top:30px;font-size:14px">THE PREFACE<br>CHAPTER I.<br>CHAPTER II.<br>CHAPTER III.</div>
+    <div class="panel"><div class="t">Contents</div><div class="s">стр. 4 / 401 · 0,1 % · последняя страница главы</div><div class="s" style="margin-top:6px">≈ &lt; 1 мин до конца главы · 5 ч 49 мин до конца книги</div><div class="slider"><i></i></div><div class="btns"><div class="btn" style="min-height:34px">А−</div><div class="btn" style="min-height:34px">А+</div></div></div></div><div class="cap"><b>Было.</b> Текст переносится, ползунок прыгает; кнопки 39 dp.</div></div>
+   <div class="cell"><div class="ph sm"><div class="book" style="padding-top:30px;font-size:14px">THE PREFACE<br>CHAPTER I.<br>CHAPTER II.<br>CHAPTER III.</div>
+    <div class="panel"><div style="display:flex;justify-content:space-between;gap:8px"><span class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Contents</span><span class="s" style="white-space:nowrap">4 / 401</span></div><div class="s" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">0,1 % · глава: &lt; 1 мин · книга: 5 ч 49 мин</div><div class="slider"><i></i></div><div class="btns"><div class="btn">А−</div><div class="btn">А+</div><span style="flex:1"></span><span class="t" style="color:var(--ac)">Настройки</span></div></div></div><div class="cap"><b>Стало.</b> Одна строка с обрезкой, ползунок на месте, кнопки 44 dp.</div></div>
+  </div></div>
+</div>
+
+<h2>Цвета графиков: было и стало</h2>
+<p class="lead">Было: «Слово» зелёный 6E9F7E давал 2,4:1 к карточке. Стало: ≥ 3,5:1 днём и ≥ 4,5:1 ночью. Смотрите на разных палитрах: в Шалфее, Лаванде и Дымке цвета не повторяют акцент.</p>
+<div class="row">
+ <div class="cell"><div class="ph old" style="height:236px"><div class="chartcard" style="margin-top:30px"><h4>Страницы по месяцам (было)</h4><div class="bars" id="cOld"></div><div class="leg"><span><i style="background:var(--acO)"></i>Обычное</span><span><i style="background:#6E9F7E"></i>Слово</span><span><i style="background:#9885C9"></i>Фраза</span><span><i style="background:#6F8DB5"></i>Подсветка</span></div></div></div></div>
+ <div class="cell"><div class="ph" style="height:236px"><div class="chartcard" style="margin-top:30px"><h4>Страницы по месяцам (стало)</h4><div class="bars" id="cNew"></div><div class="leg"><span><i style="background:var(--eye)"></i>Обычное</span><span><i style="background:var(--play)"></i>Слово</span><span><i style="background:var(--fast)"></i>Фраза</span><span><i style="background:var(--guide)"></i>Подсветка</span></div></div></div></div>
+</div>
+
+<h2>Часть B: нужен ваш выбор</h2>
+
+<h3 style="margin-top:20px">B1 · Обложка у книг без обложки</h3>
+<div class="row">
+ <div class="opt"><div class="ph mini" id="b1a"></div><div class="cap"><b>а) Как сейчас.</b> Буква на бежевой плитке.</div></div>
+ <div class="opt"><div class="ph mini" id="b1b"></div><div class="cap"><b>б) Свой оттенок.</b> Цвет из палитры по названию, буква. <span class="rec">Рекомендую</span></div></div>
+ <div class="opt"><div class="ph mini" id="b1c"></div><div class="cap"><b>в) Корешок.</b> Плитка с полосой слева и названием мелко.</div></div>
+</div>
+
+<h3 style="margin-top:32px">B2 · Кнопка «Добавить книгу»</h3>
+<div class="row">
+ <div class="opt"><div class="ph mini" id="b2a"></div><div class="cap"><b>а) Плавающая,</b> сжимается при прокрутке. <span class="rec">Рекомендую</span></div></div>
+ <div class="opt"><div class="ph mini" id="b2b"></div><div class="cap"><b>б) «+» в строке</b> с фильтром и сортировкой, без плавающей кнопки.</div></div>
+ <div class="opt"><div class="ph mini" id="b2c"></div><div class="cap"><b>в) Карточка «Добавить»</b> первой в сетке.</div></div>
+</div>
+
+<h3 style="margin-top:32px">B3 · Метка сноски</h3>
+<div class="row">
+ <div class="opt"><div class="ph mini" style="height:190px"><div class="book" style="padding-top:20px;font-size:14px"><p>Вторая сноска стоит после слова<sup class="n">1</sup> и идёт дальше<sup class="n">2</sup>.</p></div></div><div class="cap"><b>а) Номер с подложкой.</b> <span class="rec">Рекомендую</span></div></div>
+ <div class="opt"><div class="ph mini" style="height:190px"><div class="book" style="padding-top:20px;font-size:14px"><p>Вторая сноска стоит после слова<sup class="br">[1]</sup> и идёт дальше<sup class="br">[2]</sup>.</p></div></div><div class="cap"><b>б) В скобках</b> акцентным цветом.</div></div>
+ <div class="opt"><div class="ph mini" style="height:190px"><div class="book" style="padding-top:20px;font-size:14px"><p>Вторая сноска стоит после слова<sup class="ci">1</sup> и идёт дальше<sup class="ci">2</sup>.</p></div></div><div class="cap"><b>в) Кружок с номером.</b></div></div>
+</div>
+
+<h3 style="margin-top:32px">B4 · Цвет тепловой карты дней чтения</h3>
+<div class="row">
+ <div class="opt"><div class="ph mini" style="height:230px"><div style="padding:14px 12px 0;font:700 12px var(--sans)">Октябрь · 20 дней чтения</div><div class="hm" data-c="play"></div></div><div class="cap"><b>а) Зелёный,</b> как «Слово» (в первом макете).</div></div>
+ <div class="opt"><div class="ph mini" style="height:230px"><div style="padding:14px 12px 0;font:700 12px var(--sans)">Октябрь · 20 дней чтения</div><div class="hm" data-c="ac"></div></div><div class="cap"><b>б) Акцент палитры.</b> <span class="rec">Рекомендую</span></div></div>
+</div>
+
+<h3 style="margin-top:32px">B5 · Заставка при запуске (значок №3 «Книга и фокус»)</h3>
+<div class="row">
+ <div class="opt"><div class="ph mini splash" style="height:300px;background:var(--bg)"><svg class="ico" viewBox="0 0 1024 1024" style="background:none;box-shadow:none;border-radius:0;width:110px;height:110px"><g transform="translate(512 512) scale(.9) translate(-512 -512)"><path d="M512 740C430 690 340 680 240 700V400C340 380 430 390 512 440C594 390 684 380 784 400V700C684 680 594 690 512 740Z" fill="#7462A6"/><path d="M512 690C436 648 350 636 270 652V390C350 374 436 384 512 430Z" fill="#FAF8FF"/><path d="M512 690C588 648 674 636 754 652V390C674 374 588 384 512 430Z" fill="#EFEAFA"/><circle cx="512" cy="300" r="46" fill="#C2492F"/></g></svg></div><div class="cap"><b>а) Фон по теме</b> приложения (бежевый или тёмный). <span class="rec">Рекомендую</span></div></div>
+ <div class="opt"><div class="ph mini splash" style="height:300px;background:#E4DCF1"><svg class="ico" viewBox="0 0 1024 1024" style="background:none;box-shadow:none;border-radius:0;width:110px;height:110px"><g transform="translate(512 512) scale(.9) translate(-512 -512)"><path d="M512 740C430 690 340 680 240 700V400C340 380 430 390 512 440C594 390 684 380 784 400V700C684 680 594 690 512 740Z" fill="#7462A6"/><path d="M512 690C436 648 350 636 270 652V390C350 374 436 384 512 430Z" fill="#FAF8FF"/><path d="M512 690C588 648 674 636 754 652V390C674 374 588 384 512 430Z" fill="#EFEAFA"/><circle cx="512" cy="300" r="46" fill="#C2492F"/></g></svg></div><div class="cap"><b>б) Лавандовый фон,</b> как у значка, в любой теме.</div></div>
+</div>
+<p class="note">Значок: фон #E4DCF1, книга #7462A6, красная точка над корешком. На Android передний план уменьшен до 88 %, чтобы углы не обрезались маской.</p>
+</div>
+</main>
+
+<script>
+(function(){
+var st=document.getElementById('stage'),pal='paper',mod='day';
+function apply(){st.className='stage '+pal+' '+mod}
+document.querySelectorAll('#gp button').forEach(function(b){b.onclick=function(){pal=b.dataset.p;apply();document.querySelectorAll('#gp button').forEach(function(x){x.setAttribute('aria-pressed',x===b)})}});
+document.querySelectorAll('#gm button').forEach(function(b){b.onclick=function(){mod=b.dataset.m;apply();document.querySelectorAll('#gm button').forEach(function(x){x.setAttribute('aria-pressed',x===b)})}});
+
+var books=[['Д','Дьявол','Лев Толстой',1,'ph1'],['The Picture of Dorian Gray','The Picture of Dorian Gray','Oscar Wilde',1,'blue'],['Б','Белые ночи','Достоевский','22 %','ph1'],['П','Палата № 6','Антон Чехов',1,'ph1'],['Красавица, которая нюхала табак','Красавица, которая нюхала табак','A. Pushkin',1,'bright'],['М','Московия в представлении иностранцев','P. N. Apostol',1,'ph1']];
+function cov(b,tall){var c=document.createElement('div');c.className='cov '+b[4];c.style.width='100%';if(b[4]==='ph1')c.textContent=b[0];else if(b[4]==='bright')c.textContent='Красавица…';return c.outerHTML}
+function book(b,fixed){var s=b[3]===1?'<div class="st">Новая</div>':'<div class="st rd">Читаю · '+b[3]+'</div>';return '<div class="bk">'+cov(b)+'<div class="tt">'+b[1]+'</div><div class="au">'+b[2]+'</div>'+s+'</div>'}
+function lib(el,old){
+ var h='<div class="sb"><span>9:41</span><i></i></div><div class="tabs"><span class="on">Книги</span><span>Подборки</span><span>Статистика</span></div><div class="gridv" style="height:'+(old?'300':'318')+'px;overflow:hidden;margin-top:6px">';
+ var list=old?books:books;
+ h+=list.map(function(b,i){return old?'<div class="bk" style="'+(i%3==1?'margin-top:0':'')+'">'+cov(b)+'<div class="tt">'+b[1]+'</div><div class="au">'+b[2]+'</div>'+(b[3]===1?'<div class="st">Новая</div>':'<div class="st rd">Читаю · '+b[3]+'</div>')+'</div>':'<div class="bk" style="height:128px">'+cov(b)+'<div class="tt">'+b[1]+'</div><div class="au">'+b[2]+'</div><div class="st" style="margin-top:auto">'+(b[3]===1?'Новая':'Читаю · '+b[3])+'</div></div>'}).join('');
+ h+='</div>';
+ h+=old?'<div class="fab fl"><b>＋</b> Добавить книгу</div>':'<div class="fab round" aria-label="Добавить книгу">＋</div>';
+ el.innerHTML=h}
+lib(document.getElementById('gOld'),true);lib(document.getElementById('gNew'),false);
+
+var mo=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+var vals=[0,0,0,0,0,3,34,36,40,28,0,0];
+function bars(id,cls,colors){var el=document.getElementById(id),h='';
+ vals.forEach(function(v,i){if(!v){h+='<div><b class="e"></b></div>';return}
+  var parts=[.52,.26,.14,.08],tot=v*1.9;h+='<div>'+parts.map(function(p,k){return '<b style="height:'+(tot*p)+'px;background:'+colors[k]+'"></b>'}).join('')+'</div>'});
+ el.innerHTML=h}
+bars('cOld','',['var(--acO)','#6E9F7E','#9885C9','#6F8DB5']);
+bars('cNew','',['var(--eye)','var(--play)','var(--fast)','var(--guide)']);
+
+function stats(el,old){
+ var mon=function(full){return '<div class="mon">'+mo.map(function(m,i){var l=old?['Я','Ф','М','А','М','И','И','А','С','О','Н','Д'][i]:m;return '<span class="'+(i==9?'cur':'')+'">'+l+'</span>'}).join('')+'</div>'};
+ var colors=old?['var(--acO)','#6E9F7E','#9885C9','#6F8DB5']:['var(--eye)','var(--play)','var(--fast)','var(--guide)'];
+ var h='<div class="sb"><span>9:41</span><i></i></div>';
+ if(old){h+='<div class="tabs" style="position:relative;z-index:2;margin-top:2px"><span>Книги</span><span>Подборки</span><span class="on">Статистика</span></div>'}
+ h+='<div style="padding-top:'+(old?'0':'4')+'px"><div class="'+(old?'':'hd')+'" style="padding-bottom:'+(old?0:6)+'px;'+(old?'':'border-bottom:1px solid var(--ln)')+'"><div class="pill" style="'+(old?'background:color-mix(in srgb,var(--sf) 60%,transparent)':'')+'"><span>Неделя</span><span>Месяц</span><span class="on">Год</span></div></div>';
+ h+='<div class="chartcard" style="margin-top:'+(old?'-26px':'10px')+';position:relative;z-index:1"><h4>Страницы по месяцам</h4><div class="bars" id="">'+'</div></div></div>';
+ el.innerHTML=h;
+ var c=el.querySelector('.bars');var bh='';
+ vals.forEach(function(v){if(!v){bh+='<div><b class="e"></b></div>';return}var parts=[.52,.26,.14,.08],tot=v*1.9;bh+='<div>'+parts.map(function(p,k){return '<b style="height:'+(tot*p)+'px;background:'+colors[k]+'"></b>'}).join('')+'</div>'});
+ c.innerHTML=bh;c.insertAdjacentHTML('afterend',mon());
+ c.parentNode.insertAdjacentHTML('beforeend','<div class="leg"><span><i style="background:'+colors[0]+'"></i>Обычное</span><span><i style="background:'+colors[1]+'"></i>Слово</span><span><i style="background:'+colors[2]+'"></i>Фраза</span><span><i style="background:'+colors[3]+'"></i>Подсветка</span></div>')}
+stats(document.getElementById('sOld'),true);stats(document.getElementById('sNew'),false);
+
+function mini(id,mode){var el=document.getElementById(id);
+ var hue=[30,150,260,200,340,60];
+ function c(b,i){var d=document.createElement('div');d.className='cov';d.style.width='100%';
+  if(b[4]!=='ph1'){d.className+=' '+b[4];if(b[4]==='bright')d.textContent='Красавица…';return d.outerHTML}
+  if(mode==='a'){d.className+=' ph1';d.textContent=b[0]}
+  if(mode==='b'){d.style.background='color-mix(in srgb,hsl('+hue[i%6]+' 45% 55%) 32%,var(--bg))';d.textContent=b[0]}
+  if(mode==='c'){d.style.background='color-mix(in srgb,hsl('+hue[i%6]+' 45% 55%) 28%,var(--bg))';d.style.display='block';d.style.padding='0';
+   d.innerHTML='<div style="position:absolute;left:0;top:0;bottom:0;width:9px;background:color-mix(in srgb,hsl('+hue[i%6]+' 45% 40%) 70%,var(--bg))"></div><div style="position:absolute;left:15px;right:5px;top:10px;font:700 8px/1.2 var(--serif)">'+b[1]+'</div><div style="position:absolute;left:15px;right:5px;bottom:8px;font:500 6.5px var(--sans);color:var(--t2)">'+b[2]+'</div>'}
+  return d.outerHTML}
+ var h='<div class="sb"><span>9:41</span><i></i></div><div class="gridv" style="gap:12px 8px;padding:8px 10px">'+books.slice(0,6).map(function(b,i){return '<div class="bk">'+c(b,i)+'<div class="tt" style="font-size:8.5px">'+b[1]+'</div></div>'}).join('')+'</div>';
+ el.innerHTML=h}
+mini('b1a','a');mini('b1b','b');mini('b1c','c');
+
+function b2(id,m){var el=document.getElementById(id);
+ var items=books.slice(0,6).map(function(b,i){return '<div class="bk"><div class="cov '+(b[4]==='ph1'?'ph1':b[4])+'" style="width:100%">'+(b[4]==='ph1'?b[0]:'')+'</div><div class="tt" style="font-size:8.5px">'+b[1]+'</div></div>'});
+ var h='<div class="sb"><span>9:41</span><i></i></div><div class="tabs" style="margin:2px 10px"><span class="on" style="height:28px;font-size:10px">Книги</span><span style="height:28px;font-size:10px">Подборки</span></div>';
+ h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;font:700 10px var(--sans)"><span style="border:1px solid var(--ln);border-radius:14px;padding:4px 10px">Все · 8</span><span style="display:flex;gap:6px;align-items:center;color:var(--t2)">▤ ≡'+(m==='b'?'<span style="background:var(--ac);color:var(--bg);width:28px;height:28px;border-radius:14px;display:grid;place-items:center;font-size:16px">＋</span>':'')+'</span></div>';
+ if(m==='c'){items.unshift('<div class="bk"><div class="cov" style="width:100%;background:none;border:1.5px dashed var(--ac);box-shadow:none;color:var(--ac);font:400 28px var(--sans)">＋</div><div class="tt" style="font-size:8.5px;color:var(--ac)">Добавить книгу</div></div>')}
+ h+='<div class="gridv" style="gap:12px 8px;padding:6px 10px">'+items.slice(0,6).join('')+'</div>';
+ if(m==='a')h+='<div class="fab" style="height:36px;font-size:10px;right:10px;bottom:10px"><b>＋</b> Добавить книгу</div>';
+ el.innerHTML=h}
+b2('b2a','a');b2('b2b','b');b2('b2c','c');
+
+document.querySelectorAll('.hm').forEach(function(el){var c=el.dataset.c==='ac'?'var(--ac)':'var(--play)',h='';
+ var lv=[0,0,0,0,2,3,3,2,3,1,3,2,0,3,3,2,1,2,3,0,1,2,3,3,2,0,0,0,2,3,3,0,3,2,1];
+ for(var i=0;i<35;i++){var l=lv[i],a=[0,.32,.52,.76,1][l===3?4:l===2?3:l===1?1:0];
+  var s=l===0?'background:none':'background:color-mix(in srgb,'+c+' '+Math.round(a*100)+'%,var(--sf));border-color:transparent';
+  if(i===22)s+=';box-shadow:0 0 0 2px var(--tx)';h+='<i style="'+s+'"></i>'}
+ el.innerHTML=h});
+})();
+</script>
