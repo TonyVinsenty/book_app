@@ -775,7 +775,7 @@ final class _BlockLayout {
         if (prefix.isNotEmpty) TextSpan(text: prefix),
         for (var i = 0; i + 1 < cuts.length; i++)
           if (cuts[i] < cuts[i + 1])
-            _segment(text, cuts[i], cuts[i + 1], marks, style.fontSize!),
+            _segment(text, cuts[i], cuts[i + 1], marks, style),
       ],
     );
   }
@@ -785,15 +785,17 @@ final class _BlockLayout {
     int start,
     int end,
     List<(int, int, SpanKind)> marks,
-    double fontSize,
+    TextStyle style,
   ) {
     bool marked(SpanKind kind) =>
         marks.any((m) => m.$3 == kind && m.$1 <= start && end <= m.$2);
     final italic = marked(SpanKind.emphasis);
     final bold = marked(SpanKind.strong);
     final label = marked(SpanKind.noteRef);
+    final fontSize = style.fontSize!;
+    final part = text.substring(start, end);
     return TextSpan(
-      text: text.substring(start, end),
+      text: part,
       style: italic || bold || label
           ? TextStyle(
               fontStyle: italic ? FontStyle.italic : null,
@@ -804,9 +806,37 @@ final class _BlockLayout {
                   : null,
               fontSize: label ? _labelSize(fontSize) : null,
               color: label ? const Color(0x00000000) : null,
+              letterSpacing: label
+                  ? _bracketSpacing(part, style.fontFamily, fontSize)
+                  : null,
             )
           : null,
     );
+  }
+
+  /// Letter spacing that makes the room of a label [text] as wide as the
+  /// label drawn over it with brackets ([shownLabel]).
+  static double? _bracketSpacing(String text, String? family, double size) {
+    final shown = shownLabel(text);
+    if (shown == text || text.isEmpty) return null;
+    double width(String s) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: s,
+          style: TextStyle(
+            fontFamily: family,
+            fontSize: _labelSize(size),
+            fontWeight: _labelWeight,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    return (width(shown) - width(text)) / text.length;
   }
 
   /// Null for a picture.
@@ -849,7 +879,7 @@ final class _BlockLayout {
       final active = notes.containsKey(label.noteId);
       final mark = TextPainter(
         text: TextSpan(
-          text: label.text,
+          text: shownLabel(label.text),
           style: root.style!.copyWith(
             fontSize: _labelSize(size),
             fontWeight: _labelWeight,

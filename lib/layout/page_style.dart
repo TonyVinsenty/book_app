@@ -3,6 +3,11 @@ import 'package:book_app/layout/hyphenation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+/// A footnote label as shown: «[1]», as in printed books (owner, 14.6 B3);
+/// one the book already brackets, or a sign like «*», as it is.
+String shownLabel(String text) =>
+    RegExp(r'^[\p{L}\p{N}]+$', unicode: true).hasMatch(text) ? '[$text]' : text;
+
 /// Look of the book text on a page (ADR 0003, addendum 2). Any change but
 /// [color] means a new layout (see [sameLayoutAs]).
 @immutable

@@ -80,9 +80,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Taps the label [label] inside the shown note.
+  /// Taps the label [label] inside the shown note (drawn in brackets).
   Future<void> tapLabel(WidgetTester tester, String label) async {
-    await tester.tap(find.text(label).last);
+    await tester.tap(find.text('[$label]').last);
     await tester.pumpAndSettle();
   }
 

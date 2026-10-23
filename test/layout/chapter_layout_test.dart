@@ -576,15 +576,19 @@ void main() {
       layout.dispose();
     });
 
-    test('labels are drawn over a smaller blank place', () {
+    test('labels are drawn in brackets over a blank place as wide', () {
       final tokens = book(const [ParagraphBlock(text: text, spans: labels)]);
       final plain = book(const [ParagraphBlock(text: text)]);
       final layout = build(tokens, 0, size, style());
       final without = build(plain, 0, size, style());
+      // «[1]» takes more room than a small «1» (14.6, B3).
       expect(
         layout.wordBoxes(0, 2).single.left,
-        lessThan(without.wordBoxes(0, 2).single.left),
+        greaterThan(without.wordBoxes(0, 2).single.left - 4),
       );
+      expect(shownLabel('1'), '[1]');
+      expect(shownLabel('[1]'), '[1]');
+      expect(shownLabel('*'), '*');
       final canvas = _CountingCanvas();
       layout.paintPage(canvas, 0);
       expect(canvas.paragraphs, 3, reason: 'the text and two labels');

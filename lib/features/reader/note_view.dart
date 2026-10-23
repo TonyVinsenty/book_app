@@ -236,7 +236,11 @@ InlineSpan _segmentOf(
             0,
             -book.style.textScaler.scale(base.fontSize!) * 0.38,
           ),
-          child: Text(text, style: small, textScaler: book.style.textScaler),
+          child: Text(
+            shownLabel(text),
+            style: small,
+            textScaler: book.style.textScaler,
+          ),
         ),
       ),
     ),
