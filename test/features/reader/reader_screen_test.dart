@@ -2774,4 +2774,129 @@ void main() {
     expect(ms2, ms + 40000, reason: 'flushed by the scroll end after 30 s');
     await closeApp(tester);
   });
+
+  testWidgets('14.14: a slider jump to the last screen of the book stays '
+      'there; "back" returns to the word and saves it', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    for (var i = 0; i < 30; i++) {
+      final s = reader(tester);
+      if (s.placeWord > s.page.firstWord) break;
+      await tester.drag(strip, const Offset(0, -60));
+      await tester.pumpAndSettle();
+    }
+    final before = reader(tester).placeWord;
+    expect(before, greaterThan(reader(tester).page.firstWord));
+    await settle(tester);
+    final number = reader(tester).pagination.pageCount.value;
+
+    await tapAt(tester, 0.5);
+    tester.widget<Slider>(find.byType(Slider)).onChangeEnd!(number.toDouble());
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(find.textContaining('Вернуться на стр.'), findsOneWidget);
+    final end = reader(tester).placeWord;
+    expect(end, greaterThan(before));
+    final saved = await tester.runAsync(savedWord);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(find.textContaining('Вернуться на стр.'), findsOneWidget);
+    expect(reader(tester).placeWord, end, reason: 'no spring back');
+    expect(await tester.runAsync(savedWord), saved);
+
+    // No scrolling in between: the saved place is the word left.
+    await tester.tap(find.textContaining('Вернуться на стр.'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(reader(tester).placeWord, before);
+    expect(await tester.runAsync(savedWord), before);
+    await closeApp(tester);
+  });
+
+  testWidgets('14.14: leaving the highlight on a word of the next page '
+      'moves the place there', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    final change = changer(tester);
+    await change((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    await tester.drag(strip, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    final chapter = reader(tester).layout;
+    expect(chapter.pages.indexOf(reader(tester).page), 0);
+    final word = chapter.pages[1].firstWord + 3;
+    final box = chapter.wordBoxes(1, word).first;
+    await tester.longPressAt(
+      tester.getTopLeft(stripTile(tester, 1)) + box.center,
+    );
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(reader(tester).guide!.word, word);
+    await tester.tap(find.text('Выйти из подсветки'));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(reader(tester).guide, isNull);
+    final r = reader(tester);
+    expect(r.placeWord, word);
+    expect(r.layout.pages.indexOf(r.page), 1, reason: 'the page of the word');
+    final number = r.pagination.pagesBefore(r.layout.sectionIndex).value + 2;
+    expect(find.textContaining('стр. $number /'), findsOne);
+    await change((s) => s.larger(TextScaler.noScaling));
+    expect(reader(tester).placeWord, word, reason: 'A+ keeps the word');
+    await closeApp(tester);
+  });
+
+  testWidgets('14.14: a swipe right while the highlight plays in the strip '
+      'goes back by a sentence', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    await tapAt(tester, 0.5);
+    await tester.tap(find.text('Скорочтение'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    final guide = reader(tester).guide!;
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isTrue);
+    for (var i = 0; i < 600 && guide.word < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    final at = guide.word;
+    expect(at, greaterThan(reader(tester).placeWord + 3));
+    await tester.fling(find.byType(ReaderView), const Offset(250, 0), 1500);
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(guide.word, lessThan(at));
+    await closeApp(tester);
+  });
+
+  testWidgets('14.14: a touch that stopped the strip and became a drag does '
+      'not eat the next tap', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    double offset() => scrollable.position.pixels;
+
+    await tester.fling(strip, const Offset(0, -200), 3000);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.drag(strip, const Offset(0, -40));
+    await tester.pumpAndSettle();
+    await settle(tester);
+    final start = offset();
+    await tapAt(tester, 0.95);
+    await tester.pumpAndSettle();
+    expect(offset(), greaterThan(start + 100), reason: 'the tap scrolled');
+    await closeApp(tester);
+  });
 }
