@@ -11,8 +11,10 @@ import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/features/library/book_menu.dart';
 import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
+import 'package:book_app/features/stats/stats_format.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/page_cache.dart';
+import 'package:book_app/stats/stats_calc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -161,6 +163,7 @@ class _BookPage extends ConsumerWidget {
             ],
           ),
         ),
+        _TimeToRead(book: book, status: status, percent: mark.percent),
         const SizedBox(height: 12),
         Text(
           '${pages.exact ? l10n.bookPageExactNote : l10n.bookPageEstimateNote}'
@@ -382,6 +385,73 @@ class _Hero extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// "На чтение книги уйдёт ≈ … при обычном чтении и ≈ … при скорочтении":
+/// the words left at the reader's measured speeds (owner, after 0.1.0+15);
+/// nothing until a speed is measured.
+class _TimeToRead extends ConsumerWidget {
+  const _TimeToRead({
+    required this.book,
+    required this.status,
+    required this.percent,
+  });
+
+  final BookRow book;
+  final BookStatus status;
+  final int percent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = ref.watch(readingDaysProvider).value;
+    if (rows == null) return const SizedBox.shrink();
+    final (:page, :play) = measuredSpeeds(rows);
+    if (page == null && play == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final inProgress =
+        status != BookStatus.finished && percent > 0 && percent < 100;
+    final words = inProgress
+        ? book.wordCount * (100 - percent) ~/ 100
+        : book.wordCount;
+    String time(int wpm) => formatDuration(l10n, _rounded(timeLeft(words, wpm)));
+    final body = switch ((page, play)) {
+      (final page?, final play?) => l10n.bookPageTimeBoth(
+        time(page),
+        time(play),
+      ),
+      (final page?, null) => l10n.bookPageTimePage(time(page)),
+      (_, final play) => l10n.bookPageTimePlay(time(play!)),
+    };
+    final text = inProgress
+        ? l10n.bookPageTimeLeft(body)
+        : l10n.bookPageTimeWhole(body);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.schedule, size: 20, color: context.readingColors.accent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$text ${l10n.bookPageTimeNote}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// An estimate, not a timer: whole hours from 3 hours, otherwise to
+  /// 10 minutes.
+  static Duration _rounded(Duration time) {
+    final step = time >= const Duration(hours: 3)
+        ? const Duration(hours: 1)
+        : const Duration(minutes: 10);
+    final steps = (time.inSeconds / step.inSeconds).round();
+    return steps == 0 ? time : step * steps;
   }
 }
 

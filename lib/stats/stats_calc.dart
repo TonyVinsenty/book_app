@@ -172,6 +172,14 @@ int? playWpm(Iterable<ReadingDelta> rows) {
   return (words * 60000 / ms).round();
 }
 
+/// The reader's measured speeds over all [rows]: by eye (null below
+/// [minPagesForSpeed] pages) and speed reading (null below
+/// [minWordsForPlaySpeed] words); for the book page.
+({int? page, int? play}) measuredSpeeds(List<ReadingDelta> rows) {
+  final eye = pageSpeed([pageSpeedsOf(rows)]);
+  return (page: eye.known ? eye.wpm : null, play: playWpm(rows));
+}
+
 /// How long [words] take at [wpm].
 Duration timeLeft(int words, int wpm) => _timeOf(math.max(words, 0), wpm);
 

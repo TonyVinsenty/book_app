@@ -16,6 +16,7 @@ import 'package:book_app/features/library/book_views.dart';
 import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/layout/page_cache.dart';
+import 'package:book_app/stats/stats_records.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ BookRow _book(
   bool opened = false,
   bool finished = false,
   String? annotation,
+  int words = 100,
 }) => BookRow(
   id: id,
   title: title,
@@ -40,7 +42,7 @@ BookRow _book(
   sourceSize: 3 * 1024 * 1024 ~/ 2,
   sourceHash: '$id',
   parserVersion: 1,
-  wordCount: 100,
+  wordCount: words,
   positionWord: position,
   positionSection: 0,
   positionBlock: 0,
@@ -93,6 +95,7 @@ void main() {
     List<BookRow> books, {
     required String open,
     Future<void> Function()? before,
+    List<ReadingDelta>? reading,
   }) async {
     await tester.runAsync(() async {
       for (final b in books) {
@@ -106,6 +109,8 @@ void main() {
           appDatabaseProvider.overrideWithValue(db),
           contentStoreProvider.overrideWithValue(store),
           bookRepositoryProvider.overrideWithValue(BookRepository(db, store)),
+          if (reading != null)
+            readingDaysProvider.overrideWith((ref) => Stream.value(reading)),
         ],
         child: MaterialApp(
           theme: buildAppTheme(ReadingPalette.paper, night: false),
@@ -155,6 +160,70 @@ void main() {
     );
     expect(onPage(find.text('Не добавлена')), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Читать'), findsOneWidget);
+  });
+
+  testWidgets('the time to read at the measured speeds', (tester) async {
+    const page = ReadingDelta(
+      day: 20261020,
+      bookId: 9,
+      mode: ReadingMode.page,
+      dayPart: 0,
+      activeMs: 3600000,
+      words: 12000,
+      pageSpeeds: {10: 40},
+    );
+    const play = ReadingDelta(
+      day: 20261020,
+      bookId: 9,
+      mode: ReadingMode.word,
+      dayPart: 0,
+      activeMs: 600000,
+      words: 3000,
+    );
+    await pumpPage(
+      tester,
+      [_book(1, title: 'Война и мир', words: 60000)],
+      open: 'Война и мир',
+      reading: [page, play],
+    );
+    expect(
+      onPage(
+        find.textContaining(
+          RegExp('^На чтение книги уйдёт ≈ .+ при обычном чтении и ≈ 3 ч при '
+              'скорочтении'),
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('only the page speed measured: only its time', (tester) async {
+    await pumpPage(
+      tester,
+      [_book(1, title: 'Война и мир', words: 60000)],
+      open: 'Война и мир',
+      reading: const [
+        ReadingDelta(
+          day: 20261020,
+          bookId: 9,
+          mode: ReadingMode.page,
+          dayPart: 0,
+          pageSpeeds: {10: 40},
+        ),
+      ],
+    );
+    expect(onPage(find.textContaining('при обычном чтении')), findsOneWidget);
+    expect(onPage(find.textContaining('скорочтении')), findsNothing);
+  });
+
+  testWidgets('no speed measured: no time', (tester) async {
+    await pumpPage(
+      tester,
+      [_book(1, title: 'Война и мир', words: 60000)],
+      open: 'Война и мир',
+      reading: const [],
+    );
+    expect(onPage(find.textContaining('На чтение книги')), findsNothing);
   });
 
   testWidgets('pages saved by the reader: exact, with the page read', (
