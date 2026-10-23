@@ -2245,6 +2245,37 @@ void main() {
     await closeApp(tester);
   });
 
+  testWidgets('15.2: while the strip stands, the next chapter within two '
+      'screens is laid out ahead', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    final notifier = container.read(readingSettingsProvider.notifier);
+    notifier.set(
+      container.read(readingSettingsProvider).copyWith(verticalScroll: true),
+    );
+    await tester.pumpAndSettle();
+    final pages = reader(tester).layout.pages.length;
+    expect(pages, greaterThan(4));
+
+    final height = tester.getSize(find.byType(ReaderView)).height;
+    for (var i = 0; i < 40; i++) {
+      final r = reader(tester);
+      if (r.layout.pages.indexOf(r.page) >= pages - 3) break;
+      await tester.drag(find.byType(CustomScrollView), Offset(0, -height / 3));
+      await tester.pumpAndSettle();
+      await settle(tester);
+    }
+    final r = reader(tester);
+    expect(r.layout.sectionIndex, 0);
+    expect(r.layout.pages.indexOf(r.page), pages - 3);
+    await tester.pump();
+    expect(reader(tester).laidOut, contains(1));
+    await closeApp(tester);
+  });
+
   testWidgets('14.14: side taps scroll the strip by a screen less a line; a '
       'long press reads from a page below; a tap on a moving strip stops it', (
     tester,

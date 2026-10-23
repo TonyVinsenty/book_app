@@ -293,6 +293,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   @visibleForTesting
   int get placeWord => _word;
 
+  /// Chapters laid out now.
+  @visibleForTesting
+  Iterable<int> get laidOut => _layouts.keys;
+
   @visibleForTesting
   int? get litWord => _litWord;
 
@@ -575,6 +579,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final top = map.seenRow(offset);
     _stripTop = top == null ? null : (top.section, top.page, top.row);
     _stripSaved = _word;
+    Timer.run(_layOutAhead);
   }
 
   /// Lays out the chapters within a screen of the window (п. 5); true if
@@ -688,6 +693,33 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
     // Not within a frame: the release rebuilds.
     Timer.run(_releaseFarChapters);
+    Timer.run(_layOutAhead);
+  }
+
+  /// While the strip stands, the chapters it keeps ([_releaseFarChapters])
+  /// are laid out one by one, so a scroll rarely lays one out within a frame
+  /// (a jolt of tens of ms at a chapter's edge, 15.1).
+  void _layOutAhead() {
+    final map = _strip;
+    final scroll = _stripScroll;
+    if (!mounted ||
+        map == null ||
+        scroll == null ||
+        !scroll.hasClients ||
+        scroll.position.isScrollingNotifier.value) {
+      return;
+    }
+    final reach = 2 * map.windowHeight;
+    final first = map.sectionAt(scroll.offset - reach);
+    final last = map.sectionAt(scroll.offset + map.windowBottom + reach);
+    for (var s = first; s <= last; s++) {
+      if (map.pagesOf(s) != null) continue;
+      _layoutOf(s);
+      setState(() => _strip = _newStrip(map.center));
+      _stripStale = false;
+      Timer.run(_layOutAhead);
+      return;
+    }
   }
 
   /// Chapters with no tiles in or near the window go (п. 5); the strip keeps
