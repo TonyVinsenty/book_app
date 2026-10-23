@@ -402,8 +402,8 @@ class _Tile extends StatelessWidget {
           color: colors.surface,
           borderRadius: BorderRadius.circular(16),
         ),
+        // Numbers on one line, whatever the labels under them (14.2, A10).
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               value,
