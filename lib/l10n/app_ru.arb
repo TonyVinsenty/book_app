@@ -775,6 +775,8 @@
   "@statsEmptyAction": {"description": "Statistics before any reading: go to the books"},
   "statsMinutesDays": "Минуты по дням",
   "@statsMinutesDays": {"description": "Statistics: bars of reading time by day"},
+  "statsMonthsShort": "Янв Фев Мар Апр Май Июн Июл Авг Сен Окт Ноя Дек",
+  "@statsMonthsShort": {"description": "Statistics, the year: month names under the bars, three letters, separated by spaces, January first"},
   "statsMinutesMonths": "Минуты по месяцам",
   "@statsMinutesMonths": {"description": "Statistics, the year: bars of reading time by month"},
   "statsPagesDays": "Страницы по дням",

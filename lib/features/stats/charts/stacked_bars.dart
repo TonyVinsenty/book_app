@@ -70,14 +70,17 @@ class StackedBars extends StatelessWidget {
                         overflow: TextOverflow.visible,
                       ),
                     _bar(parts, total(parts), highest),
-                    Text(
-                      names[i] ?? '',
-                      style: small?.copyWith(
-                        fontWeight: i == current ? FontWeight.w800 : null,
+                    // Smaller rather than into the next bar's name.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        names[i] ?? '',
+                        style: small?.copyWith(
+                          fontWeight: i == current ? FontWeight.w800 : null,
+                        ),
+                        maxLines: 1,
+                        softWrap: false,
                       ),
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.visible,
                     ),
                   ],
                 ),

@@ -46,6 +46,15 @@ class StatsView extends ConsumerStatefulWidget {
 class _StatsViewState extends ConsumerState<StatsView> {
   var _period = StatsPeriod.month;
 
+  /// The cards went up under the period switch: a line under it.
+  var _scrolled = false;
+
+  bool _onScroll(ScrollNotification notification) {
+    final scrolled = notification.metrics.extentBefore > 0;
+    if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -88,10 +97,12 @@ class _StatsViewState extends ConsumerState<StatsView> {
         ],
       );
     }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+    // The period switch stays; only the cards go under it (14.2, A5).
+    return Column(
       children: [
-        Row(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Row(
           children: [
             Expanded(
               child: PillTabs(
@@ -108,7 +119,20 @@ class _StatsViewState extends ConsumerState<StatsView> {
             ?debugMenu,
           ],
         ),
-        const SizedBox(height: 12),
+        ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: _scrolled
+              ? context.readingColors.text.withValues(alpha: 0.14)
+              : Colors.transparent,
+        ),
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
         _SavedCard(overview),
         const SizedBox(height: 12),
         _SpeedCard(overview),
@@ -122,6 +146,10 @@ class _StatsViewState extends ConsumerState<StatsView> {
         _CalendarCard(overview.calendar, today: today),
         const SizedBox(height: 12),
         _YearCard(overview.year, year: today.year),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -532,10 +560,9 @@ class _DaysCard extends StatelessWidget {
                   bar.from.day == 1 || bar.from.day % 5 == 0
                       ? '${bar.from.day}'
                       : null,
-                StatsPeriod.year => DateFormat(
-                  'LLLLL',
-                  locale,
-                ).format(bar.from),
+                // Three letters: «И И» could not be told apart (14.2, A6).
+                StatsPeriod.year =>
+                  l10n.statsMonthsShort.split(' ')[bar.from.month - 1],
               },
           ],
           values: period == StatsPeriod.week

@@ -159,6 +159,9 @@ void main() {
     expect(find.text('12 месяцев назад'), findsOneWidget);
     expect(find.text('Минуты по месяцам'), findsOneWidget);
     expect(find.text('Страницы по месяцам'), findsOneWidget);
+    // Months by three letters under the bars (14.2, A6).
+    expect(find.text('Июн'), findsWidgets);
+    expect(find.text('Июл'), findsWidgets);
 
     await tester.tap(find.text('Неделя'));
     await tester.pump();
