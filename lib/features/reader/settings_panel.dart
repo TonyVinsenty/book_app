@@ -303,6 +303,19 @@ class ReadingSettingsPanel extends ConsumerWidget {
                           (mode) => settings.copyWith(night: mode),
                         ),
                       ),
+                      section(
+                        l10n.settingsLanguage,
+                        choices(
+                          AppLanguage.values,
+                          settings.language,
+                          (language) => switch (language) {
+                            AppLanguage.system => l10n.languageSystem,
+                            AppLanguage.ru => l10n.languageRussian,
+                            AppLanguage.en => l10n.languageEnglish,
+                          },
+                          (language) => settings.copyWith(language: language),
+                        ),
+                      ),
                     ],
                   ),
                 ),

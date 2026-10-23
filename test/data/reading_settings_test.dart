@@ -27,6 +27,7 @@ void main() {
       hyphenate: false,
       showStats: false,
       verticalScroll: true,
+      language: AppLanguage.en,
     );
     expect(ReadingSettings.fromStored(settings.toStored()), settings);
     expect(ReadingSettings.fromStored(defaults.toStored()), defaults);
@@ -47,6 +48,7 @@ void main() {
         'reading.texture': 'velvet',
         'reading.hyphenate': 'maybe',
         'reading.verticalScroll': 'yes',
+        'reading.language': 'klingon',
       }),
       defaults,
     );

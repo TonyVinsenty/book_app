@@ -1,3 +1,4 @@
+import 'package:book_app/app/app_locale.dart';
 import 'package:book_app/app/folder_scans.dart';
 import 'package:book_app/app/incoming_books.dart';
 import 'package:book_app/app/launch_splash.dart';
@@ -44,6 +45,11 @@ class _BookAppState extends ConsumerState<BookApp> {
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      locale: switch (settings.language.code) {
+        final code? => Locale(code),
+        null => null,
+      },
+      localeListResolutionCallback: resolveAppLocale,
       // The whole app takes the reading palette (ADR 0003, addendum 2).
       theme: buildAppTheme(settings.palette, night: false),
       darkTheme: buildAppTheme(settings.palette, night: true),

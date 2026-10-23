@@ -26,6 +26,19 @@ enum BookAlign { left, justify }
 /// When the night colors are used.
 enum NightMode { system, day, night }
 
+/// The language of the app: the phone's (Russian or else English), or a
+/// chosen one.
+enum AppLanguage {
+  system(null),
+  ru('ru'),
+  en('en');
+
+  const AppLanguage(this.code);
+
+  /// Null: as the phone.
+  final String? code;
+}
+
 /// How the book text looks (ADR 0003, addendum 2 п. 1). Stored in the
 /// settings table, one `reading.*` key per field; a missing or broken value
 /// means the default.
@@ -43,6 +56,7 @@ final class ReadingSettings {
     this.hyphenate = true,
     this.showStats = true,
     this.verticalScroll = false,
+    this.language = AppLanguage.system,
   });
 
   /// Reads the stored values ([keys] → text), see [toStored].
@@ -66,6 +80,7 @@ final class ReadingSettings {
       hyphenate: stored[_hyphenate] != 'false',
       showStats: stored[_showStats] != 'false',
       verticalScroll: stored[_verticalScroll] == 'true',
+      language: byName(AppLanguage.values, _language) ?? AppLanguage.system,
     );
   }
 
@@ -80,6 +95,7 @@ final class ReadingSettings {
   static const _hyphenate = 'reading.hyphenate';
   static const _showStats = 'reading.showStats';
   static const _verticalScroll = 'reading.verticalScroll';
+  static const _language = 'reading.language';
 
   /// Prefix of all the keys.
   static const keyPrefix = 'reading.';
@@ -122,6 +138,8 @@ final class ReadingSettings {
   /// (ADR 0003, addendum 5); the layout is the same.
   final bool verticalScroll;
 
+  final AppLanguage language;
+
   /// The size to lay out with: the chosen one, or the default scaled like
   /// the system text and put on the nearest step.
   double fontSizeFor(TextScaler system) =>
@@ -161,6 +179,7 @@ final class ReadingSettings {
     bool? hyphenate,
     bool? showStats,
     bool? verticalScroll,
+    AppLanguage? language,
   }) => ReadingSettings(
     font: font ?? this.font,
     fontSize: fontSize ?? this.fontSize,
@@ -173,6 +192,7 @@ final class ReadingSettings {
     hyphenate: hyphenate ?? this.hyphenate,
     showStats: showStats ?? this.showStats,
     verticalScroll: verticalScroll ?? this.verticalScroll,
+    language: language ?? this.language,
   );
 
   /// Key → text for the settings table; an unset size is left out.
@@ -188,6 +208,7 @@ final class ReadingSettings {
     _hyphenate: '$hyphenate',
     _showStats: '$showStats',
     _verticalScroll: '$verticalScroll',
+    _language: language.name,
   };
 
   @override
@@ -203,7 +224,8 @@ final class ReadingSettings {
       other.texture == texture &&
       other.hyphenate == hyphenate &&
       other.showStats == showStats &&
-      other.verticalScroll == verticalScroll;
+      other.verticalScroll == verticalScroll &&
+      other.language == language;
 
   @override
   int get hashCode => Object.hash(
@@ -218,6 +240,7 @@ final class ReadingSettings {
     hyphenate,
     showStats,
     verticalScroll,
+    language,
   );
 }
 
