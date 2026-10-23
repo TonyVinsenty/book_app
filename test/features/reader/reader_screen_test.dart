@@ -2368,4 +2368,58 @@ void main() {
     expect(await finishedAt(tester), isNotNull, reason: 'scrolled to the end');
     await closeApp(tester);
   });
+
+  testWidgets('14.14: the highlight in the strip: no finger scroll while it '
+      'plays, a whole screen on when its row leaves, the top row after a '
+      'scroll on a pause', (tester) async {
+    await pumpApp(tester);
+    await tester.runAsync(
+      () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
+    );
+    await openBook(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    container
+        .read(readingSettingsProvider.notifier)
+        .set(
+          container.read(readingSettingsProvider).copyWith(verticalScroll: true),
+        );
+    await tester.pumpAndSettle();
+    final strip = find.byType(CustomScrollView);
+    double offset() =>
+        tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
+    final window = tester.getSize(strip).height - readerTopMargin;
+    final line = reader(tester).layout.style.bodyLine;
+
+    await tapAt(tester, 0.5);
+    await tester.tap(find.text('Скорочтение'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    final guide = reader(tester).guide!;
+    expect(guide.word, reader(tester).placeWord);
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isTrue);
+
+    final start = offset();
+    await tester.drag(strip, const Offset(0, -200));
+    await tester.pump();
+    expect(offset(), start, reason: 'the finger does not scroll');
+    for (var i = 0; i < 1200 && offset() == start; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(offset() - start, inInclusiveRange(window - 2 * line, window + line));
+    final top = reader(tester).placeWord;
+    expect(guide.word, inInclusiveRange(top, top + 15), reason: 'its row on top');
+
+    await tapAt(tester, 0.5);
+    expect(guide.isPlaying, isFalse);
+    for (var i = 0; i < 2; i++) {
+      await tester.drag(strip, const Offset(0, -400));
+      await tester.pumpAndSettle();
+    }
+    expect(guide.word, reader(tester).placeWord, reason: 'came to the top');
+    await closeApp(tester);
+  });
 }

@@ -660,6 +660,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
         );
       }
     }
+    // On a pause the highlight comes along to the top row once its word is
+    // scrolled away (п. 10).
+    final guide = _guide;
+    if (guide != null &&
+        !guide.isPlaying &&
+        !guide.isStopped &&
+        !_rowSeen(guide.word)) {
+      _guideSeek(_word);
+    }
     // Not within a frame: the release rebuilds.
     Timer.run(_releaseFarChapters);
   }
@@ -697,7 +706,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (pageSize == _pageSize && style == _style) return;
     // The highlighted word, unless a page was turned away from it.
     final guide = _guide;
-    final guided = guide != null && _onShownPage(guide.word);
+    final guided = guide != null && _seen(guide.word);
     if (guided) _word = guide.word;
     _clearLayouts();
     _chapterExtents.clear();
@@ -732,7 +741,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
         : _layoutOf(_section).pageOfWord(_word);
     if (guide != null) {
       guide.relayout();
-      if (!guided) guide.pageTurned(page.firstWord);
+      if (!guided && _stripOn) {
+        guide.seek(_word);
+        _guideWord.value = guide.word;
+      } else if (!guided) {
+        guide.pageTurned(page.firstWord);
+      }
     } else {
       _openPage(relaid: true);
     }
@@ -1202,13 +1216,59 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   bool _onShownPage(int word) => word >= page.firstWord && word < page.endWord;
 
+  /// [word] is on screen: on the page shown, or in the strip's window.
+  bool _seen(int word) => _stripOn ? _rowSeen(word) : _onShownPage(word);
+
+  /// The row of [word] is whole in the strip's window.
+  bool _rowSeen(int word) {
+    final map = _strip;
+    final scroll = _stripScroll;
+    if (map == null || scroll == null || !scroll.hasClients) return false;
+    final to = map.offsetOf(widget.opened.tokens.sectionOf(word), word);
+    if (to == null) return false;
+    final row = map.rowAt(to + map.windowTop + 0.5);
+    final offset = scroll.offset;
+    return row != null &&
+        row.top >= offset + map.windowTop - 0.5 &&
+        row.bottom <= offset + map.windowBottom + 0.5;
+  }
+
+  /// The highlight's row left the window (below, or above after "back"):
+  /// the strip goes on by a whole screen, that row at the top (ADR 0003,
+  /// addendum 5 п. 10); 250 ms, at once with less motion.
+  void _stripToWord(int word) {
+    final scroll = _stripScroll;
+    if (_rowSeen(word) || scroll == null || !scroll.hasClients) return;
+    final section = widget.opened.tokens.sectionOf(word);
+    final to = _strip!.offsetOf(section, word);
+    if (to == null) {
+      // Its chapter is not laid out yet: a strip placed anew.
+      return _show(section, _layoutOf(section).pageOfWord(word), word: word);
+    }
+    final position = scroll.position;
+    final target = to.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      scroll.jumpTo(target);
+    } else {
+      unawaited(
+        scroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
+  }
+
   void _onGuideTick(Duration elapsed) {
     final guide = _guide!;
     final change = guide.advance(elapsed - _guideLastTick);
     _guideLastTick = elapsed;
     _guideMeter?.advance(guide.word);
     if (_statsBuffer.due) _flushStats();
-    if (change == GuideChange.page) {
+    // The strip follows the row of each word, not only a new page.
+    if (change == GuideChange.page ||
+        (_stripOn && change == GuideChange.word)) {
       _followGuide();
     } else if (change == GuideChange.word) {
       _guideWord.value = guide.word;
@@ -1233,6 +1293,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final guide = _guide!;
     final word = guide.word;
     _guideWord.value = word;
+    if (_stripOn) return _stripToWord(word);
     if (_onShownPage(word)) return;
     final section = widget.opened.tokens.sectionOf(word);
     _show(section, _layoutOf(section).pageOfWord(word), turned: true);
@@ -1363,7 +1424,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _guideTicker?.stop();
     _saveGuidePlace();
     final word = guide.word;
-    final lit = _onShownPage(word);
+    final lit = _seen(word);
     setState(() {
       _guide = null;
       _guideSpeedHint = false;
@@ -1977,7 +2038,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
               TextButton.icon(
                 icon: const Icon(Icons.speed),
                 label: Text(l10n.readerSpeedRead),
-                onPressed: () => _speedRead(page.firstWord),
+                // In the strip, from the top row.
+                onPressed: () => _speedRead(_stripOn ? _word : page.firstWord),
               ),
             ],
           ),
