@@ -18,7 +18,6 @@ import 'package:book_app/features/stats/stats_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,13 +36,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   /// (owner, 14.6 B2).
   var _addShort = false;
 
-  bool _onScroll(UserScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-    final short = switch (notification.direction) {
-      ScrollDirection.reverse => true,
-      ScrollDirection.forward => false,
-      ScrollDirection.idle => _addShort,
-    };
+  /// Scrolled since the direction last changed: the button changes only
+  /// after [_turnAfter], so small moves and the bounce at the ends do not
+  /// make it blink.
+  double _travel = 0;
+  static const _turnAfter = 24.0;
+
+  bool _onScroll(ScrollUpdateNotification notification) {
+    final metrics = notification.metrics;
+    if (metrics.axis != Axis.vertical) return false;
+    var short = _addShort;
+    if (metrics.pixels <= metrics.minScrollExtent + _turnAfter) {
+      short = false;
+      _travel = 0;
+    } else if (metrics.pixels <= metrics.maxScrollExtent) {
+      final delta = notification.scrollDelta ?? 0;
+      if (delta.sign != _travel.sign) _travel = 0;
+      _travel += delta;
+      if (_travel.abs() >= _turnAfter) short = _travel > 0;
+    }
     if (short != _addShort) setState(() => _addShort = short);
     return false;
   }
@@ -121,7 +132,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final books = _tab == _Tab.books;
     return Scaffold(
       // No app bar: the name is not needed here (owner, 2026-10-20).
-      body: NotificationListener<UserScrollNotification>(
+      body: NotificationListener<ScrollUpdateNotification>(
         onNotification: _onScroll,
         child: SafeArea(
           bottom: false,
@@ -160,24 +171,56 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       // The picker replaces its previous copies, so it waits for the queue.
       floatingActionButton: queue.busy || !books
           ? null
-          : AnimatedSize(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              alignment: Alignment.centerRight,
-              clipBehavior: Clip.none,
-              child: FloatingActionButton.extended(
-                // It hides and comes back with the queue; two of them in
-                // one page transition would clash as heroes.
-                heroTag: null,
-                onPressed: _addBooks,
-                tooltip: _addShort ? l10n.addBook : null,
-                isExtended: !_addShort,
-                icon: const Icon(Icons.add),
-                label: Text(l10n.addBook),
-              ),
+          : FloatingActionButton.extended(
+              // It hides and comes back with the queue; two of them in one
+              // page transition would clash as heroes.
+              heroTag: null,
+              onPressed: _addBooks,
+              tooltip: _addShort ? l10n.addBook : null,
+              extendedPadding: EdgeInsets.zero,
+              label: _AddLabel(short: _addShort, text: l10n.addBook),
             ),
     );
   }
+}
+
+/// The «+» and the words of "Добавить книгу": the words fold into the «+»
+/// and unfold smoothly, the button shrinks with them to a 56 square.
+class _AddLabel extends StatelessWidget {
+  const _AddLabel({required this.short, required this.text});
+
+  final bool short;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(end: short ? 0 : 1),
+    duration: const Duration(milliseconds: 220),
+    curve: Curves.easeInOut,
+    builder: (context, open, _) => Padding(
+      padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.add),
+          if (open > 0)
+            ClipRect(
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                widthFactor: open,
+                child: Opacity(
+                  opacity: open,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
+                    child: Text(text, maxLines: 1, softWrap: false),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// "Вернуться к «…»": back to the book the reader was closed on, whatever

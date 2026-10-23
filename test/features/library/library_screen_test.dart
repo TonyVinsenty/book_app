@@ -302,6 +302,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Добавить книгу'), findsNothing);
     expect(find.byTooltip('Добавить книгу'), findsOneWidget);
+    // A small move back does not make it blink.
+    final list = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(CustomScrollView).first,
+        matching: find.byType(Scrollable),
+      ),
+    );
+    list.position.jumpTo(list.position.pixels - 15);
+    await tester.pumpAndSettle();
+    expect(find.text('Добавить книгу'), findsNothing);
     await tester.drag(
       find.byType(CustomScrollView).first,
       const Offset(0, 100),
