@@ -42,6 +42,9 @@ RIGHT_PATH = [
     ("C", 674, 374, 588, 384, 512, 430),
 ]
 DOT_CENTER, DOT_RADIUS = (512, 300), 46
+# The middle of the book with the dot (from the dot's top to the cover's
+# bottom): shapes grow and shrink about it, so the picture stays centred.
+MIDDLE = (512, 497)
 
 # The launch screen: the background of «Бумага» and the book without its
 # square; at night darker pages and a lighter cover.
@@ -52,19 +55,24 @@ SPLASH = {
               "right": "#26211C", "dot": "#FF8A6B"},
 }
 
+# The book in the full-square icons, about 3/4 of the side across, like the
+# system apps (owner, after 0.1.0+15).
+IOS_SCALE = 1.4
+
 # Drawn this big, then made smaller: smooth edges.
 MASTER = 4096
 
 
 def points(path, scale):
-    """The path as a polygon in a MASTER box, shrunk by scale about the
-    centre."""
+    """The path as a polygon in a MASTER box, scaled about MIDDLE and put in
+    the centre."""
     k = MASTER / 1024
+    mx, my = MIDDLE
 
     def at(x, y):
         return (
-            (512 + (x - 512) * scale) * k,
-            (512 + (y - 512) * scale) * k,
+            (512 + (x - mx) * scale) * k,
+            (512 + (y - my) * scale) * k,
         )
 
     out = []
@@ -88,8 +96,9 @@ def points(path, scale):
 def dot_box(scale):
     k = MASTER / 1024
     cx, cy = DOT_CENTER
-    x = (512 + (cx - 512) * scale) * k
-    y = (512 + (cy - 512) * scale) * k
+    mx, my = MIDDLE
+    x = (512 + (cx - mx) * scale) * k
+    y = (512 + (cy - my) * scale) * k
     r = DOT_RADIUS * scale * k
     return (x - r, y - r, x + r, y + r)
 
@@ -137,9 +146,10 @@ def save(image, path, size, rgb=False):
 
 def android():
     res = ROOT / "android/app/src/main/res"
-    # Inside the adaptive icon's safe circle (polish.md: 0.88).
-    adaptive = 0.88
-    legacy = motif(adaptive, BACKGROUND, corner=0.2)
+    # As big as the adaptive icon's safe circle (66 of 108 dp) allows: the
+    # cover's corners touch it at 0.92.
+    adaptive = 0.92
+    legacy = motif(IOS_SCALE, BACKGROUND, corner=0.2)
     foreground = motif(adaptive)
     mono = monochrome(adaptive)
     for name, scale in {
@@ -174,7 +184,7 @@ def android():
 
 def ios():
     # Square, no transparency: iOS rounds the corners itself.
-    full = motif(1.0, BACKGROUND)
+    full = motif(IOS_SCALE, BACKGROUND)
     folder = ROOT / "ios/Runner/Assets.xcassets/AppIcon.appiconset"
     contents = json.loads((folder / "Contents.json").read_text(encoding="utf-8"))
     for item in contents["images"]:
