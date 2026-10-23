@@ -1,5 +1,7 @@
 """Draws the app icon «Книга и фокус» (docs/design/name-icon.html, №3; export
-spec — docs/design/polish.md) into the Android and iOS resources.
+spec — docs/design/polish.md) and the launch screen (owner, 14.6 B5: the
+page color of «Бумага», day and night, the book in the middle) into the
+Android and iOS resources.
 
 Run from the repository root:
     uv run --with pillow python -I tool/icons/build_icons.py
@@ -40,6 +42,15 @@ RIGHT_PATH = [
     ("C", 674, 374, 588, 384, 512, 430),
 ]
 DOT_CENTER, DOT_RADIUS = (512, 300), 46
+
+# The launch screen: the background of «Бумага» and the book without its
+# square; at night darker pages and a lighter cover.
+SPLASH = {
+    "day": {"background": "#F6F0E4", "cover": COVER, "left": LEFT_PAGE,
+            "right": RIGHT_PAGE, "dot": DOT},
+    "night": {"background": "#1F1B17", "cover": "#A99BD3", "left": "#2D2822",
+              "right": "#26211C", "dot": "#FF8A6B"},
+}
 
 # Drawn this big, then made smaller: smooth edges.
 MASTER = 4096
@@ -83,9 +94,11 @@ def dot_box(scale):
     return (x - r, y - r, x + r, y + r)
 
 
-def motif(scale, background=None, corner=0.0):
+def motif(scale, background=None, corner=0.0, colors=None):
     """The book and the dot; on a square of background if given, with
-    rounded corners (a part of the side) if corner."""
+    rounded corners (a part of the side) if corner; in colors (cover, left,
+    right, dot) if given."""
+    cover, left, right, dot = colors or (COVER, LEFT_PAGE, RIGHT_PAGE, DOT)
     image = Image.new("RGBA", (MASTER, MASTER), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     if background:
@@ -94,10 +107,10 @@ def motif(scale, background=None, corner=0.0):
             radius=int(MASTER * corner),
             fill=background,
         )
-    draw.polygon(points(COVER_PATH, scale), fill=COVER)
-    draw.polygon(points(LEFT_PATH, scale), fill=LEFT_PAGE)
-    draw.polygon(points(RIGHT_PATH, scale), fill=RIGHT_PAGE)
-    draw.ellipse(dot_box(scale), fill=DOT)
+    draw.polygon(points(COVER_PATH, scale), fill=cover)
+    draw.polygon(points(LEFT_PATH, scale), fill=left)
+    draw.polygon(points(RIGHT_PATH, scale), fill=right)
+    draw.ellipse(dot_box(scale), fill=dot)
     return image
 
 
@@ -170,6 +183,114 @@ def ios():
         save(full, folder / item["filename"], round(side * scale), rgb=True)
 
 
+def splash_motif(mode, scale):
+    c = SPLASH[mode]
+    return motif(scale, colors=(c["cover"], c["left"], c["right"], c["dot"]))
+
+
+DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
+
+
+def android_splash():
+    res = ROOT / "android/app/src/main/res"
+    for mode, night in (("day", ""), ("night", "-night")):
+        values = res / f"values{night}"
+        values.mkdir(exist_ok=True)
+        (values / "splash_colors.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            "<resources>\n"
+            f'    <color name="splash_background">{SPLASH[mode]["background"]}</color>\n'
+            "</resources>\n",
+            encoding="utf-8",
+        )
+        # Before Android 12: the book 144 dp in the middle of the page color.
+        small = splash_motif(mode, 1.0)
+        # Android 12 and later: a 288 dp icon, the book inside its 192 dp
+        # circle.
+        large = splash_motif(mode, 0.62)
+        for name, scale in DENSITIES.items():
+            folder = res / f"drawable{night}-{name}"
+            save(small, folder / "splash_icon.png", round(144 * scale))
+            save(large, folder / "splash_icon_android12.png", round(288 * scale))
+    background = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        "<!-- The launch screen: the page color and the book "
+        "(tool/icons/build_icons.py). -->\n"
+        '<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '    <item android:drawable="@color/splash_background" />\n'
+        "    <item>\n"
+        '        <bitmap android:gravity="center" android:src="@drawable/splash_icon" />\n'
+        "    </item>\n"
+        "</layer-list>\n"
+    )
+    for folder in ("drawable", "drawable-v21"):
+        (res / folder / "launch_background.xml").write_text(
+            background, encoding="utf-8"
+        )
+    for night, parent in (("", "Theme.Light.NoTitleBar"),
+                          ("-night", "Theme.Black.NoTitleBar")):
+        folder = res / f"values{night}-v31"
+        folder.mkdir(exist_ok=True)
+        (folder / "styles.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            "<resources>\n"
+            "    <!-- Android 12 and later draw the launch screen themselves "
+            "(tool/icons/build_icons.py). -->\n"
+            f'    <style name="LaunchTheme" parent="@android:style/{parent}">\n'
+            '        <item name="android:windowSplashScreenBackground">@color/splash_background</item>\n'
+            '        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_android12</item>\n'
+            "    </style>\n"
+            f'    <style name="NormalTheme" parent="@android:style/{parent}">\n'
+            '        <item name="android:windowBackground">?android:colorBackground</item>\n'
+            "    </style>\n"
+            "</resources>\n",
+            encoding="utf-8",
+        )
+
+
+def imageset(folder, images):
+    """An iOS image set with day and night pictures: images is
+    {(mode, scale): Image}."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("*.png"):
+        old.unlink()
+    entries = []
+    for (mode, scale), (image, size) in images.items():
+        name = f"{folder.stem}{'' if mode == 'day' else 'Dark'}" + (
+            "" if scale == 1 else f"@{scale}x"
+        ) + ".png"
+        save(image, folder / name, size)
+        entry = {"idiom": "universal", "filename": name, "scale": f"{scale}x"}
+        if mode == "night":
+            entry["appearances"] = [{"appearance": "luminosity", "value": "dark"}]
+        entries.append(entry)
+    (folder / "Contents.json").write_text(
+        json.dumps(
+            {"images": entries, "info": {"version": 1, "author": "xcode"}},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def ios_splash():
+    assets = ROOT / "ios/Runner/Assets.xcassets"
+    book = {}
+    page = {}
+    for mode in SPLASH:
+        # The book 160 points across, the background a one-point color.
+        image = splash_motif(mode, 1.0)
+        plain = Image.new("RGBA", (MASTER, MASTER), SPLASH[mode]["background"])
+        for scale in (1, 2, 3):
+            book[(mode, scale)] = (image, 160 * scale)
+            page[(mode, scale)] = (plain, scale)
+    imageset(assets / "LaunchImage.imageset", book)
+    imageset(assets / "LaunchBackground.imageset", page)
+
+
 if __name__ == "__main__":
     android()
     ios()
+    android_splash()
+    ios_splash()
