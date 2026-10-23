@@ -1625,6 +1625,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     )
                   : dragLabel(drag),
               style: text.bodySmall?.copyWith(color: colors.textSecondary),
+              // One line each: the slider does not jump (14.2, A7).
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             if (_bookStats case final stats? when showStats)
               _timeLeftLine(context, stats),
@@ -1709,6 +1712,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
                         ),
                   style: Theme.of(context).textTheme.bodyMedium
                       ?.copyWith(fontWeight: FontWeight.w600),
+                  // The whole of it is in the sheet.
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Icon(Icons.keyboard_arrow_up, color: colors.accent),
