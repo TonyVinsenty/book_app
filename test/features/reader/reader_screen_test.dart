@@ -2257,7 +2257,9 @@ void main() {
     container
         .read(readingSettingsProvider.notifier)
         .set(
-          container.read(readingSettingsProvider).copyWith(verticalScroll: true),
+          container
+              .read(readingSettingsProvider)
+              .copyWith(verticalScroll: true),
         );
     await tester.pumpAndSettle();
     final strip = find.byType(CustomScrollView);
@@ -2330,7 +2332,11 @@ void main() {
       await tester.pumpAndSettle();
     }
     final word = reader(tester).placeWord;
-    expect(word, greaterThan(reader(tester).page.firstWord), reason: 'mid-page');
+    expect(
+      word,
+      greaterThan(reader(tester).page.firstWord),
+      reason: 'mid-page',
+    );
     const scale = TextScaler.noScaling;
     await change((s) => s.larger(scale));
     expect(reader(tester).placeWord, word);
@@ -2383,7 +2389,9 @@ void main() {
     container
         .read(readingSettingsProvider.notifier)
         .set(
-          container.read(readingSettingsProvider).copyWith(verticalScroll: true),
+          container
+              .read(readingSettingsProvider)
+              .copyWith(verticalScroll: true),
         );
     await tester.pumpAndSettle();
     final strip = find.byType(CustomScrollView);
@@ -2409,9 +2417,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
     await tester.pump(const Duration(milliseconds: 300));
-    expect(offset() - start, inInclusiveRange(window - 2 * line, window + line));
+    expect(
+      offset() - start,
+      inInclusiveRange(window - 2 * line, window + line),
+    );
     final top = reader(tester).placeWord;
-    expect(guide.word, inInclusiveRange(top, top + 15), reason: 'its row on top');
+    expect(
+      guide.word,
+      inInclusiveRange(top, top + 15),
+      reason: 'its row on top',
+    );
 
     await tapAt(tester, 0.5);
     expect(guide.isPlaying, isFalse);
@@ -2420,6 +2435,343 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(guide.word, reader(tester).placeWord, reason: 'came to the top');
+    await closeApp(tester);
+  });
+
+  /// The painted tile of [page] of the shown chapter in the strip.
+  Finder stripTile(WidgetTester tester, int page) {
+    final chapter = reader(tester).layout;
+    return find.descendant(
+      of: find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == chapter.pageText(page),
+      ),
+      matching: find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.size == chapter.pageSize,
+      ),
+    );
+  }
+
+  /// Settings changed through the provider, as the panel does.
+  Future<void> Function(ReadingSettings Function(ReadingSettings)) changer(
+    WidgetTester tester,
+  ) {
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    final notifier = container.read(readingSettingsProvider.notifier);
+    return (edit) async {
+      notifier.set(edit(container.read(readingSettingsProvider)));
+      await tester.pumpAndSettle();
+    };
+  }
+
+  testWidgets('14.14: strip on, off, on keeps the same place', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final change = changer(tester);
+    await change((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    for (var i = 0; i < 80 && reader(tester).layout.sectionIndex == 0; i++) {
+      await tester.drag(strip, const Offset(0, -450));
+      await tester.pumpAndSettle();
+    }
+    for (var i = 0; i < 30; i++) {
+      final s = reader(tester);
+      if (s.placeWord > s.page.firstWord) break;
+      await tester.drag(strip, const Offset(0, -60));
+      await tester.pumpAndSettle();
+    }
+    await settle(tester);
+    final r = reader(tester);
+    final section = r.layout.sectionIndex;
+    final word = r.placeWord;
+    int number(ReaderViewState s) =>
+        s.pagination.pagesBefore(section).value +
+        s.layout.pages.indexOf(s.page);
+    final shownNumber = number(r);
+    expect(word, greaterThan(r.page.firstWord), reason: 'mid-page');
+    expect(section, greaterThan(0), reason: 'past the first chapter');
+
+    for (var round = 0; round < 2; round++) {
+      await change((s) => s.copyWith(verticalScroll: false));
+      expect(find.byType(CustomScrollView), findsNothing);
+      final paged = reader(tester);
+      expect(paged.layout.sectionIndex, section);
+      expect(
+        word,
+        inInclusiveRange(paged.page.firstWord, paged.page.endWord - 1),
+      );
+      expect(number(paged), shownNumber);
+      await change((s) => s.copyWith(verticalScroll: true));
+      expect(find.byType(CustomScrollView), findsOne);
+      final back = reader(tester);
+      expect(back.layout.sectionIndex, section);
+      expect(back.placeWord, word, reason: 'round $round');
+      expect(number(back), shownNumber);
+    }
+    await closeApp(tester);
+  });
+
+  /// One chapter of 70 long paragraphs: read in parts.
+  BookContent longChapterBook() => BookContent(
+    meta: const BookMeta(title: 'Длинная', sourceFormat: SourceFormat.txt),
+    sections: [
+      Section(
+        title: 'Одна глава',
+        blocks: [
+          const HeadingBlock(text: 'Одна глава'),
+          for (var i = 0; i < 70; i++)
+            ParagraphBlock(text: List.filled(300, 'слово$i').join(' ')),
+        ],
+      ),
+    ],
+  );
+
+  testWidgets('14.14: the strip goes across the parts of one long chapter '
+      'with no gap and no repeat', (tester) async {
+    await pumpApp(tester, book: longChapterBook());
+    await openBook(tester);
+    final tokens = reader(tester).widget.opened.tokens;
+    expect(tokens.content.sections.length, greaterThan(1), reason: 'parts');
+    expect(tokens.content.sections[1].continued, isTrue);
+    final firstOfPart = tokens.firstWordOfSection(1);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+
+    var last = reader(tester).placeWord;
+    var crossed = false;
+    for (var i = 0; i < 300 && !crossed; i++) {
+      await tester.drag(strip, const Offset(0, -500));
+      await tester.pumpAndSettle();
+      final r = reader(tester);
+      expect(r.placeWord, greaterThanOrEqualTo(last), reason: 'no repeat');
+      expect(r.placeWord - last, lessThan(400), reason: 'no skipped page');
+      last = r.placeWord;
+      crossed = r.layout.sectionIndex == 1;
+    }
+    expect(crossed, isTrue);
+    await settle(tester);
+
+    // Around the boundary the tiles touch as inside a part.
+    final r = reader(tester);
+    final tiles = [
+      for (final e
+          in find
+              .byWidgetPredicate(
+                (w) => w is CustomPaint && w.size == r.layout.pageSize,
+              )
+              .evaluate())
+        tester.getRect(find.byElementPredicate((x) => x == e)),
+    ]..sort((a, b) => a.top.compareTo(b.top));
+    expect(tiles.length, greaterThan(1));
+    final gaps = [
+      for (var i = 1; i < tiles.length; i++) tiles[i].top - tiles[i - 1].bottom,
+    ];
+    expect(gaps, everyElement(closeTo(gaps.first, 1.5)), reason: 'seamless');
+
+    // Back over the boundary and forward again.
+    for (var i = 0; i < 300 && reader(tester).layout.sectionIndex == 1; i++) {
+      await tester.drag(strip, const Offset(0, 300));
+      await tester.pumpAndSettle();
+      if (reader(tester).layout.sectionIndex == 1) {
+        expect(reader(tester).placeWord, greaterThanOrEqualTo(firstOfPart));
+      }
+    }
+    final before = reader(tester);
+    expect(before.layout.sectionIndex, 0);
+    expect(before.placeWord, lessThan(firstOfPart));
+    for (var i = 0; i < 300 && reader(tester).layout.sectionIndex == 0; i++) {
+      await tester.drag(strip, const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
+    await settle(tester);
+    final now = reader(tester);
+    expect(now.layout.sectionIndex, 1);
+    expect(now.placeWord, greaterThanOrEqualTo(firstOfPart));
+    expect(await tester.runAsync(savedWord), now.placeWord);
+    final number =
+        now.pagination.pagesBefore(1).value +
+        now.layout.pages.indexOf(now.page);
+    expect(find.textContaining('стр. ${number + 1} /'), findsOne);
+    await closeApp(tester);
+  });
+
+  testWidgets('14.14: a footnote opened in the strip returns to the same '
+      'scroll position', (tester) async {
+    final base = sampleBook(sections: 2, paragraphs: 14);
+    final first = base.sections.first;
+    final book = BookContent(
+      meta: base.meta,
+      sections: [
+        Section(
+          title: first.title,
+          blocks: [
+            ...first.blocks.take(1),
+            const ParagraphBlock(
+              text: 'Он отозвался1, и ушёл.',
+              spans: [Span(12, 13, SpanKind.noteRef, noteId: 'n1')],
+            ),
+            ...first.blocks.skip(1),
+          ],
+        ),
+        ...base.sections.skip(1),
+      ],
+      notes: const {
+        'n1': Note(
+          label: '1',
+          blocks: [ParagraphBlock(text: 'Сноска.')],
+        ),
+      },
+    );
+    await pumpApp(tester, book: book);
+    await openBook(tester);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    double offset() => scrollable.position.pixels;
+    await tester.drag(strip, const Offset(0, -30));
+    await tester.pumpAndSettle();
+    final at = offset();
+    final word = reader(tester).placeWord;
+
+    final state = reader(tester);
+    final tokens = state.widget.opened.tokens;
+    final said = [
+      for (var i = 0; i < tokens.length; i++)
+        if (tokens.textOf(i).startsWith('отозвался')) i,
+    ].single;
+    final page = state.layout.pageOfWord(said);
+    final box = state.layout.wordBoxes(page, said);
+    final origin = tester.getTopLeft(stripTile(tester, page));
+    await tester.tapAt(origin + box.first.topRight + const Offset(4, 0));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(NoteSheet), findsOneWidget);
+    expect(find.text('Сноска.', findRichText: true), findsOneWidget);
+    expect(reader(tester).panelsShown, isFalse);
+    expect(offset(), closeTo(at, 0.5), reason: 'the strip stays under it');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(NoteSheet), findsNothing);
+    expect(offset(), closeTo(at, 0.5), reason: 'back at the same place');
+    expect(reader(tester).placeWord, word);
+    expect(reader(tester).panelsShown, isFalse);
+    await closeApp(tester);
+  });
+
+  testWidgets('14.14: speed reading from the strip starts at the top row, or '
+      'at the word held lower; the strip shows that place on return', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    // The second page of the chapter comes to the top.
+    for (var i = 0; i < 30; i++) {
+      final r = reader(tester);
+      if (r.layout.pages.indexOf(r.page) == 1 &&
+          r.placeWord > r.page.firstWord) {
+        break;
+      }
+      await tester.drag(strip, const Offset(0, -100));
+      await tester.pumpAndSettle();
+    }
+    final r = reader(tester);
+    expect(r.layout.pages.indexOf(r.page), 1);
+    final top = r.placeWord;
+    expect(top, inInclusiveRange(r.page.firstWord, r.page.endWord - 1));
+
+    // The button starts at the top row, not at the first word of page 0.
+    await tapAt(tester, 0.5);
+    await tester.tap(find.text('Скорочтение'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(rsvp(tester).widget.startWord, top);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await settle(tester);
+    expect(reader(tester).placeWord, inInclusiveRange(top - 30, top + 30));
+    if (reader(tester).panelsShown) await tapAt(tester, 0.5);
+
+    // A held word lower on the screen.
+    final chapter = reader(tester).layout;
+    final page = chapter.pages.indexOf(reader(tester).page);
+    final lower = chapter.pages[page].endWord - 20;
+    final held = chapter.wordBoxes(page, lower).first;
+    final at = tester.getTopLeft(stripTile(tester, page)) + held.center;
+    expect(at.dy, lessThan(tester.getSize(find.byType(ReaderView)).height));
+    await tester.longPressAt(at);
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(rsvp(tester).widget.startWord, lower);
+    await tapRsvp(tester);
+    await tester.pump(const Duration(seconds: 3));
+    await tapRsvp(tester);
+    expect(rsvp(tester).engine.wordIndex, greaterThan(lower));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await settle(tester);
+    final back = reader(tester);
+    expect(back.litWord, isNotNull);
+    expect(back.placeWord, inInclusiveRange(back.litWord! - 40, back.litWord!));
+    expect(back.placeWord, greaterThan(top));
+    await closeApp(tester);
+  });
+
+  testWidgets('14.14: statistics in the strip: the meter follows the top page '
+      'and the flush writes it', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    await changer(tester)((s) => s.copyWith(verticalScroll: true));
+    final strip = find.byType(CustomScrollView);
+    final first = reader(tester).page;
+    wait(10);
+    var topPage = 0;
+    for (var i = 0; i < 40 && topPage < 1; i++) {
+      await tester.drag(strip, const Offset(0, -150));
+      await tester.pumpAndSettle();
+      topPage = reader(tester).layout.pages.indexOf(reader(tester).page);
+    }
+    expect(topPage, 1);
+    final second = reader(tester).page;
+    wait(20);
+    // The panels stop the time.
+    await tapAt(tester, 0.5);
+    wait(100);
+    await tapAt(tester, 0.5);
+    // A page is counted when the top row leaves it.
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.hidden]);
+    expect(await pageStats(tester), (
+      10000,
+      first.endWord - first.firstWord,
+    ), reason: 'only page 0 is closed');
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.resumed]);
+    for (var i = 0; i < 40 && topPage < 2; i++) {
+      await tester.drag(strip, const Offset(0, -150));
+      await tester.pumpAndSettle();
+      topPage = reader(tester).layout.pages.indexOf(reader(tester).page);
+    }
+    expect(topPage, 2);
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.hidden]);
+    final (ms, words) = await pageStats(tester);
+    expect(ms, 30000, reason: '10 s + 20 s');
+    expect(
+      words,
+      first.endWord - first.firstWord + second.endWord - second.firstWord,
+    );
+
+    // Time goes on after coming back: the next flush writes it.
+    lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.resumed]);
+    wait(40);
+    for (var i = 0; i < 40 && topPage < 3; i++) {
+      await tester.drag(strip, const Offset(0, -150));
+      await tester.pumpAndSettle();
+      topPage = reader(tester).layout.pages.indexOf(reader(tester).page);
+    }
+    expect(topPage, 3);
+    final (ms2, _) = await pageStats(tester);
+    expect(ms2, ms + 40000, reason: 'flushed by the scroll end after 30 s');
     await closeApp(tester);
   });
 }
