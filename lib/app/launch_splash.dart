@@ -26,7 +26,7 @@ class LaunchSplash extends StatefulWidget {
 
 class _LaunchSplashState extends State<LaunchSplash>
     with SingleTickerProviderStateMixin {
-  static const _duration = Duration(milliseconds: 1900);
+  static const _duration = Duration(milliseconds: 1000);
 
   late final _controller = AnimationController(vsync: this, duration: _duration)
     ..addStatusListener((status) {
@@ -104,11 +104,11 @@ class _LaunchSplashState extends State<LaunchSplash>
     );
   }
 
-  /// 0–400 ms the book alone, as on the system screen (Android fades its
-  /// screen out meanwhile); the dot flies out till 1000 ms; it stays a
-  /// moment, then all fades from 1400 ms.
-  static const _rise = Interval(0.21, 0.53, curve: Curves.easeOutBack);
-  static const _fade = Interval(0.74, 1, curve: Curves.easeInOut);
+  /// 0–200 ms the book alone, as on the system screen (Android fades its
+  /// screen out meanwhile); the dot flies out till 550 ms; it stays a
+  /// moment, then all fades from 700 ms (owner: one second in all).
+  static const _rise = Interval(0.2, 0.55, curve: Curves.easeOutBack);
+  static const _fade = Interval(0.7, 1, curve: Curves.easeInOut);
 }
 
 /// Colors of the launch book, as in `tool/icons/build_icons.py` (`SPLASH`):

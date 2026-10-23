@@ -43,7 +43,7 @@ void main() {
     await pumpSplash(tester);
     expect(splashShown(), isTrue);
     expect(find.text('app'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(splashShown(), isTrue);
     await tester.pumpAndSettle();
     expect(splashShown(), isFalse);
