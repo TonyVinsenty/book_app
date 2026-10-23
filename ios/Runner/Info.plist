@@ -62,7 +62,7 @@
 		<string>ru</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>BookApp</string>
+	<string>Verso</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

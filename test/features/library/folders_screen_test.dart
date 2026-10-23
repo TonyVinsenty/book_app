@@ -108,7 +108,7 @@ void main() {
   testWidgets('own folder on iOS: in "Файлы"', (tester) async {
     await addFolder(FolderKind.own);
     await pumpFolders(tester, platform: TargetPlatform.iOS);
-    expect(find.textContaining('«На iPhone» → «BookApp»'), findsOneWidget);
+    expect(find.textContaining('«На iPhone» → «Verso»'), findsOneWidget);
     expect(find.textContaining('Android/data/'), findsNothing);
   });
 
