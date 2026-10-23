@@ -175,14 +175,10 @@ void main() {
     expect(clipped, isEmpty, reason: 'clipped labels');
   }
 
-  /// Known: the "time left" strip is cut at 360 px, "Collections" at 1.3x.
+  /// Known: the "time left" strip is cut at 360 px.
   void check(WidgetTester tester, {List<String> allowed = const []}) {
-    final scale = tester.platformDispatcher.textScaleFactor;
     noRussian(tester, allowed: allowed);
-    noClipped(
-      tester,
-      allowed: [...allowed, 'left in chapter', if (scale > 1) 'Collections'],
-    );
+    noClipped(tester, allowed: [...allowed, 'left in chapter']);
   }
 
   Future<void> openBook(WidgetTester tester, {bool verify = true}) async {

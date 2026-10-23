@@ -8,6 +8,7 @@ import 'package:book_app/data/content_store.dart';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/folders/folder_scanner.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/features/library/book_page.dart';
 import 'package:book_app/features/library/book_shelf.dart';
@@ -341,6 +342,20 @@ void main() {
     await tester.tap(find.text('Открыть книгу'));
     await tester.pumpAndSettle();
     expect(find.byType(ShelfBar), findsOneWidget);
+  });
+
+  testWidgets('the language is chosen with no books', (tester) async {
+    await pumpLibrary(tester);
+    await tester.tap(find.byTooltip('Язык'));
+    await tester.pumpAndSettle();
+    expect(find.text('Как в системе'), findsOneWidget);
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(LibraryScreen)),
+    );
+    expect(container.read(readingSettingsProvider).language, AppLanguage.en);
+    expect(find.text('English'), findsNothing);
   });
 
   testWidgets('the folder button opens "Папки"', (tester) async {

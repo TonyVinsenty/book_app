@@ -41,14 +41,18 @@ class PillTabs<T> extends StatelessWidget {
                       horizontal: 8,
                       vertical: 6,
                     ),
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w700,
-                        color: on ? colors.background : colors.textSecondary,
+                    // A long name on a narrow phone gets a little smaller
+                    // rather than cut.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                          color: on ? colors.background : colors.textSecondary,
+                        ),
                       ),
                     ),
                   ),

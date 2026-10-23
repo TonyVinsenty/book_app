@@ -49,10 +49,15 @@ void main() {
     expect(hyphenate('какой-нибудь день'), 'ка-кой-ни-будь день');
   });
 
-  test('the last word of a text leaves at least 4 letters to the last line',
-      () {
-    expect(hyphenate('стояла рядом.'), 'сто-я-ла рядом.');
-    expect(hyphenate('переносы'), 'пе-ре-носы');
-    expect(hyphenate('с вами рекомендациями.'), 'с ва-ми ре-ко-мен-да-циями.');
-  });
+  test(
+    'the last word of a text leaves at least 4 letters to the last line',
+    () {
+      expect(hyphenate('стояла рядом.'), 'сто-я-ла рядом.');
+      expect(hyphenate('переносы'), 'пе-ре-носы');
+      expect(
+        hyphenate('с вами рекомендациями.'),
+        'с ва-ми ре-ко-мен-да-циями.',
+      );
+    },
+  );
 }

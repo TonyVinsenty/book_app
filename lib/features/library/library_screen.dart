@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:book_app/app/language_sheet.dart';
 import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/pill_tabs.dart';
 import 'package:book_app/app/theme/app_theme.dart';
@@ -139,14 +140,28 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           child: Column(
             children: [
               const _BackToBook(),
-              PillTabs(
-                tabs: {
-                  _Tab.books: l10n.libraryTabBooks,
-                  _Tab.collections: l10n.libraryTabCollections,
-                  _Tab.stats: l10n.libraryTabStats,
-                },
-                selected: _tab,
-                onChanged: (tab) => setState(() => _tab = tab),
+              Row(
+                children: [
+                  Expanded(
+                    child: PillTabs(
+                      tabs: {
+                        _Tab.books: l10n.libraryTabBooks,
+                        _Tab.collections: l10n.libraryTabCollections,
+                        _Tab.stats: l10n.libraryTabStats,
+                      },
+                      selected: _tab,
+                      onChanged: (tab) => setState(() => _tab = tab),
+                      margin: const EdgeInsets.fromLTRB(16, 6, 0, 4),
+                    ),
+                  ),
+                  // With no books the reading settings are out of reach.
+                  IconButton(
+                    onPressed: () => unawaited(chooseLanguage(context, ref)),
+                    tooltip: l10n.settingsLanguage,
+                    icon: const Icon(Icons.language),
+                  ),
+                  const SizedBox(width: 4),
+                ],
               ),
               if (queue.busy) _ImportProgress(queue: queue),
               Expanded(

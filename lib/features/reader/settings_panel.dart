@@ -1,3 +1,4 @@
+import 'package:book_app/app/language_sheet.dart';
 import 'package:book_app/app/theme/app_fonts.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
@@ -308,11 +309,7 @@ class ReadingSettingsPanel extends ConsumerWidget {
                         choices(
                           AppLanguage.values,
                           settings.language,
-                          (language) => switch (language) {
-                            AppLanguage.system => l10n.languageSystem,
-                            AppLanguage.ru => l10n.languageRussian,
-                            AppLanguage.en => l10n.languageEnglish,
-                          },
+                          (language) => languageName(l10n, language),
                           (language) => settings.copyWith(language: language),
                         ),
                       ),
