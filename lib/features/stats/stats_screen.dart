@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-/// The statistics over the reader, from "Вся статистика" in the sheet about
+/// The statistics over the reader, from "Статистика чтения" in the sheet about
 /// the book.
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});

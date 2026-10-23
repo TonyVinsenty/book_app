@@ -705,7 +705,7 @@
   "@statsNotFaster": {"description": "Under a saved time of zero after speed reading"},
   "libraryTabStats": "Статистика",
   "@libraryTabStats": {"description": "Library tab with reading statistics"},
-  "bookStatsAll": "Вся статистика",
+  "bookStatsAll": "Статистика чтения",
   "@bookStatsAll": {"description": "Sheet about the book: opens the statistics screen"},
   "statsTitle": "Статистика",
   "@statsTitle": {"description": "Statistics screen title"},

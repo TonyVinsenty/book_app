@@ -197,7 +197,7 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Вся статистика'));
+    await tester.tap(find.text('Статистика чтения'));
     await tester.pumpAndSettle();
     expect(find.byType(StatsScreen), findsOneWidget);
     await tester.tap(find.byType(BackButton));
