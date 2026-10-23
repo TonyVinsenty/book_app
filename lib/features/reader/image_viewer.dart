@@ -37,6 +37,8 @@ class ImageViewerScreen extends StatefulWidget {
     required bool dim,
   }) => Navigator.of(context).push(
     PageRouteBuilder<void>(
+      // The page shows through as a swipe down fades the background.
+      opaque: false,
       transitionDuration: const Duration(milliseconds: 200),
       reverseTransitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (_, _, _) =>
@@ -159,48 +161,48 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       child: Stack(
         children: [
           ColoredBox(
-          color: colors.background.withValues(alpha: fade),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: close,
-            onDoubleTapDown: (d) => _doubleTapAt = d.localPosition,
-            onDoubleTap: _onDoubleTap,
-            child: Transform.translate(
-              offset: Offset(0, _drag),
-              child: InteractiveViewer(
-                transformationController: _transform,
-                maxScale: _maxScale,
-                onInteractionStart: _onInteractionStart,
-                onInteractionUpdate: _onInteractionUpdate,
-                onInteractionEnd: _onInteractionEnd,
-                child: SizedBox.expand(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Image(
-                    image: ResizeImage(
-                      FileImage(widget.file),
-                      width: min(widget.width, _decodeLimit),
-                      height: min(widget.height, _decodeLimit),
-                      policy: ResizeImagePolicy.fit,
-                    ),
-                    fit: BoxFit.contain,
-                    color: widget.dim ? nightImageDim : null,
-                    colorBlendMode: widget.dim ? BlendMode.srcATop : null,
-                    excludeFromSemantics: true,
-                    errorBuilder: (_, _, _) => Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        color: colors.textSecondary,
-                        size: 48,
+            color: colors.background.withValues(alpha: fade),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: close,
+              onDoubleTapDown: (d) => _doubleTapAt = d.localPosition,
+              onDoubleTap: _onDoubleTap,
+              child: Transform.translate(
+                offset: Offset(0, _drag),
+                child: InteractiveViewer(
+                  transformationController: _transform,
+                  maxScale: _maxScale,
+                  onInteractionStart: _onInteractionStart,
+                  onInteractionUpdate: _onInteractionUpdate,
+                  onInteractionEnd: _onInteractionEnd,
+                  child: SizedBox.expand(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Image(
+                        image: ResizeImage(
+                          FileImage(widget.file),
+                          width: min(widget.width, _decodeLimit),
+                          height: min(widget.height, _decodeLimit),
+                          policy: ResizeImagePolicy.fit,
+                        ),
+                        fit: BoxFit.contain,
+                        color: widget.dim ? nightImageDim : null,
+                        colorBlendMode: widget.dim ? BlendMode.srcATop : null,
+                        excludeFromSemantics: true,
+                        errorBuilder: (_, _, _) => Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: colors.textSecondary,
+                            size: 48,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
           // A round button: closing by a tap is not seen (14.2, A4).
           Positioned(
             left: 8,

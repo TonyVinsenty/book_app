@@ -63,14 +63,19 @@ class _StatsViewState extends ConsumerState<StatsView>
     super.dispose();
   }
 
+  /// Called by build; starts after the frame, not while building.
   void _playAppear() {
     if (_appeared) return;
     _appeared = true;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _appear.value = 1;
-    } else {
-      unawaited(_appear.forward());
-    }
+    final still = MediaQuery.disableAnimationsOf(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (still) {
+        _appear.value = 1;
+      } else {
+        unawaited(_appear.forward());
+      }
+    });
   }
 
   /// The cards went up under the period switch: a line under it.
@@ -140,22 +145,22 @@ class _StatsViewState extends ConsumerState<StatsView>
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Row(
-          children: [
-            Expanded(
-              child: PillTabs(
-                tabs: {
-                  StatsPeriod.week: l10n.statsPeriodWeek,
-                  StatsPeriod.month: l10n.statsPeriodMonth,
-                  StatsPeriod.year: l10n.statsPeriodYear,
-                },
-                selected: _period,
-                onChanged: (period) => setState(() => _period = period),
-                margin: EdgeInsets.zero,
+            children: [
+              Expanded(
+                child: PillTabs(
+                  tabs: {
+                    StatsPeriod.week: l10n.statsPeriodWeek,
+                    StatsPeriod.month: l10n.statsPeriodMonth,
+                    StatsPeriod.year: l10n.statsPeriodYear,
+                  },
+                  selected: _period,
+                  onChanged: (period) => setState(() => _period = period),
+                  margin: EdgeInsets.zero,
+                ),
               ),
-            ),
-            ?debugMenu,
-          ],
-        ),
+              ?debugMenu,
+            ],
+          ),
         ),
         Divider(
           height: 1,
@@ -587,6 +592,8 @@ class _DaysCard extends StatelessWidget {
     final chart = ChartColors.of(context.readingColors);
     final secondary = _secondary(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final months = l10n.statsMonthsShort.split(' ')
+      ..removeWhere((m) => m.isEmpty);
     final period = overview.period;
     final bars = overview.bars;
     final byMonths = period == StatsPeriod.year;
@@ -633,7 +640,9 @@ class _DaysCard extends StatelessWidget {
                       : null,
                 // Three letters: «И И» could not be told apart (14.2, A6).
                 StatsPeriod.year =>
-                  l10n.statsMonthsShort.split(' ')[bar.from.month - 1],
+                  months.length == 12
+                      ? months[bar.from.month - 1]
+                      : DateFormat.LLL(locale).format(bar.from),
               },
           ],
           values: period == StatsPeriod.week

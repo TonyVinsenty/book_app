@@ -415,9 +415,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   ChapterLayout _layoutOf(int section) {
     final cached = _layouts[section];
     if (cached != null) return cached;
-    // Keep only the neighbours of the chapter being read.
+    // Keep only the neighbours of the chapter asked for, and the shown one:
+    // the page beside a turn may be chapters away (empty ones between).
     _layouts.removeWhere((s, layout) {
-      final far = (s - section).abs() > 1;
+      final far = (s - section).abs() > 1 && s != _section;
       if (far) layout.dispose();
       return far;
     });
@@ -527,20 +528,17 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _previous() => _turnTo(-1);
 
   /// The section and page a turn by [dir] (1 on, −1 back) reaches, or null
-  /// at the end. [near] looks only into the next chapter: farther ones would
-  /// push the shown chapter out of [_layouts].
-  (int, int)? _pageBeside(int dir, {bool near = false}) {
+  /// at the end.
+  (int, int)? _pageBeside(int dir) {
     final sections = widget.opened.tokens.content.sections.length;
     if (dir > 0) {
       if (_page + 1 < layout.pages.length) return (_section, _page + 1);
-      final last = near ? min(_section + 1, sections - 1) : sections - 1;
-      for (var s = _section + 1; s <= last; s++) {
+      for (var s = _section + 1; s < sections; s++) {
         if (_layoutOf(s).pages.isNotEmpty) return (s, 0);
       }
     } else {
       if (_page > 0) return (_section, _page - 1);
-      final first = near ? max(_section - 1, 0) : 0;
-      for (var s = _section - 1; s >= first; s--) {
+      for (var s = _section - 1; s >= 0; s--) {
         final pages = _layoutOf(s).pages;
         if (pages.isNotEmpty) return (s, pages.length - 1);
       }
@@ -555,6 +553,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (to == null) return _slide(from);
     _show(to.$1, to.$2, turned: dir > 0);
     _slide(from + dir * _turnWidth);
+  }
+
+  void _settleTurn() {
+    if (_turn.value == 0) return;
+    _turn.stop();
+    _turn.value = 0;
   }
 
   /// The page slides from [shift] to its place: 250 ms across the screen
@@ -584,6 +588,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     bool keepReturn = false,
     bool turned = false,
   }) {
+    // A jump (contents, slider) does not carry a slide over; a turn starts
+    // its own after this.
+    _settleTurn();
     final shown = _layoutOf(section).pages[pageIndex];
     final guide = _guide;
     if (guide != null && !guide.isPlaying) guide.pageTurned(shown.firstWord);
@@ -1106,6 +1113,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   void _onTapUp(TapUpDetails details, double width) {
+    // A tap lands on the page as it will rest, so a slide ends first.
+    _settleTurn();
     final x = details.localPosition.dx;
     final guide = _guide;
     if (_settingsShown && !_panelsShown) {
@@ -1178,35 +1187,36 @@ class ReaderViewState extends ConsumerState<ReaderView>
     child: page,
     builder: (context, page) {
       final shift = _turn.value;
-      final beside = shift == 0
-          ? null
-          : _pageBeside(shift < 0 ? 1 : -1, near: true);
+      final beside = shift == 0 ? null : _pageBeside(shift < 0 ? 1 : -1);
       return Stack(
         clipBehavior: Clip.none,
         children: [
           if (beside case (final section, final index))
             Transform.translate(
               offset: Offset(shift - shift.sign * _turnWidth, 0),
-              child: Stack(
-                children: [
-                  CustomPaint(
-                    size: size,
-                    painter: _PagePainter(
-                      _layoutOf(section),
-                      index,
-                      lit: const [],
-                      litColor: colors.highlight,
-                      litAnimation: _lit,
+              // Painted once, then only moved.
+              child: RepaintBoundary(
+                child: Stack(
+                  children: [
+                    CustomPaint(
+                      size: size,
+                      painter: _PagePainter(
+                        _layoutOf(section),
+                        index,
+                        lit: const [],
+                        litColor: colors.highlight,
+                        litAnimation: _lit,
+                      ),
                     ),
-                  ),
-                  PageImages(
-                    chapter: _layoutOf(section),
-                    page: index,
-                    imagesDir: _imagesDir,
-                    dim: dark,
-                    frameColor: colors.textSecondary,
-                  ),
-                ],
+                    PageImages(
+                      chapter: _layoutOf(section),
+                      page: index,
+                      imagesDir: _imagesDir,
+                      dim: dark,
+                      frameColor: colors.textSecondary,
+                    ),
+                  ],
+                ),
               ),
             ),
           Transform.translate(offset: Offset(shift, 0), child: page),
@@ -1231,7 +1241,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final width = _turnWidth;
     var shift = (_turn.value + details.delta.dx).clamp(-width, width);
     // Past the first or the last page it only gives a little.
-    if (shift != 0 && _pageBeside(shift < 0 ? 1 : -1, near: true) == null) {
+    if (shift != 0 && _pageBeside(shift < 0 ? 1 : -1) == null) {
       shift = (_turn.value + details.delta.dx / 3).clamp(
         -width * 0.15,
         width * 0.15,

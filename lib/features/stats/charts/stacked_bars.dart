@@ -40,6 +40,9 @@ class StackedBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final small = Theme.of(context).textTheme.labelSmall;
+    final labelHeight =
+        MediaQuery.textScalerOf(context).scale(small?.fontSize ?? 11) *
+        (small?.height ?? 1.45);
     int total(BarParts parts) =>
         parts?.values.fold<int>(0, (a, b) => a + b) ?? 0;
     final highest = bars.fold(0, (a, b) => a > total(b) ? a : total(b));
@@ -70,16 +73,20 @@ class StackedBars extends StatelessWidget {
                         overflow: TextOverflow.visible,
                       ),
                     _bar(parts, total(parts), highest),
-                    // Smaller rather than into the next bar's name.
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        names[i] ?? '',
-                        style: small?.copyWith(
-                          fontWeight: i == current ? FontWeight.w800 : null,
+                    // Smaller rather than into the next bar's name; of one
+                    // height, so the bars stand on one line.
+                    SizedBox(
+                      height: labelHeight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          names[i] ?? '',
+                          style: small?.copyWith(
+                            fontWeight: i == current ? FontWeight.w800 : null,
+                          ),
+                          maxLines: 1,
+                          softWrap: false,
                         ),
-                        maxLines: 1,
-                        softWrap: false,
                       ),
                     ),
                   ],

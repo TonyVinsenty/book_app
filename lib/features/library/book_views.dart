@@ -413,31 +413,31 @@ class BookGridTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: titleFont,
-                    fontSize: _titleSize,
-                    height: _titleHeight,
-                    fontWeight: FontWeight.w600,
-                    color: colors.text,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (authors.isNotEmpty)
-                  Text(
-                    authors,
-                    style: TextStyle(
-                      fontSize: _authorSize,
-                      height: _authorHeight,
-                      color: colors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                const Spacer(),
-                BookStatusLabel(mark: mark),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontFamily: titleFont,
+                          fontSize: _titleSize,
+                          height: _titleHeight,
+                          fontWeight: FontWeight.w600,
+                          color: colors.text,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (authors.isNotEmpty)
+                        Text(
+                          authors,
+                          style: TextStyle(
+                            fontSize: _authorSize,
+                            height: _authorHeight,
+                            color: colors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const Spacer(),
+                      BookStatusLabel(mark: mark),
                     ],
                   ),
                 ),

@@ -2,7 +2,7 @@
   "@@locale": "ru",
   "appTitle": "Verso",
   "@appTitle": {
-    "description": "Working app name; the visible name is not chosen yet"
+    "description": "The visible app name (owner, 2026-10-23); not translated"
   },
   "libraryEmpty": "Здесь появятся ваши книги",
   "@libraryEmpty": {
