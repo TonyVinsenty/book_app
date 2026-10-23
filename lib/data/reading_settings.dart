@@ -42,6 +42,7 @@ final class ReadingSettings {
     this.texture = PageTexture.none,
     this.hyphenate = true,
     this.showStats = true,
+    this.verticalScroll = false,
   });
 
   /// Reads the stored values ([keys] → text), see [toStored].
@@ -64,6 +65,7 @@ final class ReadingSettings {
       texture: byName(PageTexture.values, _texture) ?? PageTexture.none,
       hyphenate: stored[_hyphenate] != 'false',
       showStats: stored[_showStats] != 'false',
+      verticalScroll: stored[_verticalScroll] == 'true',
     );
   }
 
@@ -77,6 +79,7 @@ final class ReadingSettings {
   static const _texture = 'reading.texture';
   static const _hyphenate = 'reading.hyphenate';
   static const _showStats = 'reading.showStats';
+  static const _verticalScroll = 'reading.verticalScroll';
 
   /// Prefix of all the keys.
   static const keyPrefix = 'reading.';
@@ -114,6 +117,10 @@ final class ReadingSettings {
   /// The line "time left" in the bottom panel and the sheet behind it;
   /// statistics are gathered anyway (ADR 0009 п. 6).
   final bool showStats;
+
+  /// Pages go one under another as a seamless scroll instead of turning
+  /// (ADR 0003, addendum 5); the layout is the same.
+  final bool verticalScroll;
 
   /// The size to lay out with: the chosen one, or the default scaled like
   /// the system text and put on the nearest step.
@@ -153,6 +160,7 @@ final class ReadingSettings {
     PageTexture? texture,
     bool? hyphenate,
     bool? showStats,
+    bool? verticalScroll,
   }) => ReadingSettings(
     font: font ?? this.font,
     fontSize: fontSize ?? this.fontSize,
@@ -164,6 +172,7 @@ final class ReadingSettings {
     texture: texture ?? this.texture,
     hyphenate: hyphenate ?? this.hyphenate,
     showStats: showStats ?? this.showStats,
+    verticalScroll: verticalScroll ?? this.verticalScroll,
   );
 
   /// Key → text for the settings table; an unset size is left out.
@@ -178,6 +187,7 @@ final class ReadingSettings {
     _texture: texture.name,
     _hyphenate: '$hyphenate',
     _showStats: '$showStats',
+    _verticalScroll: '$verticalScroll',
   };
 
   @override
@@ -192,7 +202,8 @@ final class ReadingSettings {
       other.night == night &&
       other.texture == texture &&
       other.hyphenate == hyphenate &&
-      other.showStats == showStats;
+      other.showStats == showStats &&
+      other.verticalScroll == verticalScroll;
 
   @override
   int get hashCode => Object.hash(
@@ -206,6 +217,7 @@ final class ReadingSettings {
     texture,
     hyphenate,
     showStats,
+    verticalScroll,
   );
 }
 

@@ -26,6 +26,7 @@ void main() {
       texture: PageTexture.twill,
       hyphenate: false,
       showStats: false,
+      verticalScroll: true,
     );
     expect(ReadingSettings.fromStored(settings.toStored()), settings);
     expect(ReadingSettings.fromStored(defaults.toStored()), defaults);
@@ -45,6 +46,7 @@ void main() {
         'reading.night': 'NIGHT',
         'reading.texture': 'velvet',
         'reading.hyphenate': 'maybe',
+        'reading.verticalScroll': 'yes',
       }),
       defaults,
     );
