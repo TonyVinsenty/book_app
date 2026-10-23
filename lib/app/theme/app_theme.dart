@@ -57,6 +57,45 @@ ThemeData buildAppTheme(ReadingPalette palette, {required bool night}) {
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
     ),
+    // Buttons at least 44 high to the eye, not only to the finger (14.2,
+    // A8); sheets, dialogs and messages of one look (A13).
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(minimumSize: const Size(64, 44)),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(minimumSize: const Size(64, 44)),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(minimumSize: const Size(0, 44)),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: c.background,
+      surfaceTintColor: Colors.transparent,
+      dragHandleColor: c.text.withValues(alpha: 0.16),
+      dragHandleSize: const Size(36, 4),
+      // Tinted by the text, not grey: the page under it does not sink.
+      modalBarrierColor: night
+          ? Colors.black.withValues(alpha: 0.5)
+          : c.text.withValues(alpha: 0.32),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: c.background,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: c.text,
+      contentTextStyle: TextStyle(fontFamily: AppFonts.ui, color: c.background),
+      actionTextColor: c.background,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
     fontFamily: AppFonts.ui,
     extensions: [ReadingTheme(c)],
   );

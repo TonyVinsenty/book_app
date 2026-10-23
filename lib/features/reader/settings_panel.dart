@@ -70,9 +70,14 @@ class ReadingSettingsPanel extends ConsumerWidget {
 
     return _SwipeDownToClose(
       onClose: onClose,
+      // Rounded on top like the other sheets (14.2, A13).
       child: Material(
         color: colors.surface,
         elevation: 2,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.6,
@@ -84,7 +89,7 @@ class ReadingSettingsPanel extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 4),
                 child: Container(
-                  width: 32,
+                  width: 36,
                   height: 4,
                   decoration: BoxDecoration(
                     color: colors.textSecondary.withValues(alpha: 0.4),
