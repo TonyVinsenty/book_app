@@ -112,6 +112,32 @@ void main() {
     expect(find.textContaining('среднюю для взрослого'), findsOneWidget);
   });
 
+  testWidgets('the first cards come up one after another', (tester) async {
+    tester.view.physicalSize = const Size(1080, 9000);
+    addTearDown(tester.view.reset);
+    await pump(
+      tester,
+      const StatsScreen(),
+      reading: seed.reading,
+      pace: seed.pace,
+    );
+    List<double> opacities() => [
+      for (final o in tester.widgetList<Opacity>(
+        find.descendant(
+          of: find.byType(StatsView),
+          matching: find.byType(Opacity),
+        ),
+      ))
+        o.opacity,
+    ];
+    await tester.pump(const Duration(milliseconds: 150));
+    final early = opacities();
+    expect(early.first, greaterThan(early[3]), reason: 'the top one is ahead');
+    expect(early[3], lessThan(1));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(opacities(), everyElement(1.0));
+  });
+
   testWidgets('made-up months: saved time, speeds, line, the pace button', (
     tester,
   ) async {

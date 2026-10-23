@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:book_app/app/pill_tabs.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/data/db/app_database.dart';
@@ -43,8 +45,33 @@ class StatsView extends ConsumerStatefulWidget {
   ConsumerState<StatsView> createState() => _StatsViewState();
 }
 
-class _StatsViewState extends ConsumerState<StatsView> {
+class _StatsViewState extends ConsumerState<StatsView>
+    with SingleTickerProviderStateMixin {
   var _period = StatsPeriod.month;
+
+  /// The first cards come up one after another when the screen opens
+  /// (owner, 14.3: «Каскад»).
+  late final _appear = AnimationController(
+    vsync: this,
+    duration: _Appear.total,
+  );
+  var _appeared = false;
+
+  @override
+  void dispose() {
+    _appear.dispose();
+    super.dispose();
+  }
+
+  void _playAppear() {
+    if (_appeared) return;
+    _appeared = true;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _appear.value = 1;
+    } else {
+      unawaited(_appear.forward());
+    }
+  }
 
   /// The cards went up under the period switch: a line under it.
   var _scrolled = false;
@@ -97,6 +124,16 @@ class _StatsViewState extends ConsumerState<StatsView> {
         ],
       );
     }
+    _playAppear();
+    final cards = [
+      _SavedCard(overview),
+      _SpeedCard(overview),
+      _PaceCard(overview.pace),
+      _DaysCard(overview, pages: false),
+      _DaysCard(overview, pages: true),
+      _CalendarCard(overview.calendar, today: today),
+      _YearCard(overview.year, year: today.year),
+    ];
     // The period switch stays; only the cards go under it (14.2, A5).
     return Column(
       children: [
@@ -130,27 +167,61 @@ class _StatsViewState extends ConsumerState<StatsView> {
         Expanded(
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
-            child: ListView(
+            child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-        _SavedCard(overview),
-        const SizedBox(height: 12),
-        _SpeedCard(overview),
-        const SizedBox(height: 12),
-        _PaceCard(overview.pace),
-        const SizedBox(height: 12),
-        _DaysCard(overview, pages: false),
-        const SizedBox(height: 12),
-        _DaysCard(overview, pages: true),
-        const SizedBox(height: 12),
-        _CalendarCard(overview.calendar, today: today),
-        const SizedBox(height: 12),
-        _YearCard(overview.year, year: today.year),
-              ],
+              itemCount: cards.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (_, i) =>
+                  _Appear(animation: _appear, index: i, child: cards[i]),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A card of the cascade: fades in and rises by 10 dp, 240 ms, 50 ms after
+/// the one above; past the sixth at once (mockup `page-turn.html`).
+class _Appear extends StatelessWidget {
+  const _Appear({
+    required this.animation,
+    required this.index,
+    required this.child,
+  });
+
+  static const _one = 240;
+  static const _step = 50;
+  static const _cards = 6;
+  static const total = Duration(milliseconds: _one + _step * (_cards - 1));
+
+  final Animation<double> animation;
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (index >= _cards) return child;
+    final ms = total.inMilliseconds;
+    final start = index * _step / ms;
+    final curve = Interval(
+      start,
+      start + _one / ms,
+      curve: Curves.easeOutCubic,
+    );
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (_, child) {
+        final shown = curve.transform(animation.value);
+        return Opacity(
+          opacity: shown,
+          child: Transform.translate(
+            offset: Offset(0, 10 * (1 - shown)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
     );
   }
 }
