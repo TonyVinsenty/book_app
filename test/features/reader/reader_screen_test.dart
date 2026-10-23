@@ -2244,4 +2244,68 @@ void main() {
     expect(saved, inInclusiveRange(shown.firstWord, shown.endWord - 1));
     await closeApp(tester);
   });
+
+  testWidgets('14.14: side taps scroll the strip by a screen less a line; a '
+      'long press reads from a page below; a tap on a moving strip stops it', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderView)),
+    );
+    container
+        .read(readingSettingsProvider.notifier)
+        .set(
+          container.read(readingSettingsProvider).copyWith(verticalScroll: true),
+        );
+    await tester.pumpAndSettle();
+    final strip = find.byType(CustomScrollView);
+    double offset() =>
+        tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
+    final window = tester.getSize(strip).height - readerTopMargin;
+    final line = reader(tester).layout.style.bodyLine;
+
+    final start = offset();
+    await tapAt(tester, 0.95);
+    final step = offset() - start;
+    // The row cut at the bottom comes up whole (a gap may be skipped).
+    expect(step, inInclusiveRange(window - line - 1, window + line));
+    await tapAt(tester, 0.05);
+    expect(offset(), closeTo(start, 1), reason: 'back to the book start');
+
+    // Page 0 at the top, page 1 below it: a long press reads from there.
+    await tester.drag(strip, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    final chapter = reader(tester).layout;
+    expect(chapter.pages.indexOf(reader(tester).page), 0);
+    final word = chapter.pages[1].firstWord;
+    final box = chapter.wordBoxes(1, word).first;
+    final tile = find.descendant(
+      of: find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == chapter.pageText(1),
+      ),
+      matching: find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.size == chapter.pageSize,
+      ),
+    );
+    await tester.longPressAt(tester.getTopLeft(tile) + box.center);
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(rsvp(tester).widget.startWord, word);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await settle(tester);
+
+    await tester.fling(strip, const Offset(0, -200), 3000);
+    await tester.pump(const Duration(milliseconds: 50));
+    final moving = offset();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(offset(), greaterThan(moving), reason: 'still moving');
+    final held = offset();
+    await tapAt(tester, 0.95);
+    await tester.pumpAndSettle();
+    expect(offset(), closeTo(held, 1), reason: 'the tap only stopped it');
+    await closeApp(tester);
+  });
 }

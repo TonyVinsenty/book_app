@@ -271,6 +271,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Bumped as the top row moves: the footer follows without a rebuild.
   final _stripMoved = ValueNotifier<int>(0);
 
+  /// The strip stopped in the touch now going on ([_stripEndedNow] when it
+  /// came down): its tap does nothing more.
+  bool _stripStopped = false;
+  bool _stripEndedNow = false;
+
   @visibleForTesting
   ChapterLayout get layout => _layoutOf(_section);
 
@@ -417,7 +422,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Counts the shown page up to [word]: speed reading goes on from there.
   void _closePageAt(int word) {
     if (_page >= layout.pages.length) return;
-    _pageMeter.close(words: max(0, word - page.firstWord));
+    // In the strip the word may be on a page below (п. 9).
+    _pageMeter.close(words: max(0, min(word, page.endWord) - page.firstWord));
   }
 
   /// Writes what was gathered to the base (ADR 0009 п. 2).
@@ -611,6 +617,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The scroll stopped: the place is saved, chapters far away go.
   bool _onStripEnd(ScrollEndNotification end) {
     if (end.depth != 0) return false;
+    // A touch stops a moving strip within its own pointer-down dispatch.
+    _stripEndedNow = true;
+    scheduleMicrotask(() => _stripEndedNow = false);
     if (_word != _stripSaved) {
       _stripSaved = _word;
       _readOn();
@@ -747,9 +756,35 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  void _next() => _turnTo(1);
+  void _next() => _stripOn ? _scrollBy(1) : _turnTo(1);
 
-  void _previous() => _turnTo(-1);
+  void _previous() => _stripOn ? _scrollBy(-1) : _turnTo(-1);
+
+  /// A side tap in the strip: on or back by a screen less a line, the row
+  /// cut at the edge whole on the other side (ADR 0003, addendum 5 п. 8);
+  /// 250 ms, at once if the system asks for less motion.
+  void _scrollBy(int dir) {
+    final map = _strip;
+    final scroll = _stripScroll;
+    if (map == null || scroll == null || !scroll.hasClients) return;
+    final position = scroll.position;
+    final to = dir > 0
+        ? map.forward(position.pixels)
+        : map.backward(position.pixels);
+    if (to == null) return;
+    final target = to.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      scroll.jumpTo(target);
+    } else {
+      unawaited(
+        scroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
+  }
 
   /// The section and page a turn by [dir] (1 on, −1 back) reaches, or null
   /// at the end.
@@ -965,8 +1000,29 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   /// The note of the label at [position] (in the tap area), if any.
-  String? _noteAt(Offset position) =>
-      layout.noteAt(_page, position - _margin.topLeft);
+  String? _noteAt(_PageHit? hit) => hit?.chapter.noteAt(hit.page, hit.point);
+
+  /// The page under [position] (in the tap area) and the point on it: in
+  /// the strip, any page seen (ADR 0003, addendum 5 п. 9).
+  _PageHit? _hitAt(Offset position) {
+    if (!_stripOn) {
+      return (chapter: layout, page: _page, point: position - _margin.topLeft);
+    }
+    final map = _strip;
+    final scroll = _stripScroll;
+    if (map == null || scroll == null || !scroll.hasClients) return null;
+    final y = scroll.offset + position.dy;
+    final row = map.rowAt(y);
+    if (row == null) return null;
+    return (
+      chapter: map.pagesOf(row.section)! as ChapterLayout,
+      page: row.page,
+      point: Offset(
+        position.dx - _margin.left,
+        y - map.pageTop(row.section, row.page),
+      ),
+    );
+  }
 
   /// A footnote over the page (ADR 0008 п. 8); the page stays as it was.
   void _openNote(String id) => unawaited(
@@ -985,12 +1041,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
   );
 
   Future<void> _onLongPress(LongPressStartDetails details) async {
-    if (_stripOn) return;
+    final hit = _hitAt(details.localPosition);
     // A label is above long presses too (ADR 0008 п. 8).
     if (_guide?.isPlaying != true && !_panelsShown) {
-      if (_noteAt(details.localPosition) case final id?) return _openNote(id);
+      if (_noteAt(hit) case final id?) return _openNote(id);
     }
-    final word = layout.wordAt(_page, details.localPosition - _margin.topLeft);
+    final word = hit?.chapter.wordAt(hit.page, hit.point);
     if (word == null) return;
     unawaited(HapticFeedback.selectionClick());
     if (_guide != null) {
@@ -1347,17 +1403,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _settleTurn();
     final x = details.localPosition.dx;
     final guide = _guide;
-    if (_stripOn && guide == null && !_settingsShown) {
-      // The strip: the middle shows the panels, any tap hides them.
-      return _setPanels(!_panelsShown && x >= width / 3 && x <= width * 2 / 3);
+    final hit = _hitAt(details.localPosition);
+    if (_stripStopped) {
+      // A tap on the moving strip only stops it (ADR 0003, addendum 5 п. 8).
+      _stripStopped = false;
+      return;
     }
     if (_settingsShown && !_panelsShown) {
       // The settings opened from the highlight's pause panel.
       setState(() => _settingsShown = false);
     } else if (guide != null && guide.isPlaying) {
       _pauseGuide();
-    } else if (_noteAt(details.localPosition) case final id?
-        when !_panelsShown) {
+    } else if (_noteAt(hit) case final id? when !_panelsShown) {
       // A label is above turning pages (ADR 0008 п. 8).
       _openNote(id);
     } else if (_guideStopImage != null && !_panelsShown) {
@@ -1378,11 +1435,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _previous();
     } else if (x > width * 2 / 3) {
       _next();
-    } else if (pageImageAt(
-          layout,
-          _page,
-          details.localPosition - Offset(_margin.left, _margin.top),
-        )
+    } else if (hit == null
+            ? null
+            : pageImageAt(hit.chapter, hit.page, hit.point)
         case final image?) {
       // A tap on a picture opens it over the whole screen (owner, 12.0).
       unawaited(
@@ -1617,28 +1672,35 @@ class ReaderViewState extends ConsumerState<ReaderView>
                         ? Column(
                             children: [
                               Expanded(
-                                child:
-                                    NotificationListener<ScrollEndNotification>(
-                                      onNotification: _onStripEnd,
-                                      child: PageStrip(
-                                        key: ObjectKey(_stripScroll),
-                                        map: _strip!,
-                                        controller: _stripScroll!,
-                                        // While the highlight plays, swipes
-                                        // change its speed (п. 10).
-                                        physics:
-                                            guide != null && guide.isPlaying
-                                            ? const NeverScrollableScrollPhysics()
-                                            : null,
-                                        tile: (section, pages, index) =>
-                                            _stripTile(
-                                              pages as ChapterLayout,
-                                              index,
-                                              colors,
-                                              dark: dark,
-                                            ),
+                                child: Listener(
+                                  // After the strip's own hold of the touch.
+                                  onPointerDown: (_) =>
+                                      _stripStopped = _stripEndedNow,
+                                  child:
+                                      NotificationListener<
+                                        ScrollEndNotification
+                                      >(
+                                        onNotification: _onStripEnd,
+                                        child: PageStrip(
+                                          key: ObjectKey(_stripScroll),
+                                          map: _strip!,
+                                          controller: _stripScroll!,
+                                          // While the highlight plays, swipes
+                                          // change its speed (п. 10).
+                                          physics:
+                                              guide != null && guide.isPlaying
+                                              ? const NeverScrollableScrollPhysics()
+                                              : null,
+                                          tile: (section, pages, index) =>
+                                              _stripTile(
+                                                pages as ChapterLayout,
+                                                index,
+                                                colors,
+                                                dark: dark,
+                                              ),
+                                        ),
                                       ),
-                                    ),
+                                ),
                               ),
                               ValueListenableBuilder(
                                 valueListenable: _stripMoved,
@@ -2074,6 +2136,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 }
+
+/// A page under a touch and the point on it, in page coordinates.
+typedef _PageHit = ({ChapterLayout chapter, int page, Offset point});
 
 /// The boxes of words one after another, one box per line: a lit phrase
 /// is one mark, not a row of them.
