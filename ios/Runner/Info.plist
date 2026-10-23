@@ -59,6 +59,7 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleLocalizations</key>
 	<array>
+		<string>en</string>
 		<string>ru</string>
 	</array>
 	<key>CFBundleDisplayName</key>
