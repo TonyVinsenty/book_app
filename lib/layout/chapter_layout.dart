@@ -5,6 +5,7 @@ import 'package:book_app/book/model/reading_position.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/layout/page_style.dart';
+import 'package:book_app/layout/strip_map.dart';
 import 'package:flutter/painting.dart';
 
 /// Lines `[firstLine, endLine)` of one block placed on a page at [top].
@@ -52,7 +53,7 @@ typedef PageRow = ({double top, double bottom, int firstWord});
 /// A chapter split into pages of [pageSize] (ADR 0003): every block is laid
 /// out whole by a [TextPainter], pages take whole lines, and a page paints
 /// the same painters shifted and clipped, so line breaks match exactly.
-final class ChapterLayout {
+final class ChapterLayout implements StripPages {
   ChapterLayout._(
     this.sectionIndex,
     this.pageSize,
@@ -104,8 +105,12 @@ final class ChapterLayout {
   /// Empty when the chapter shows nothing (no text, no separators).
   final List<ChapterPage> pages;
 
+  @override
+  int get pageCount => pages.length;
+
   /// The page showing [wordIndex]: the last page starting at or before it
   /// (0 for words before the chapter, the last page for words after it).
+  @override
   int pageOfWord(int wordIndex) {
     var lo = 0;
     var hi = pages.length - 1;
@@ -183,6 +188,7 @@ final class ChapterLayout {
   /// Lines and pictures of page [index], top to bottom, in page coordinates
   /// (a picture or separator is one row). A row's [PageRow.firstWord] is
   /// the first word starting on it or after, kept within the page's words.
+  @override
   List<PageRow> pageRows(int index) {
     final page = pages[index];
     final rows = <PageRow>[];
@@ -212,6 +218,7 @@ final class ChapterLayout {
   /// The height page [index] takes in a seamless scroll (ADR 0003, addendum
   /// 5 п. 1): its text, then the gap the split dropped at the top of the
   /// next page — none inside a paragraph, none after the chapter's last page.
+  @override
   double pageExtent(int index) {
     final slices = pages[index].slices;
     if (slices.isEmpty) return 0;
