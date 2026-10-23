@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:book_app/features/stats/charts/chart_colors.dart';
 import 'package:book_app/stats/stats_overview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Two speed lines, by eye and speed reading, oldest point on the left;
@@ -89,5 +90,5 @@ class _LinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_LinePainter old) =>
-      old.points != points || old.colors != colors;
+      !listEquals(old.points, points) || old.colors != colors;
 }

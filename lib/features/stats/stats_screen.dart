@@ -171,7 +171,7 @@ class _SavedCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(l10n.statsSavedHow, style: secondary),
           if (!overview.eyeSpeed.known)
-            Text(l10n.statsSavedAverage, style: secondary),
+            Text(l10n.statsSavedAverage(fallbackPageWpm), style: secondary),
         ],
       ],
     );
@@ -676,8 +676,9 @@ class _YearCard extends StatelessWidget {
             item('${totals.books}', l10n.statsYearBooks(totals.books)),
             item(
               NumberFormat.compact(locale: locale).format(totals.words),
-              // «812 тыс. слов»: past a thousand it is always «слов».
-              l10n.statsYearWords(totals.words < 1000 ? totals.words : 0),
+              totals.words < 1000
+                  ? l10n.statsYearWords(totals.words)
+                  : l10n.statsYearWordsCompact,
             ),
           ],
         ),

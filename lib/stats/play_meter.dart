@@ -4,7 +4,7 @@ import 'package:book_app/stats/stats_records.dart';
 
 /// Time, words and signals of understanding in speed reading (ADR 0009
 /// п. 4). Time runs only between [play] and [pause] / [stop]; words are the
-/// growth of the word index while playing.
+/// growth of the word index while playing past the furthest word read.
 final class PlayMeter {
   PlayMeter({
     required this.bookId,
@@ -13,14 +13,16 @@ final class PlayMeter {
     required int wordIndex,
     required this._buffer,
     required this._now,
-  }) : _last = wordIndex;
+  }) : _furthest = wordIndex;
 
   final int bookId;
   final StatsBuffer _buffer;
   final DateTime Function() _now;
   SpeedMode _mode;
   int _wpm;
-  int _last;
+
+  /// Words up to here are counted; read again after [back], they are not.
+  int _furthest;
   DateTime? _since;
 
   /// The pace of a pause by the reader; it is a signal only once reading
@@ -56,11 +58,12 @@ final class PlayMeter {
   /// The engine moved to [wordIndex] while playing.
   void advance(int wordIndex) {
     if (!playing) {
-      _last = wordIndex;
+      // Not read; back from here is not new words either.
+      if (wordIndex > _furthest) _furthest = wordIndex;
       return;
     }
-    final words = wordIndex > _last ? wordIndex - _last : 0;
-    _last = wordIndex;
+    final words = wordIndex > _furthest ? wordIndex - _furthest : 0;
+    if (words > 0) _furthest = wordIndex;
     _credit(words);
   }
 
@@ -80,17 +83,17 @@ final class PlayMeter {
     _userPause = null;
   }
 
-  /// The reader went back to [wordIndex]: a signal; words are not taken off.
-  void back(int wordIndex) {
+  /// The reader went back: a signal; words are not taken off, and those
+  /// read again are not added.
+  void back() {
     _credit(0);
-    _last = wordIndex;
     _addPace(_mode, _wpm, backs: 1);
   }
 
   /// A jump to [wordIndex] that is neither reading nor going back.
   void seek(int wordIndex) {
     _credit(0);
-    _last = wordIndex;
+    _furthest = wordIndex;
   }
 
   /// Adds the time since the last credit and [words] to the buffer.

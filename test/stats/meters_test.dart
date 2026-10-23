@@ -52,6 +52,28 @@ void main() {
       expect(d.pageSpeeds, {20: 1}); // 200 wpm
     });
 
+    test('a page laid out again goes on and is counted once', () {
+      meter.reopen(250); // the first layout opens the page
+      wait(30);
+      meter.reopen(250); // new colors: the same page
+      wait(30);
+      meter.close();
+
+      var d = only()!;
+      expect((d.activeMs, d.words), (60000, 250));
+      expect(d.pageSpeeds, {25: 1}); // 250 wpm
+
+      meter.open(250);
+      wait(30);
+      meter.reopen(200); // a bigger font: fewer words on the page
+      wait(30);
+      meter.close();
+
+      d = only()!;
+      expect((d.activeMs, d.words), (60000, 200));
+      expect(d.pageSpeeds, isEmpty); // half read at one size: no speed
+    });
+
     test('under 2 s is leafing: nothing counts', () {
       meter.open(250);
       wait(1);
@@ -186,18 +208,21 @@ void main() {
       expect((p.pauses, p.activeMs), (1, 20000));
     });
 
-    test('back is a signal and neither takes off nor adds words', () {
+    test('back is a signal; words read again are not added', () {
       meter.play();
       wait(10);
       meter
         ..advance(1100)
-        ..back(1050);
+        ..back()
+        ..pause()
+        ..advance(1050) // the engine went back a sentence
+        ..play();
       wait(10);
       meter.advance(1120);
       meter.stop();
 
       final taken = buffer.take();
-      expect(taken.reading.single.words, 170);
+      expect(taken.reading.single.words, 120);
       expect(taken.pace.single.backs, 1);
     });
 

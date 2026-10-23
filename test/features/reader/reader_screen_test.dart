@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:book_app/app/app.dart';
 import 'package:book_app/app/pro.dart';
@@ -1890,7 +1891,12 @@ void main() {
     ), reason: 'written on hiding');
     wait(500);
     lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.resumed]);
-    wait(10);
+    wait(5);
+    // Control Center over the app (inactive, not hidden) stops it too.
+    lifecycle(tester, [AppLifecycleState.inactive]);
+    wait(300);
+    lifecycle(tester, [AppLifecycleState.resumed]);
+    wait(5);
     // Leafing back and forth (under 2 s) counts nothing.
     await tapAt(tester, 0.05);
     wait(1);
@@ -2027,6 +2033,7 @@ void main() {
     lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.hidden]);
     await tester.pump();
     expect(guide.isPlaying, isFalse);
+    final furthest = max(paused, guide.word);
     wait(100);
     lifecycle(tester, [AppLifecycleState.inactive, AppLifecycleState.resumed]);
     await closeApp(tester);
@@ -2035,7 +2042,8 @@ void main() {
     final words = stats.reading[ReadingMode.guide]!.$2;
     expect(stats.reading.keys, [ReadingMode.guide]);
     expect(stats.reading[ReadingMode.guide]!.$1, 3000);
-    expect(words, greaterThan(paused - start));
+    // Words read again after «back» are not added.
+    expect(words, furthest - start);
     expect(stats.pace, {250: (words, 3000, 1, 1)});
     expect(await pageStats(tester), (
       10000,

@@ -267,7 +267,7 @@ class RsvpScreenState extends ConsumerState<RsvpScreen>
     setState(
       () => _engine.seek(sentenceBack(widget.opened.tokens, _engine.wordIndex)),
     );
-    _meter.back(_engine.wordIndex);
+    _meter.back();
     if (!_engine.isPlaying) _savePosition();
   }
 

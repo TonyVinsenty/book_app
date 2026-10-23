@@ -74,12 +74,12 @@ final statsRepositoryProvider = Provider<StatsRepository>(
 );
 
 /// All reading rows, for the statistics screen.
-final readingDaysProvider = StreamProvider<List<ReadingDelta>>(
+final readingDaysProvider = StreamProvider.autoDispose<List<ReadingDelta>>(
   (ref) => ref.watch(statsRepositoryProvider).watchReadingDays(),
 );
 
 /// All pace rows, for the comfortable pace.
-final paceDaysProvider = StreamProvider<List<PaceDelta>>(
+final paceDaysProvider = StreamProvider.autoDispose<List<PaceDelta>>(
   (ref) => ref.watch(statsRepositoryProvider).watchPaceDays(),
 );
 

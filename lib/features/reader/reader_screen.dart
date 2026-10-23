@@ -228,8 +228,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The highlight's time and words (ADR 0009 п. 4), while it is on.
   PlayMeter? _guideMeter;
 
-  /// The app is on screen, not in the background.
-  bool _appShown = true;
+  /// The app is in front: not hidden, not under Control Center or a call.
+  bool _appActive = true;
 
   /// Screens open over the page: speed reading, contents, a note, a picture.
   int _covers = 0;
@@ -294,14 +294,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
         _pauseGuide();
         // Not the reader's pause: no signal.
         _guideMeter?.stop();
+        // Control Center, a call: the page is not read either.
+        _appActive = false;
+        _syncPageMeter();
       },
-      onShow: () {
-        _appShown = true;
+      onResume: () {
+        _appActive = true;
         _syncPageMeter();
       },
       onHide: () {
-        _appShown = false;
-        _syncPageMeter();
         _flushStats();
         _pagination?.flush();
       },
@@ -328,6 +329,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The owner's page speed sets how long a page is expected to take; the
   /// numbers of this book go to the line "time left" and its sheet.
   Future<void> _loadStats() async {
+    if (!mounted) return;
     final speedSettings = ref.read(speedSettingsProvider);
     final today = ref.read(statsClockProvider)();
     final rows = [for (final r in await _stats.readingDays()) r.toDelta()];
@@ -353,17 +355,23 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The page is seen only with nothing over it and the highlight off (that
   /// is counted as speed reading).
   void _syncPageMeter() => _pageMeter.visible =
-      _appShown &&
+      _appActive &&
       _covers == 0 &&
       !_panelsShown &&
       !_settingsShown &&
       _guide == null;
 
-  /// Starts the meter on the shown page, read from [from] on.
-  void _openPage({int? from}) {
+  /// Starts the meter on the shown page, read from [from] on; [relaid] —
+  /// the same page laid out again, its time goes on.
+  void _openPage({int? from, bool relaid = false}) {
     if (_page >= layout.pages.length) return;
     final shown = page;
-    _pageMeter.open(max(0, shown.endWord - max(from ?? 0, shown.firstWord)));
+    final int words = max(0, shown.endWord - max(from ?? 0, shown.firstWord));
+    if (relaid) {
+      _pageMeter.reopen(words);
+    } else {
+      _pageMeter.open(words);
+    }
   }
 
   /// Counts the shown page up to [word]: speed reading goes on from there.
@@ -456,7 +464,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       guide.relayout();
       if (!guided) guide.pageTurned(page.firstWord);
     } else {
-      _openPage();
+      _openPage(relaid: true);
     }
   }
 
@@ -893,10 +901,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (mounted) setState(() {});
   }
 
-  /// Jumps the highlight to [word] and opens its page.
-  void _guideSeek(int word) {
+  /// Jumps the highlight to [word] and opens its page; [back] — by the
+  /// reader's swipe, words read again are not counted.
+  void _guideSeek(int word, {bool back = false}) {
     final guide = _guide!..seek(word);
-    _guideMeter?.seek(word);
+    if (back) {
+      _guideMeter?.back();
+    } else {
+      _guideMeter?.seek(word);
+    }
     _followGuide();
     if (!guide.isPlaying) _saveGuidePlace();
   }
@@ -919,8 +932,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// Back by a sentence: a sign the pace is too fast.
   void _guideBack() {
     final word = sentenceBack(widget.opened.tokens, _guide!.word);
-    _guideSeek(word);
-    _guideMeter?.back(word);
+    _guideSeek(word, back: true);
   }
 
   void _changeGuideSpeed(int delta) {
@@ -1039,7 +1051,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     });
     unawaited(_showStatusBar(shown));
     // The numbers as of now, with what was gathered on the way.
-    if (shown) unawaited(_stats.flush(_statsBuffer).then((_) => _loadStats()));
+    if (shown) {
+      unawaited(
+        _stats.flush(_statsBuffer).then((_) => mounted ? _loadStats() : null),
+      );
+    }
   }
 
   void _onTapUp(TapUpDetails details, double width) {

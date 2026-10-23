@@ -32,6 +32,9 @@ final class PageMeter {
   int? medianWpm;
 
   int? _words;
+
+  /// The page was laid out again while open: its time is not one page's.
+  var _relaid = false;
   var _shown = Duration.zero;
   DateTime? _shownSince;
   var _visible = true;
@@ -52,8 +55,20 @@ final class PageMeter {
   void open(int words) {
     close();
     _words = words;
+    _relaid = false;
     _shown = Duration.zero;
     _shownSince = _visible ? _now() : null;
+  }
+
+  /// The open page was laid out again (new font, size or colors) and now
+  /// has [words] words: its time goes on, and a new word count gives no
+  /// speed. Opens the page if none is open.
+  void reopen(int words) {
+    final opened = _words;
+    if (opened == null) return open(words);
+    if (words == opened) return;
+    _words = words;
+    _relaid = true;
   }
 
   /// Counts the open page; none is open after. [words] — only so many were
@@ -87,7 +102,7 @@ final class PageMeter {
       );
       if (time > cap) {
         time = cap;
-      } else {
+      } else if (!_relaid) {
         speeds = {speedBucket(words * 60000 / time.inMilliseconds): 1};
       }
     }
