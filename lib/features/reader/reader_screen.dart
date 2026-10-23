@@ -6,6 +6,7 @@ import 'package:book_app/app/notice.dart';
 import 'package:book_app/app/pro.dart';
 import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/app/theme/page_texture.dart';
+import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/book/model/table_of_contents.dart';
 import 'package:book_app/book/tokenizer/book_tokens.dart';
 import 'package:book_app/book/tokenizer/token.dart';
@@ -192,6 +193,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
     duration: const Duration(milliseconds: 1400),
   );
 
+  /// The page's shift while it follows a finger or slides in after a turn
+  /// (owner, 14.3): the page beside shows next to it; 0 is at rest.
+  late final AnimationController _turn = AnimationController.unbounded(
+    vsync: this,
+  );
+  bool _dragging = false;
+  double _turnWidth = 0;
+
   /// The leading highlight, while on (ADR 0004, addendum for stage 10
   /// п. 6–9): it goes over the shown page and turns it.
   GuideSession? _guide;
@@ -314,6 +323,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     unawaited(_keepScreenOn(false));
     unawaited(_showStatusBar(true));
     _lit.dispose();
+    _turn.dispose();
     _guideHintTimer?.cancel();
     _guideTicker?.dispose();
     _guideWord.dispose();
@@ -512,22 +522,59 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  void _next() {
+  void _next() => _turnTo(1);
+
+  void _previous() => _turnTo(-1);
+
+  /// The section and page a turn by [dir] (1 on, −1 back) reaches, or null
+  /// at the end. [near] looks only into the next chapter: farther ones would
+  /// push the shown chapter out of [_layouts].
+  (int, int)? _pageBeside(int dir, {bool near = false}) {
     final sections = widget.opened.tokens.content.sections.length;
-    if (_page + 1 < layout.pages.length) {
-      return _show(_section, _page + 1, turned: true);
+    if (dir > 0) {
+      if (_page + 1 < layout.pages.length) return (_section, _page + 1);
+      final last = near ? min(_section + 1, sections - 1) : sections - 1;
+      for (var s = _section + 1; s <= last; s++) {
+        if (_layoutOf(s).pages.isNotEmpty) return (s, 0);
+      }
+    } else {
+      if (_page > 0) return (_section, _page - 1);
+      final first = near ? max(_section - 1, 0) : 0;
+      for (var s = _section - 1; s >= first; s--) {
+        final pages = _layoutOf(s).pages;
+        if (pages.isNotEmpty) return (s, pages.length - 1);
+      }
     }
-    for (var s = _section + 1; s < sections; s++) {
-      if (_layoutOf(s).pages.isNotEmpty) return _show(s, 0, turned: true);
-    }
+    return null;
   }
 
-  void _previous() {
-    if (_page > 0) return _show(_section, _page - 1);
-    for (var s = _section - 1; s >= 0; s--) {
-      final pages = _layoutOf(s).pages;
-      if (pages.isNotEmpty) return _show(s, pages.length - 1);
+  /// Turns by [dir]; the new page slides in from where the old one was
+  /// shifted to, [from].
+  void _turnTo(int dir, {double from = 0}) {
+    final to = _pageBeside(dir);
+    if (to == null) return _slide(from);
+    _show(to.$1, to.$2, turned: dir > 0);
+    _slide(from + dir * _turnWidth);
+  }
+
+  /// The page slides from [shift] to its place: 250 ms across the screen
+  /// (owner, 14.3); at once if the system asks for less motion.
+  void _slide(double shift) {
+    if (shift == 0 ||
+        _turnWidth == 0 ||
+        MediaQuery.disableAnimationsOf(context)) {
+      _turn.value = 0;
+      return;
     }
+    _turn.value = shift;
+    final ms = (250 * min(1.0, shift.abs() / _turnWidth)).round();
+    unawaited(
+      _turn.animateTo(
+        0,
+        duration: Duration(milliseconds: max(ms, 80)),
+        curve: Curves.easeOutCubic,
+      ),
+    );
   }
 
   /// [turned]: reached by turning the page forward, not by a jump.
@@ -1120,13 +1167,105 @@ class ReaderViewState extends ConsumerState<ReaderView>
         .set(larger ? settings.larger(scale) : settings.smaller(scale));
   }
 
+  /// The shown [page] at the turn's shift, the page beside next to it.
+  Widget _turning(
+    Size size,
+    bool dark,
+    ReadingColors colors, {
+    required Widget page,
+  }) => AnimatedBuilder(
+    animation: _turn,
+    child: page,
+    builder: (context, page) {
+      final shift = _turn.value;
+      final beside = shift == 0
+          ? null
+          : _pageBeside(shift < 0 ? 1 : -1, near: true);
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (beside case (final section, final index))
+            Transform.translate(
+              offset: Offset(shift - shift.sign * _turnWidth, 0),
+              child: Stack(
+                children: [
+                  CustomPaint(
+                    size: size,
+                    painter: _PagePainter(
+                      _layoutOf(section),
+                      index,
+                      lit: const [],
+                      litColor: colors.highlight,
+                      litAnimation: _lit,
+                    ),
+                  ),
+                  PageImages(
+                    chapter: _layoutOf(section),
+                    page: index,
+                    imagesDir: _imagesDir,
+                    dim: dark,
+                    frameColor: colors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          Transform.translate(offset: Offset(shift, 0), child: page),
+        ],
+      );
+    },
+  );
+
+  /// The page follows the finger (owner, 14.3), unless the highlight plays
+  /// (its swipes go back by a sentence) or the system asks for less motion.
+  void _onDragStart(DragStartDetails details) {
+    if ((_guide?.isPlaying ?? false) ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return;
+    }
+    _dragging = true;
+    _turn.stop();
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (!_dragging) return;
+    final width = _turnWidth;
+    var shift = (_turn.value + details.delta.dx).clamp(-width, width);
+    // Past the first or the last page it only gives a little.
+    if (shift != 0 && _pageBeside(shift < 0 ? 1 : -1, near: true) == null) {
+      shift = (_turn.value + details.delta.dx / 3).clamp(
+        -width * 0.15,
+        width * 0.15,
+      );
+    }
+    _turn.value = shift;
+  }
+
   void _onSwipe(DragEndDetails details) {
     if (_guide?.isPlaying ?? false) {
       return _onGuideSwipe(details, vertical: false);
     }
     final speed = details.primaryVelocity ?? 0;
-    if (speed < -200) _next();
-    if (speed > 200) _previous();
+    if (!_dragging) {
+      if (speed < -200) _next();
+      if (speed > 200) _previous();
+      return;
+    }
+    _dragging = false;
+    // A quarter of the screen or a flick turns; less springs back.
+    final shift = _turn.value;
+    if (speed.abs() > 200) {
+      _turnTo(speed < 0 ? 1 : -1, from: shift);
+    } else if (shift.abs() > _turnWidth / 4) {
+      _turnTo(shift < 0 ? 1 : -1, from: shift);
+    } else {
+      _slide(shift);
+    }
+  }
+
+  void _onDragCancel() {
+    if (!_dragging) return;
+    _dragging = false;
+    _slide(_turn.value);
   }
 
   @override
@@ -1175,6 +1314,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         child: LayoutBuilder(
           builder: (context, constraints) {
+            _turnWidth = constraints.maxWidth;
             final area = insets.deflateSize(constraints.biggest);
             final pageSize = readerPageOf(area, side);
             _relayoutIfNeeded(pageSize, style);
@@ -1201,7 +1341,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (d) => _onTapUp(d, area.width),
+                    onHorizontalDragStart: _onDragStart,
+                    onHorizontalDragUpdate: _onDragUpdate,
                     onHorizontalDragEnd: _onSwipe,
+                    onHorizontalDragCancel: _onDragCancel,
                     onVerticalDragEnd: guide != null && guide.isPlaying
                         ? (d) => _onGuideSwipe(d, vertical: true)
                         : null,
@@ -1210,47 +1353,55 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       padding: _margin,
                       child: Column(
                         children: [
-                          Semantics(
-                            container: true,
-                            label: chapter.pageText(_page),
-                            child: Stack(
-                              children: [
-                                if (guide != null)
-                                  GuideLayer(
-                                    chapter: chapter,
-                                    page: _page,
-                                    word: _guideWord,
-                                    color: colors.highlight,
-                                  ),
-                                RepaintBoundary(
-                                  child: CustomPaint(
-                                    size: pageSize,
-                                    painter: _PagePainter(
-                                      chapter,
-                                      _page,
-                                      lit: _litWord == null
-                                          ? const []
-                                          : _joinLines([
-                                              for (
-                                                var w = _litWord!;
-                                                w < _litEnd;
-                                                w++
-                                              )
-                                                ...chapter.wordBoxes(_page, w),
-                                            ]),
-                                      litColor: colors.highlight,
-                                      litAnimation: _lit,
+                          _turning(
+                            pageSize,
+                            dark,
+                            colors,
+                            page: Semantics(
+                              container: true,
+                              label: chapter.pageText(_page),
+                              child: Stack(
+                                children: [
+                                  if (guide != null)
+                                    GuideLayer(
+                                      chapter: chapter,
+                                      page: _page,
+                                      word: _guideWord,
+                                      color: colors.highlight,
+                                    ),
+                                  RepaintBoundary(
+                                    child: CustomPaint(
+                                      size: pageSize,
+                                      painter: _PagePainter(
+                                        chapter,
+                                        _page,
+                                        lit: _litWord == null
+                                            ? const []
+                                            : _joinLines([
+                                                for (
+                                                  var w = _litWord!;
+                                                  w < _litEnd;
+                                                  w++
+                                                )
+                                                  ...chapter.wordBoxes(
+                                                    _page,
+                                                    w,
+                                                  ),
+                                              ]),
+                                        litColor: colors.highlight,
+                                        litAnimation: _lit,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                PageImages(
-                                  chapter: chapter,
-                                  page: _page,
-                                  imagesDir: _imagesDir,
-                                  dim: dark,
-                                  frameColor: colors.textSecondary,
-                                ),
-                              ],
+                                  PageImages(
+                                    chapter: chapter,
+                                    page: _page,
+                                    imagesDir: _imagesDir,
+                                    dim: dark,
+                                    frameColor: colors.textSecondary,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           SizedBox(
@@ -1555,9 +1706,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
                           formatDuration(l10n, stats.left(words.chapter)),
                           formatDuration(l10n, stats.left(words.book)),
                         ),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Icon(Icons.keyboard_arrow_up, color: colors.accent),

@@ -177,6 +177,10 @@ void main() {
     final size = tester.getSize(find.byType(ReaderView));
     await tester.tapAt(Offset(size.width * x, size.height / 2));
     await settle(tester);
+    // A turned page slides in (14.3).
+    if (x < 1 / 3 || x > 2 / 3) {
+      await tester.pump(const Duration(milliseconds: 300));
+    }
   }
 
   Future<int> savedWord() async => (await repo.findById(bookId))!.positionWord;
@@ -243,6 +247,44 @@ void main() {
       reason: 'the page count is saved with the book',
     );
     expect(store.pagesDir(bookId).listSync(), hasLength(1));
+    await closeApp(tester);
+  });
+
+  testWidgets('the page follows a finger: a short pull springs back, a long '
+      'one turns; a tap slides', (tester) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final view = find.byType(ReaderView);
+    final width = tester.getSize(view).width;
+    const slow = Duration(milliseconds: 600);
+    Future<void> rest() => tester.pump(const Duration(milliseconds: 300));
+
+    // Before the first page it only gives a little and comes back.
+    await tester.timedDrag(view, Offset(width * 0.4, 0), slow);
+    await rest();
+    expect(reader(tester).page.firstWord, 0);
+
+    await tester.timedDrag(view, Offset(-width * 0.1, 0), slow);
+    await rest();
+    expect(reader(tester).page.firstWord, 0, reason: 'springs back');
+    expect(find.byType(PageImages), findsOne, reason: 'at rest: one page');
+
+    await tester.timedDrag(view, Offset(-width * 0.4, 0), slow);
+    await rest();
+    final second = reader(tester).page.firstWord;
+    expect(second, greaterThan(0));
+
+    // A tap slides the next page in: both are on screen for a moment.
+    await tester.tapAt(Offset(width * 0.95, tester.getSize(view).height / 2));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(reader(tester).page.firstWord, greaterThan(second));
+    expect(find.byType(PageImages), findsNWidgets(2));
+    await rest();
+    expect(find.byType(PageImages), findsOne);
+
+    await tester.timedDrag(view, Offset(width * 0.4, 0), slow);
+    await rest();
+    expect(reader(tester).page.firstWord, second, reason: 'back by a pull');
     await closeApp(tester);
   });
 
