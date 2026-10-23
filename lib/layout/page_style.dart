@@ -16,6 +16,7 @@ final class PageStyle {
     this.align = TextAlign.left,
     this.hyphenation,
     this.noteColor,
+    this.mutedNoteColor,
   });
 
   final String fontFamily;
@@ -35,10 +36,13 @@ final class PageStyle {
   /// Footnote labels (ADR 0008 п. 8); [color] if null. Not a layout change.
   final Color? noteColor;
 
+  /// Labels whose note the book does not have; [color] faded if null.
+  final Color? mutedNoteColor;
+
   Color get activeLabel => noteColor ?? color;
 
   /// A label whose note the book does not have.
-  Color get inactiveLabel => color.withValues(alpha: 0.4);
+  Color get inactiveLabel => mutedNoteColor ?? color.withValues(alpha: 0.4);
 
   /// Height of one body line on the page.
   double get bodyLine => textScaler.scale(fontSize) * lineHeight;
@@ -91,7 +95,8 @@ final class PageStyle {
       other is PageStyle &&
       sameLayoutAs(other) &&
       other.color == color &&
-      other.noteColor == noteColor;
+      other.noteColor == noteColor &&
+      other.mutedNoteColor == mutedNoteColor;
 
   @override
   int get hashCode => Object.hash(
@@ -103,5 +108,6 @@ final class PageStyle {
     align,
     hyphenation,
     noteColor,
+    mutedNoteColor,
   );
 }

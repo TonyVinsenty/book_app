@@ -549,9 +549,15 @@ const _indent = '  ';
 
 /// A footnote label is this much of the text size, raised by [_labelRaise]
 /// of it (ADR 0008 п. 8): drawn by the app in the book font, as Lora and
-/// PT Serif have no superscript digits.
-const _labelScale = 0.62;
-const _labelRaise = 0.38;
+/// PT Serif have no superscript digits. Semibold and not under 11 points,
+/// to be seen (14.2, A3).
+const _labelScale = 0.72;
+const _labelRaise = 0.33;
+const _labelMinSize = 11.0;
+const _labelWeight = FontWeight.w600;
+
+double _labelSize(double fontSize) =>
+    math.max(fontSize * _labelScale, _labelMinSize);
 
 /// The side of a label's touch zone, in points.
 const labelTouchSize = 44.0;
@@ -791,8 +797,12 @@ final class _BlockLayout {
       style: italic || bold || label
           ? TextStyle(
               fontStyle: italic ? FontStyle.italic : null,
-              fontWeight: bold ? FontWeight.w700 : null,
-              fontSize: label ? fontSize * _labelScale : null,
+              fontWeight: bold
+                  ? FontWeight.w700
+                  : label
+                  ? _labelWeight
+                  : null,
+              fontSize: label ? _labelSize(fontSize) : null,
               color: label ? const Color(0x00000000) : null,
             )
           : null,
@@ -841,7 +851,8 @@ final class _BlockLayout {
         text: TextSpan(
           text: label.text,
           style: root.style!.copyWith(
-            fontSize: size * _labelScale,
+            fontSize: _labelSize(size),
+            fontWeight: _labelWeight,
             color: active ? style.activeLabel : style.inactiveLabel,
           ),
         ),

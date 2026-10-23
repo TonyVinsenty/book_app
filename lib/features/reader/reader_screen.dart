@@ -1280,6 +1280,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       system: MediaQuery.textScalerOf(context),
       color: colors.text,
       noteColor: colors.accent,
+      mutedNoteColor: colors.textSecondary,
       hyphenation: ref.watch(hyphenationProvider),
     );
     final side = settings.margins.side;

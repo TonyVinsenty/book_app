@@ -17,6 +17,7 @@ PageStyle pageStyleOf(
   required TextScaler system,
   required Color color,
   Color? noteColor,
+  Color? mutedNoteColor,
   Hyphenation? hyphenation,
 }) => PageStyle(
   fontFamily: settings.font.family,
@@ -29,6 +30,7 @@ PageStyle pageStyleOf(
   },
   hyphenation: settings.hyphenate ? hyphenation : null,
   noteColor: noteColor,
+  mutedNoteColor: mutedNoteColor,
 );
 
 /// The reader's space above the text and its footer under it.
