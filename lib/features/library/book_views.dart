@@ -161,6 +161,16 @@ class BookCover extends StatelessWidget {
                     .round(),
                 errorBuilder: (_, _, _) => placeholder,
               ),
+            // A thin frame: bright covers do not glow at the edge, a
+            // placeholder does not melt into the page (14.2, A9).
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: context.readingColors.text.withValues(alpha: 0.14),
+                ),
+              ),
+            ),
             ...badges,
           ],
         ),
@@ -206,8 +216,9 @@ class BookTile extends StatelessWidget {
     this.picked,
   });
 
-  static const coverWidth = 52.0;
-  static const coverHeight = 76.0;
+  /// 2:3, as in the grid (14.2, A16).
+  static const coverWidth = 56.0;
+  static const coverHeight = 84.0;
 
   final VoidCallback onTap;
 
@@ -397,6 +408,11 @@ class BookGridTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: _gap),
+                // The status stays on one line across a row (14.2, A9).
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 Text(
                   title,
                   style: TextStyle(
@@ -420,8 +436,11 @@ class BookGridTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: 2),
+                const Spacer(),
                 BookStatusLabel(mark: mark),
+                    ],
+                  ),
+                ),
               ],
             );
           },

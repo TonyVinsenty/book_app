@@ -242,8 +242,11 @@ class _BooksTab extends ConsumerWidget {
               onLongPress: (book) =>
                   unawaited(showBookMenu(context, ref, book)),
             ),
-            // Room for the button over the last book.
-            const SliverToBoxAdapter(child: SizedBox(height: 88)),
+            // Room for the button over the last book, above the system bar
+            // (14.2, A2).
+            SliverToBoxAdapter(
+              child: SizedBox(height: 96 + MediaQuery.paddingOf(context).bottom),
+            ),
           ],
         ],
       ),
