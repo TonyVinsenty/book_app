@@ -1,14 +1,15 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:book_app/app/theme/app_theme.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// A picture of the book over the whole screen (ADR 0008 п. 7, owner's
-/// answer 2): zoom by fingers or a double tap; a tap, a swipe down or back
-/// closes it.
+/// answer 2): zoom by fingers or a double tap; a tap, a swipe down, the
+/// close button or back closes it. On the theme's background (14.2, A4).
 class ImageViewerScreen extends StatefulWidget {
   const ImageViewerScreen({
     super.key,
@@ -149,18 +150,19 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final colors = context.readingColors;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final fade = (1 - _drag / (_closeDistance * 3)).clamp(0.3, 1.0);
+    final close = Navigator.of(context).pop;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Semantics(
-        label: l10n.readerImageClose,
-        button: true,
-        onTap: () => Navigator.of(context).pop(),
-        child: ColoredBox(
-          color: Colors.black.withValues(alpha: fade),
+      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Stack(
+        children: [
+          ColoredBox(
+          color: colors.background.withValues(alpha: fade),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.of(context).pop(),
+            onTap: close,
             onDoubleTapDown: (d) => _doubleTapAt = d.localPosition,
             onDoubleTap: _onDoubleTap,
             child: Transform.translate(
@@ -172,7 +174,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                 onInteractionUpdate: _onInteractionUpdate,
                 onInteractionEnd: _onInteractionEnd,
                 child: SizedBox.expand(
-                  child: Image(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Image(
                     image: ResizeImage(
                       FileImage(widget.file),
                       width: min(widget.width, _decodeLimit),
@@ -183,19 +187,42 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     color: widget.dim ? nightImageDim : null,
                     colorBlendMode: widget.dim ? BlendMode.srcATop : null,
                     excludeFromSemantics: true,
-                    errorBuilder: (_, _, _) => const Center(
+                    errorBuilder: (_, _, _) => Center(
                       child: Icon(
                         Icons.broken_image_outlined,
-                        color: Colors.white54,
+                        color: colors.textSecondary,
                         size: 48,
                       ),
                     ),
+                  ),
                   ),
                 ),
               ),
             ),
           ),
         ),
+          // A round button: closing by a tap is not seen (14.2, A4).
+          Positioned(
+            left: 8,
+            top: MediaQuery.paddingOf(context).top + 8,
+            child: Opacity(
+              opacity: fade,
+              child: Material(
+                color: colors.surface.withValues(alpha: 0.92),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  onPressed: close,
+                  tooltip: l10n.readerImageClose,
+                  icon: Icon(Icons.close, color: colors.text),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 48,
+                    height: 48,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

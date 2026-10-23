@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/app/theme/reading_palette.dart';
 import 'package:book_app/features/reader/image_viewer.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/gestures.dart';
@@ -26,6 +28,7 @@ void main() {
   Future<void> openViewer(WidgetTester tester, File file) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(ReadingPalette.paper, night: false),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
@@ -60,6 +63,26 @@ void main() {
     await tester.tapAt(center);
     await tester.pumpAndSettle();
   }
+
+  testWidgets('the close button closes; the background is the theme', (
+    tester,
+  ) async {
+    await openViewer(tester, picture);
+    final background = tester
+        .widgetList<ColoredBox>(
+          find.descendant(
+            of: find.byType(ImageViewerScreen),
+            matching: find.byType(ColoredBox),
+          ),
+        )
+        .first
+        .color;
+    expect(background, ReadingPalette.paper.day.background);
+
+    await tester.tap(find.byTooltip('Закрыть картинку'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageViewerScreen), findsNothing);
+  });
 
   testWidgets('a double tap zooms in and back out; a tap closes', (
     tester,
