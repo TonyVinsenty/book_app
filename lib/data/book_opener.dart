@@ -34,11 +34,11 @@ final class BookOpener {
   Future<OpenedBook> open(int id) async {
     final book = await _books.findById(id);
     if (book == null) throw StateError('No book $id');
+    // Read and split into words in one isolate (no copy of a big book).
     final stored = book.parserVersion < parserVersionOf(book.sourceFormat)
         ? null
-        : await _books.loadContent(book);
-    if (stored != null) {
-      final tokens = await _tokenizeInIsolate(stored);
+        : await _books.loadContentAnd(book, tokenize);
+    if (stored case final tokens?) {
       final word = tokens.resolve(book.position);
       if (tokens.length == book.wordCount && word == book.positionWord) {
         return OpenedBook(book, tokens, word);
@@ -113,6 +113,3 @@ Future<(ParsedBook, BookTokens, int?)> _parseInIsolate(
     relocateWord(before, before.resolve(position), tokens),
   );
 });
-
-Future<BookTokens> _tokenizeInIsolate(BookContent content) =>
-    Isolate.run(() => tokenize(content));

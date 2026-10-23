@@ -50,6 +50,13 @@ void main() {
     expect(filesOf(7), ['content.v1.json.gz']);
   });
 
+  test('passes the model through a function in the same isolate', () async {
+    await store.saveContent(7, 1, book);
+
+    expect(await store.loadContentAnd(7, 1, titleOf), book.meta.title);
+    expect(await store.loadContentAnd(7, 2, titleOf), isNull);
+  });
+
   test('no model for another parser version', () async {
     await store.saveContent(7, 1, book);
 
@@ -189,3 +196,5 @@ void main() {
     });
   });
 }
+
+String? titleOf(BookContent content) => content.meta.title;

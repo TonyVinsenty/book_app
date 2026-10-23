@@ -109,6 +109,13 @@ final class BookRepository {
   Future<BookContent?> loadContent(BookRow book) =>
       _store.loadContent(book.id, book.parserVersion);
 
+  /// [loadContent] passed through [then] in the same background isolate
+  /// ([ContentStore.loadContentAnd]).
+  Future<T?> loadContentAnd<T>(
+    BookRow book,
+    T Function(BookContent content) then,
+  ) => _store.loadContentAnd(book.id, book.parserVersion, then);
+
   File sourceFile(BookRow book) =>
       _store.sourceFile(book.id, book.sourceFormat);
 

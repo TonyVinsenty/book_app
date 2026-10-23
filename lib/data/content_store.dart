@@ -88,16 +88,19 @@ final class ContentStore {
 
   /// The stored model, or null when there is none for [parserVersion] (the
   /// book must be reparsed from its source). Decoded in a background isolate.
-  Future<BookContent?> loadContent(int bookId, int parserVersion) async {
+  Future<BookContent?> loadContent(int bookId, int parserVersion) =>
+      loadContentAnd(bookId, parserVersion, _same);
+
+  /// [loadContent] passed through [then] (a top-level function) in the same
+  /// isolate: a big book is not copied to another isolate once more.
+  Future<T?> loadContentAnd<T>(
+    int bookId,
+    int parserVersion,
+    T Function(BookContent content) then,
+  ) async {
     final file = contentFile(bookId, parserVersion);
     if (!file.existsSync()) return null;
-    final path = file.path;
-    return Isolate.run(() {
-      final json = jsonDecode(
-        utf8.decode(gzip.decode(File(path).readAsBytesSync())),
-      );
-      return BookContent.fromJson(json as Map<String, Object?>);
-    });
+    return _decodeInIsolate(file.path, then);
   }
 
   Directory imagesDir(int bookId) =>
@@ -215,3 +218,14 @@ String sourceExtension(SourceFormat format) => switch (format) {
   SourceFormat.fb2zip => 'fb2.zip',
   SourceFormat.epub => 'epub',
 };
+
+// Top-level, so the isolate closure captures only its arguments.
+Future<T> _decodeInIsolate<T>(String path, T Function(BookContent) then) =>
+    Isolate.run(() {
+      final json = jsonDecode(
+        utf8.decode(gzip.decode(File(path).readAsBytesSync())),
+      );
+      return then(BookContent.fromJson(json as Map<String, Object?>));
+    });
+
+BookContent _same(BookContent content) => content;
