@@ -167,7 +167,7 @@ String _scanned(AppLocalizations l10n, DateTime? at, String locale) {
       ? DateFormat.MMMd(locale)
       : DateFormat.yMMMd(locale);
   return l10n.foldersScannedAt(
-    '${day.format(at)}, ${DateFormat.Hm(locale).format(at)}',
+    '${day.format(at)}, ${DateFormat.jm(locale).format(at)}',
   );
 }
 

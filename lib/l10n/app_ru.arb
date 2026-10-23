@@ -743,6 +743,8 @@
   "@statsPeriodYear": {"description": "Statistics period switch: this year"},
   "statsForWeek": "за эту неделю",
   "@statsForWeek": {"description": "Statistics: the period is this week"},
+  "bookPageMarkFinished": "Прочитано",
+  "@bookPageMarkFinished": {"description": "Book page: the button that marks the book finished"},
   "statsForMonth": "за {month}",
   "@statsForMonth": {"description": "Statistics: the period is this month", "placeholders": {"month": {"type": "String", "example": "октябрь"}}},
   "statsForYear": "за {year} год",

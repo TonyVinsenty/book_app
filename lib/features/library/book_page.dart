@@ -533,7 +533,7 @@ class _StatusButtons extends ConsumerWidget {
         if (!finished)
           button(
             Icons.done_all,
-            l10n.statusFinished,
+            l10n.bookPageMarkFinished,
             () => unawaited(books.markFinished(book.id)),
           )
         else if (book.openedAt != null)
