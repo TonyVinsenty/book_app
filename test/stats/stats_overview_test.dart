@@ -63,6 +63,29 @@ void main() {
       ));
       expect(months.last, StatsPeriod.month.around(today));
     });
+
+    test('the bars: days of the week or the month, months of the year', () {
+      final week = StatsPeriod.week.barSpans(today);
+      expect(week, hasLength(7));
+      expect(week.first, (
+        from: DateTime(2026, 10, 19),
+        to: DateTime(2026, 10, 19),
+      ));
+      expect(StatsPeriod.month.barSpans(today), hasLength(31));
+      final year = StatsPeriod.year.barSpans(today);
+      expect(year, hasLength(12));
+      expect(year[1], (from: DateTime(2026, 2), to: DateTime(2026, 2, 28)));
+    });
+  });
+
+  test('the calendar shade by minutes', () {
+    expect([0, 1, 14 * 60000, 15 * 60000, 40 * 60000].map(calendarLevel), [
+      0,
+      1,
+      1,
+      2,
+      3,
+    ]);
   });
 
   group('StatsOverview', () {
@@ -98,6 +121,56 @@ void main() {
       // Weeks: Sep 14 is the 3rd of 8, Oct 19 the last.
       expect(o.line[2], (eye: null, play: 500));
       expect(o.line.last, (eye: 245, play: 300));
+    });
+
+    test('the bars, the calendar and the year', () {
+      final rows = [
+        row(ReadingMode.page, minutes: 30, words: 7000),
+        row(ReadingMode.guide, minutes: 10, words: 3000),
+        row(ReadingMode.word, day: 20261021, minutes: 20, words: 2500),
+        row(ReadingMode.phrase, day: 20260915, minutes: 5, words: 1000),
+        row(ReadingMode.page, day: 20251231, minutes: 50, words: 9000),
+      ];
+      final week = StatsOverview.of(
+        StatsPeriod.week,
+        rows: rows,
+        pace: const [],
+        today: today,
+        finishedAt: [DateTime(2026, 3), null, DateTime(2025, 5)],
+      );
+      // Mon 19, Tue 20, Wed 21 … Fri 23 is today.
+      expect(week.bars[1].ms, {
+        ReadingMode.page: 30 * 60000,
+        ReadingMode.guide: 10 * 60000,
+      });
+      expect(week.bars[1].totalWords, 10000);
+      expect(week.bars[2].totalMs, 20 * 60000);
+      expect(week.bars[4].future, isFalse);
+      expect(week.bars[5].future, isTrue);
+      // 60 minutes, 12 500 words in 2 days.
+      expect(week.perDay, const Duration(minutes: 30));
+      expect(week.pagesPerDay, 25);
+      expect(week.calendar, hasLength(31));
+      expect(week.calendar[19].totalMs, 40 * 60000);
+      expect(week.calendar[23].future, isTrue);
+      expect(week.year.books, 1);
+      expect(week.year.words, 13500);
+      expect(week.year.time, const Duration(minutes: 65));
+
+      final year = of(StatsPeriod.year, rows);
+      expect(year.bars[8].ms, {ReadingMode.phrase: 5 * 60000});
+      expect(year.bars[9].totalMs, 60 * 60000);
+      expect(year.bars[10].future, isTrue);
+      expect(year.perDay, const Duration(minutes: 65) ~/ 3);
+    });
+
+    test('a period without reading', () {
+      final o = of(StatsPeriod.week, [
+        row(ReadingMode.page, day: 20260101, minutes: 5),
+      ]);
+      expect(o.readingDays, 0);
+      expect(o.perDay, Duration.zero);
+      expect(o.pagesPerDay, 0);
     });
 
     test('a period with few pages takes the eye speed of all time', () {

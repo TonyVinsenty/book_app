@@ -11,3 +11,7 @@ String formatDuration(AppLocalizations l10n, Duration time) {
   if (rest == 0) return l10n.statsHours(hours);
   return l10n.statsHoursMinutes(hours, rest);
 }
+
+/// «октябрь» → «Октябрь».
+String capitalized(String text) =>
+    text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);

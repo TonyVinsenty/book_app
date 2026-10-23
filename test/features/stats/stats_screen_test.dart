@@ -6,7 +6,9 @@ import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/data/speed_settings.dart';
 import 'package:book_app/data/stats_seed.dart';
 import 'package:book_app/features/stats/book_stats_sheet.dart';
+import 'package:book_app/features/stats/charts/reading_calendar.dart';
 import 'package:book_app/features/stats/charts/speed_line_chart.dart';
+import 'package:book_app/features/stats/charts/stacked_bars.dart';
 import 'package:book_app/features/stats/stats_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/stats/book_stats.dart';
@@ -113,7 +115,7 @@ void main() {
   testWidgets('made-up months: saved time, speeds, line, the pace button', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.physicalSize = const Size(1080, 9000);
     addTearDown(tester.view.reset);
     await pump(
       tester,
@@ -127,6 +129,13 @@ void main() {
     expect(find.byType(SpeedLineChart), findsOneWidget);
     expect(find.text('8 недель назад'), findsOneWidget);
     expect(find.text('скорость уточняется'), findsNothing);
+    expect(find.text('Минуты по дням'), findsOneWidget);
+    expect(find.text('Страницы по дням'), findsOneWidget);
+    expect(find.byType(StackedBars), findsNWidgets(2));
+    expect(find.textContaining('Октябрь · '), findsOneWidget);
+    expect(find.byType(ReadingCalendar), findsOneWidget);
+    expect(find.text('Итоги · 2026 год'), findsOneWidget);
+    expect(find.text('за чтением'), findsOneWidget);
 
     final comfortable = comfortablePace(seed.pace)!;
     final button = find.text('Поставить ${comfortable.wpm} сл/мин');
@@ -148,6 +157,13 @@ void main() {
     await tester.pump();
     expect(find.textContaining('за 2026 год'), findsOneWidget);
     expect(find.text('12 месяцев назад'), findsOneWidget);
+    expect(find.text('Минуты по месяцам'), findsOneWidget);
+    expect(find.text('Страницы по месяцам'), findsOneWidget);
+
+    await tester.tap(find.text('Неделя'));
+    await tester.pump();
+    expect(find.text('Минуты по дням'), findsOneWidget);
+    expect(find.text('Пт'), findsNWidgets(3));
   });
 
   testWidgets('the sheet about the book opens the whole statistics', (

@@ -1,15 +1,19 @@
 import 'package:book_app/app/pill_tabs.dart';
 import 'package:book_app/app/theme/app_theme.dart';
+import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/stats_seed.dart';
 import 'package:book_app/features/library/book_shelf.dart';
 import 'package:book_app/features/stats/charts/chart_colors.dart';
+import 'package:book_app/features/stats/charts/reading_calendar.dart';
 import 'package:book_app/features/stats/charts/speed_line_chart.dart';
+import 'package:book_app/features/stats/charts/stacked_bars.dart';
 import 'package:book_app/features/stats/stats_format.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:book_app/speed/speed_mode.dart';
 import 'package:book_app/stats/stats_calc.dart';
 import 'package:book_app/stats/stats_overview.dart';
+import 'package:book_app/stats/stats_records.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,11 +54,16 @@ class _StatsViewState extends ConsumerState<StatsView> {
       ref.watch(paceDaysProvider).value,
     );
     if (rows == null || pace == null) return const SizedBox.shrink();
+    final today = ref.read(statsClockProvider)();
     final overview = StatsOverview.of(
       _period,
       rows: rows,
       pace: pace,
-      today: ref.read(statsClockProvider)(),
+      today: today,
+      finishedAt: [
+        for (final book in ref.watch(booksProvider).value ?? const <BookRow>[])
+          book.finishedAt,
+      ],
     );
     final debugMenu = kDebugMode ? const _DebugMenu() : null;
     if (overview.empty) {
@@ -105,6 +114,14 @@ class _StatsViewState extends ConsumerState<StatsView> {
         _SpeedCard(overview),
         const SizedBox(height: 12),
         _PaceCard(overview.pace),
+        const SizedBox(height: 12),
+        _DaysCard(overview, pages: false),
+        const SizedBox(height: 12),
+        _DaysCard(overview, pages: true),
+        const SizedBox(height: 12),
+        _CalendarCard(overview.calendar, today: today),
+        const SizedBox(height: 12),
+        _YearCard(overview.year, year: today.year),
       ],
     );
   }
@@ -453,6 +470,226 @@ class _PaceBars extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Минуты по дням" or "Страницы по дням": a bar a day of the week or the
+/// month, a month of the year; stacks by mode.
+class _DaysCard extends StatelessWidget {
+  const _DaysCard(this.overview, {required this.pages});
+
+  final StatsOverview overview;
+  final bool pages;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final chart = ChartColors.of(context.readingColors);
+    final secondary = _secondary(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final period = overview.period;
+    final bars = overview.bars;
+    final byMonths = period == StatsPeriod.year;
+    Map<ReadingMode, int> partsOf(DayBar bar) => pages ? bar.words : bar.ms;
+    String spoken(DayBar bar) => pages
+        ? l10n.statsPages(pagesOf(bar.totalWords))
+        : formatDuration(l10n, Duration(milliseconds: bar.totalMs));
+    final spokenName = switch (period) {
+      StatsPeriod.week => DateFormat.EEEE(locale),
+      StatsPeriod.month => DateFormat.MMMMd(locale),
+      StatsPeriod.year => DateFormat.LLLL(locale),
+    };
+    final title = switch ((pages, byMonths)) {
+      (false, false) => l10n.statsMinutesDays,
+      (false, true) => l10n.statsMinutesMonths,
+      (true, false) => l10n.statsPagesDays,
+      (true, true) => l10n.statsPagesMonths,
+    };
+    final summary = overview.readingDays == 0
+        ? l10n.statsNoReading
+        : pages
+        ? l10n.statsPagesPerDay(overview.pagesPerDay)
+        : l10n.statsPerDay(formatDuration(l10n, overview.perDay));
+    final modes = {
+      for (final bar in bars)
+        for (final MapEntry(:key, :value) in partsOf(bar).entries)
+          if (value > 0) key,
+    };
+    return _Card(
+      title: title,
+      children: [
+        const SizedBox(height: 4),
+        StackedBars(
+          bars: [for (final bar in bars) bar.future ? null : partsOf(bar)],
+          names: [
+            for (final bar in bars)
+              switch (period) {
+                StatsPeriod.week => capitalized(
+                  DateFormat.E(locale).format(bar.from),
+                ),
+                StatsPeriod.month =>
+                  bar.from.day == 1 || bar.from.day % 5 == 0
+                      ? '${bar.from.day}'
+                      : null,
+                StatsPeriod.year => DateFormat(
+                  'LLLLL',
+                  locale,
+                ).format(bar.from),
+              },
+          ],
+          values: period == StatsPeriod.week
+              ? [
+                  for (final bar in bars)
+                    bar.future
+                        ? ''
+                        : pages
+                        ? '${pagesOf(bar.totalWords)}'
+                        : '${(bar.totalMs / 60000).round()}',
+                ]
+              : null,
+          current: bars.lastIndexWhere((bar) => !bar.future),
+          colors: chart,
+          label: [
+            title,
+            summary,
+            [
+              for (final bar in bars)
+                if (partsOf(bar).values.any((v) => v > 0))
+                  l10n.statsBar(spokenName.format(bar.from), spoken(bar)),
+            ].join('; '),
+          ].join('. '),
+        ),
+        if (modes.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ExcludeSemantics(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                for (final mode in ReadingMode.values)
+                  if (modes.contains(mode))
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 6,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: chart.ofMode(mode),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const SizedBox.square(dimension: 10),
+                        ),
+                        Text(_modeName(l10n, mode), style: secondary),
+                      ],
+                    ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 2),
+        ExcludeSemantics(child: Text(summary, style: secondary)),
+        if (pages) Text(l10n.statsPagesHow, style: secondary),
+      ],
+    );
+  }
+
+  static String _modeName(AppLocalizations l10n, ReadingMode mode) =>
+      switch (mode) {
+        ReadingMode.page => l10n.statsModePage,
+        ReadingMode.word => l10n.speedModeWord,
+        ReadingMode.phrase => l10n.speedModePhrase,
+        ReadingMode.guide => l10n.speedModeGuide,
+      };
+}
+
+/// This month's days, shaded by reading time; no streaks.
+class _CalendarCard extends StatelessWidget {
+  const _CalendarCard(this.days, {required this.today});
+
+  final List<DayBar> days;
+  final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final month = DateFormat.LLLL(locale).format(days.first.from);
+    final read = [
+      for (final day in days)
+        if (!day.future && day.totalMs > 0) day.from.day,
+    ];
+    return _Card(
+      title:
+          '${capitalized(month)} · '
+          '${l10n.statsReadingDays(read.length)}',
+      children: [
+        const SizedBox(height: 4),
+        ReadingCalendar(
+          days: days,
+          today: today,
+          colors: ChartColors.of(context.readingColors),
+          label: read.isEmpty
+              ? l10n.statsCalendarNone(month)
+              : l10n.statsCalendarLabel(month, read.join(', ')),
+        ),
+        const SizedBox(height: 4),
+        Text(l10n.statsCalendarHint, style: _secondary(context)),
+      ],
+    );
+  }
+}
+
+/// "Итоги": finished books, words, time, saved — of this [year].
+class _YearCard extends StatelessWidget {
+  const _YearCard(this.totals, {required this.year});
+
+  final YearTotals totals;
+  final int year;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final text = Theme.of(context).textTheme;
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    Widget item(String value, String unit) => Expanded(
+      child: MergeSemantics(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            Text(unit, style: _secondary(context)),
+          ],
+        ),
+      ),
+    );
+    return _Card(
+      title: l10n.statsYearTitle(year),
+      children: [
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            item('${totals.books}', l10n.statsYearBooks(totals.books)),
+            item(
+              NumberFormat.compact(locale: locale).format(totals.words),
+              // «812 тыс. слов»: past a thousand it is always «слов».
+              l10n.statsYearWords(totals.words < 1000 ? totals.words : 0),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            item(formatDuration(l10n, totals.time), l10n.statsYearTime),
+            item(formatDuration(l10n, totals.saved.saved), l10n.statsYearSaved),
+          ],
+        ),
+      ],
     );
   }
 }
