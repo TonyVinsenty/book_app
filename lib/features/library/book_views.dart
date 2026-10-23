@@ -108,6 +108,18 @@ class ReadBar extends StatelessWidget {
 
 /// A cover decoded at the size it is shown; a book without one (or with a
 /// broken one) gets a tile with the first letter of its title.
+/// Hues of covers drawn for books without one (owner, 14.6 B1).
+const _placeholderHues = [30.0, 150.0, 260.0, 200.0, 340.0, 60.0];
+
+/// A pastel of its own for a book without a cover, picked by the title and
+/// laid over [background]: the same book is always the same color.
+Color placeholderTint(String title, Color background) {
+  final sum = title.codeUnits.fold(0, (a, b) => (a * 31 + b) & 0x7fffffff);
+  final hue = _placeholderHues[sum % _placeholderHues.length];
+  final pastel = HSLColor.fromAHSL(1, hue, 0.45, 0.55).toColor();
+  return Color.alphaBlend(pastel.withValues(alpha: 0.32), background);
+}
+
 class BookCover extends StatelessWidget {
   const BookCover({
     super.key,
@@ -182,10 +194,7 @@ class BookCover extends StatelessWidget {
     final colors = context.readingColors;
     final letter = title.trim().characters.firstOrNull?.toUpperCase() ?? '';
     return ColoredBox(
-      color: Color.alphaBlend(
-        colors.accent.withValues(alpha: 0.22),
-        colors.background,
-      ),
+      color: placeholderTint(title, colors.background),
       child: Center(
         child: Text(
           letter,
