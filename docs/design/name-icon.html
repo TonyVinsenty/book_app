@@ -1,0 +1,98 @@
+<title>Название и иконка</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Раскладка: имена карточками (топ-3 отмечены), затем сетка из 10 иконок с размерами и масками. */
+:root{--bg:#F3F2F6;--fg:#25232B;--mut:#615D72;--card:#FFFFFF;--line:#DAD7E3;--ac:#6A5A9E;--acfg:#FFFFFF;--chip:#E8E5F0;--home1:#D9E2EE;--home2:#EBDDE6;--ui:'Manrope',system-ui,sans-serif;--book:'Literata',Georgia,serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17161B;--fg:#ECEAF2;--mut:#A8A4BA;--card:#211F27;--line:#34313D;--ac:#B4A6E6;--acfg:#1A1722;--chip:#2D2A36;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17161B;--fg:#ECEAF2;--mut:#A8A4BA;--card:#211F27;--line:#34313D;--ac:#B4A6E6;--acfg:#1A1722;--chip:#2D2A36;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--ui);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1100px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px;text-wrap:balance}h2{font-size:20px;margin:40px 0 4px}h3{margin:0;font-size:16px}
+p{margin:0}.lead{color:var(--mut);max-width:64ch}.note{font-size:13px;color:var(--mut);margin-top:12px;max-width:72ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chips span{background:var(--chip);border-radius:99px;padding:6px 14px;font:500 14px var(--ui);color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.nm{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.nm b{font:600 24px var(--book)}.nm span{font:500 14px var(--ui);color:var(--mut);letter-spacing:.04em}
+.card p{font-size:14px;color:var(--mut)}
+.top{border:2px solid var(--ac)}
+.badge{align-self:flex-start;background:var(--ac);color:var(--acfg);font:700 11px var(--ui);letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:3px 8px}
+.bar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:12px}
+label.chk{display:flex;gap:8px;align-items:center;min-height:44px;font-size:14px;color:var(--mut)}
+label.chk input{width:22px;height:22px;accent-color:var(--ac)}
+input:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.ico{display:block;width:100%;height:100%}
+.mask{position:relative;border-radius:22.37%;overflow:hidden;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.big{width:180px;height:180px}.m60{width:60px;height:60px}.m40{width:40px;height:40px}
+.safe{display:none;position:absolute;inset:17%;border:1.5px dashed #0A7;border-radius:2px;pointer-events:none}
+.showsafe .safe{display:block}
+.home{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:14px;border-radius:16px;justify-content:center}
+.home.l{background:linear-gradient(135deg,#DCE6F2,#EFE0EA)}
+.home.d{background:linear-gradient(135deg,#15141C,#262033)}
+.hl{display:flex;flex-direction:column;align-items:center;gap:4px;font:500 11px var(--ui)}
+.home.l .hl{color:#33303B}.home.d .hl{color:#DDD9E8}
+.ih{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}
+.ih h3 small{font:500 13px var(--ui);color:var(--mut);display:block}
+.num{font:700 13px var(--ui);color:var(--ac)}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<!-- Каждая иконка: первый элемент = фон (слой background), остальное = мотив (foreground) в зоне 173..851 из 1024 -->
+<symbol id="i1" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#F6F0E4"/><rect x="490" y="220" width="44" height="140" rx="22" fill="#9A6B43"/><rect x="490" y="664" width="44" height="140" rx="22" fill="#9A6B43"/><text x="512" y="660" font-family="Literata,Georgia,serif" font-weight="600" font-size="520" text-anchor="middle" fill="#C2492F">а</text></symbol>
+<symbol id="i2" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#DCE8D6"/><rect x="214" y="430" width="100" height="164" rx="50" fill="#4F7A59"/><rect x="338" y="430" width="100" height="164" rx="50" fill="#4F7A59"/><rect x="462" y="430" width="100" height="164" rx="50" fill="#C2492F"/><rect x="586" y="430" width="100" height="164" rx="50" fill="#4F7A59"/><rect x="710" y="430" width="100" height="164" rx="50" fill="#4F7A59"/></symbol>
+<symbol id="i3" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#E4DCF1"/><path d="M512 740C430 690 340 680 240 700V400C340 380 430 390 512 440C594 390 684 380 784 400V700C684 680 594 690 512 740Z" fill="#7462A6"/><path d="M512 690C436 648 350 636 270 652V390C350 374 436 384 512 430Z" fill="#FAF8FF"/><path d="M512 690C588 648 674 636 754 652V390C674 374 588 384 512 430Z" fill="#EFEAFA"/><circle cx="512" cy="300" r="46" fill="#C2492F"/></symbol>
+<symbol id="i4" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#E9DFCB"/><path d="M300 200H600L724 324V824H300Z" fill="#FFFDF8"/><path d="M600 200V324H724Z" fill="#D2C3A2"/><circle cx="512" cy="520" r="52" fill="#C2492F"/><rect x="380" y="650" width="264" height="30" rx="15" fill="#CBBF9F"/><rect x="380" y="716" width="180" height="30" rx="15" fill="#CBBF9F"/></symbol>
+<symbol id="i5" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#DCE8F1"/><circle cx="512" cy="512" r="250" fill="none" stroke="#4A7499" stroke-width="44"/><rect x="490" y="262" width="44" height="110" rx="22" fill="#4A7499"/><rect x="490" y="652" width="44" height="110" rx="22" fill="#4A7499"/><rect x="262" y="490" width="110" height="44" rx="22" fill="#4A7499"/><rect x="652" y="490" width="110" height="44" rx="22" fill="#4A7499"/><circle cx="512" cy="512" r="64" fill="#C2492F"/></symbol>
+<symbol id="i6" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#F8E3D6"/><rect x="184" y="412" width="56" height="200" rx="28" fill="#9A6B43"/><rect x="284" y="342" width="56" height="340" rx="28" fill="#9A6B43"/><rect x="384" y="272" width="56" height="480" rx="28" fill="#9A6B43"/><rect x="484" y="202" width="56" height="620" rx="28" fill="#C2492F"/><rect x="584" y="272" width="56" height="480" rx="28" fill="#9A6B43"/><rect x="684" y="342" width="56" height="340" rx="28" fill="#9A6B43"/><rect x="784" y="412" width="56" height="200" rx="28" fill="#9A6B43"/></symbol>
+<symbol id="i7" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#26222E"/><rect x="340" y="290" width="320" height="64" rx="32" fill="#CFC6E6"/><rect x="250" y="460" width="530" height="64" rx="32" fill="#CFC6E6"/><rect x="380" y="630" width="240" height="64" rx="32" fill="#CFC6E6"/><rect x="492" y="200" width="40" height="624" rx="20" fill="#FF8A6B"/></symbol>
+<symbol id="i8" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#DCE8D6"/><rect x="292" y="220" width="440" height="584" rx="44" fill="#FBFCF8"/><rect x="360" y="560" width="300" height="30" rx="15" fill="#B9CDB8"/><rect x="360" y="626" width="300" height="30" rx="15" fill="#B9CDB8"/><rect x="360" y="692" width="190" height="30" rx="15" fill="#B9CDB8"/><path d="M560 220H650V480L605 440L560 480Z" fill="#C2492F"/></symbol>
+<symbol id="i9" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#3B3355"/><path d="M360 300H280V724H360" fill="none" stroke="#E4DCF1" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/><path d="M664 300H744V724H664" fill="none" stroke="#E4DCF1" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/><circle cx="512" cy="512" r="78" fill="#FF8A6B"/></symbol>
+<symbol id="i10" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#E3EEF0"/><rect x="260" y="320" width="400" height="420" rx="44" fill="#B9C8DD"/><rect x="310" y="280" width="400" height="420" rx="44" fill="#CFC4EC"/><rect x="360" y="240" width="400" height="420" rx="44" fill="#FFFFFF"/><circle cx="560" cy="450" r="50" fill="#C2492F"/></symbol>
+</defs></svg>
+
+<main>
+<h1>Название и иконка</h1>
+<p class="lead">Шаг 14.4. Сначала имя, затем 10 иконок. Рабочее имя сейчас «BookApp». Идентификатор приложения от выбора не зависит.</p>
+
+<h2>Имена</h2>
+<p class="lead">Уже предлагались, выбора не было:</p>
+<div class="chips"><span>Ритм</span><span>Поток</span><span>Фокус</span><span>Опора</span><span>Слово</span><span>Лист</span><span>Чтец</span><span>Неспеша</span></div>
+<p class="lead" style="margin-top:20px">Новые. Латиница нужна для App Store.</p>
+<div class="grid" id="names"></div>
+<p class="note">Совпадения по сторам проверял по памяти, не по живому поиску. Перед выбором стоит вбить имя в App Store и Google Play. «Фокус» и «Поток» из старого списка, скорее всего, заняты десятками приложений.</p>
+
+<h2>Иконки</h2>
+<p class="lead">Для каждой: 180, 60 и 40 пикселей на светлом и тёмном экране телефона. Пунктир показывает безопасную зону Android (центральные 66%).</p>
+<div class="bar"><label class="chk" for="sz"><input type="checkbox" id="sz"> Показать безопасную зону</label></div>
+<div class="grid" id="icons" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr))"></div>
+<p class="note">Все иконки собраны из плоских фигур. Первый слой каждой это фон, остальное мотив, поэтому легко разделить на два слоя для адаптивной иконки Android. В №1 буква «а» набрана шрифтом: перед выводом в PNG её нужно превратить в кривые. Рекомендую: №2 (спокойная и читается даже в 40 px), №5 (лучше всего передаёт «фокус»), №7 (самая выразительная, тёмная).</p>
+</main>
+
+<script>
+const NM=[
+['Строфа','Strofa','Короткая, мягкая, про текст. Легко читается латиницей.',1,'Больше всего про чтение, звучит красиво, трудно перепутать с чужим.'],
+['Абзац','Abzats','Один смысловой кусок текста. Просто и по делу.',1,'Простое слово, которое запоминается; в латинице чуть тяжелее.'],
+['Тихо','Tikho','Спокойное чтение без отвлечений.',1,'Передаёт главную идею: ничего лишнего, книга в центре.'],
+['Зачин','Zachin','Начало истории. Слово с характером.',0],
+['Лад','Lad','Порядок и гармония. Очень коротко.',0],
+['Сказ','Skaz','Рассказ, повествование. По-латыни читается легко.',0],
+['Тишь','Tish','Родственно «Тихо», ещё короче.',0],
+['Корешок','Koreshok','Книжный корешок. Тёплое, домашнее.',0]];
+$names=document.getElementById('names');
+NM.forEach(n=>{const c=document.createElement('section');c.className='card'+(n[3]?' top':'');
+ c.innerHTML=(n[3]?'<span class="badge">Мой топ</span>':'')+`<div class="nm"><b>${n[0]}</b><span>${n[1]}</span></div><p>${n[2]}</p>`+(n[3]?`<p style="color:var(--fg)"><b>Почему:</b> ${n[4]}</p>`:'');
+ $names.append(c)});
+const IC=['Буква-ориентир','Слово','Книга и фокус','Уголок страницы','Прицел','Ритм','Ось','Закладка','Скобки','Стопка'];
+const D=['Красная буква на фиксированной точке','Слово, одна буква красная','Раскрытая книга, метка над корешком','Лист с загнутым углом','Круг-прицел, красная точка','Волна из столбиков, центр красный','Тёмная: слова по оси, ось красная','Страница с красной закладкой','Тёмная: скобки вокруг точки','Три листа, красная точка'];
+const sv=(i,c)=>`<div class="mask ${c}"><svg class="ico" viewBox="0 0 1024 1024" aria-hidden="true"><use href="#i${i}"/></svg>${c=='big'?'<div class="safe"></div>':''}</div>`;
+const box=document.getElementById('icons');
+IC.forEach((t,k)=>{const i=k+1,c=document.createElement('section');c.className='card';
+ c.innerHTML=`<div class="ih"><span class="num">${i}</span><h3>${t}<small>${D[k]}</small></h3></div>
+ <div class="home l"><div class="hl">${sv(i,'big')}</div><div class="hl">${sv(i,'m60')}<span>Строфа</span></div><div class="hl">${sv(i,'m40')}</div></div>
+ <div class="home d"><div class="hl">${sv(i,'m60')}<span>Строфа</span></div><div class="hl">${sv(i,'m40')}</div></div>`;
+ box.append(c)});
+document.getElementById('sz').onchange=e=>box.classList.toggle('showsafe',e.target.checked);
+</script>

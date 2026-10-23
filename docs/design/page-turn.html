@@ -1,0 +1,193 @@
+<title>Листание страниц</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Раскладка: заголовок, панель настроек, сетка карточек-вариантов (телефон + подпись), вторая секция со списком и карточками. */
+:root{--bg:#F3F2F6;--fg:#25232B;--mut:#615D72;--card:#FFFFFF;--line:#DAD7E3;--ac:#6A5A9E;--acfg:#FFFFFF;--chip:#E8E5F0;
+--ui:'Manrope',system-ui,sans-serif;--book:'Literata',Georgia,serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17161B;--fg:#ECEAF2;--mut:#A8A4BA;--card:#211F27;--line:#34313D;--ac:#B4A6E6;--acfg:#1A1722;--chip:#2D2A36;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17161B;--fg:#ECEAF2;--mut:#A8A4BA;--card:#211F27;--line:#34313D;--ac:#B4A6E6;--acfg:#1A1722;--chip:#2D2A36;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--ui);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1100px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px;text-wrap:balance}
+h2{font-size:20px;margin:40px 0 4px}
+h3{font-size:16px;margin:0}
+p{margin:0}.lead{color:var(--mut);max-width:62ch}
+.bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin:20px 0;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:14px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.seg{display:inline-flex;background:var(--chip);border-radius:12px;padding:3px}
+.seg button{min-height:44px;min-width:64px;padding:0 14px}
+button{font:600 14px var(--ui);color:var(--fg);background:transparent;border:0;border-radius:10px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.seg button[aria-pressed=true]{background:var(--ac);color:var(--acfg)}
+.btn{min-height:44px;padding:0 18px;background:var(--chip)}
+.btn:hover{background:var(--line)}
+label.chk{display:flex;gap:8px;align-items:center;min-height:44px;font-size:14px;color:var(--mut)}
+label.chk input{width:22px;height:22px;accent-color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tag{font:600 11px var(--ui);letter-spacing:.06em;text-transform:uppercase;background:var(--chip);color:var(--mut);border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:2px}
+.tag.rec{background:var(--ac);color:var(--acfg)}
+.desc{font-size:14px;color:var(--mut)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dur{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums}
+.phone{align-self:center;padding:8px;border-radius:34px;background:var(--chip);border:1px solid var(--line)}
+/* экран книги: палитра Бумага */
+.scr{--bk:#F6F0E4;--tx:#3A332B;--t2:#6E6455;--sf:#EBE2D0;--ac2:#9A6B43}
+.night .scr{--bk:#1F1B17;--tx:#E6DCCB;--t2:#A09484;--sf:#2D2822;--ac2:#D0A070}
+.vp{position:relative;width:296px;height:560px;overflow:hidden;border-radius:26px;background:var(--bk);touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:pointer;isolation:isolate}
+.pg{position:absolute;inset:0;background:var(--bk);color:var(--tx);padding:30px 22px 0;font:400 13.5px/1.52 var(--book);will-change:transform}
+.pg p{margin:0 0 .55em;text-indent:1.2em;hyphens:auto}
+.pg .ft{position:absolute;left:0;right:0;bottom:14px;text-align:center;font:500 11px var(--ui);color:var(--t2)}
+.sheet{box-shadow:-14px 0 26px -6px rgba(0,0,0,.28),-1px 0 0 rgba(0,0,0,.12)}
+.pill{position:absolute;left:50%;top:50%;translate:-50% -50%;z-index:9;background:var(--tx);color:var(--bk);font:600 13px var(--ui);padding:10px 16px;border-radius:99px;pointer-events:none;opacity:0;transition:opacity .2s}
+.pill.on{opacity:.92}
+.edge{position:absolute;top:0;bottom:0;width:30%;z-index:8;pointer-events:none}
+.edge.l{left:0}.edge.r{right:0}
+.edge::after{content:"";position:absolute;top:50%;width:6px;height:44px;margin-top:-22px;border-radius:3px;background:var(--t2);opacity:.28}
+.edge.l::after{left:6px}.edge.r::after{right:6px}
+/* вторая секция */
+.demo{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px}
+.demo .card{flex:1 1 300px}
+.mini{align-self:center;width:260px;height:340px;overflow:hidden;border-radius:22px;background:var(--bk);position:relative;touch-action:none;cursor:grab}
+.mini.scr{padding:0}
+.mini .hd{font:700 15px var(--ui);color:var(--tx);padding:14px 16px 6px}
+.lst{transform-origin:top center;will-change:transform}
+.bk{display:flex;gap:12px;align-items:center;padding:10px 16px;min-height:56px;color:var(--tx)}
+.bk i{width:34px;height:46px;border-radius:5px;flex:none}
+.bk b{display:block;font:600 14px var(--book)}.bk span{font-size:12px;color:var(--t2)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;align-content:start}
+.st{background:var(--sf);border-radius:14px;padding:12px;color:var(--tx);min-height:92px}
+.st b{display:block;font:600 24px var(--book);font-variant-numeric:tabular-nums}.st span{font-size:12px;color:var(--t2)}
+.note{margin-top:12px;font-size:13px;color:var(--mut);max-width:70ch}
+</style>
+
+<main>
+<h1>Листание страниц</h1>
+<p class="lead">Шаг 14.3. Пять способов перелистнуть страницу на живой странице книги. Нажимайте на левый и правый край (30%), тяните пальцем или мышью, центр показывает «меню». Кнопка «Авто» проигрывает листание сама.</p>
+
+<div class="bar" role="group" aria-label="Настройки показа">
+  <div class="seg" id="themeSeg"><button data-n="0" aria-pressed="true">День</button><button data-n="1" aria-pressed="false">Ночь</button></div>
+  <label class="chk" for="rm"><input type="checkbox" id="rm"> Уменьшить движение (как в системе)</label>
+  <button class="btn" id="autoAll">Авто на всех</button>
+</div>
+
+<div class="grid" id="vars"></div>
+<p class="note">3D-загиб страницы («как в бумажной книге») возможно позже. Сейчас не делаем: дорого и редко стоит того. При включённом «Уменьшить движение» в системе приложение листает без анимации (вариант A).</p>
+
+<h2>Мягкая прокрутка списков</h2>
+<p class="lead">Короткий список книг: потяните вверх или вниз. На телефоне это показывает, что список закончился.</p>
+<div class="demo" id="bounce"></div>
+<p class="note"><b>Рекомендация:</b> оставить платформенное поведение. На iPhone резинка (iOS), на Android растяжение. Flutter делает это сам, ничего писать не нужно. Всё приложение при этом ощущается «родным» на каждом телефоне.</p>
+
+<h2>Появление карточек</h2>
+<p class="lead">Что видно при открытии статистики. Нажмите «Повторить».</p>
+<div class="demo" id="appear"></div>
+<p class="note"><b>Рекомендация:</b> «Каскад». Только карточки первого экрана, не больше 6, общая длительность до 0,4 с. Остальное при прокрутке появляется сразу. Без движения (reduce motion) карточки просто на месте.</p>
+</main>
+
+<script>
+const PAGES=[
+["Старая библиотека на краю посёлка открывалась ровно в девять, но Мария Андреевна приходила за час до этого. Она ставила чайник, протирала подоконники и шла вдоль полок, касаясь корешков кончиками пальцев, как здороваются со знакомыми.","Книги в этом зале стояли не по алфавиту, а по настроению. Сначала те, что читают в дождь, затем те, что берут в дорогу, и в самом конце, у окна, те, что лучше не открывать до весны.","Читатели привыкли к такому порядку и перестали спрашивать, почему так. Новенькие поначалу терялись, но уже через неделю сами находили нужный отдел, не глядя на таблички, которых здесь никогда не было."],
+["Зимой в зале становилось тихо, и тишина эта была особенная, плотная, как шерстяной плед. Слышно было, как в печи оседают угли и как кто-то на втором этаже осторожно переворачивает страницу.","Мария Андреевна не любила, когда читатели торопились. Она говорила, что хорошая книга похожа на разговор у реки: можно сесть, помолчать и уйти, ничего не сказав, и всё равно вернуться завтра.","Школьники заходили после уроков, шумные и румяные, но у порога невольно сбавляли голоса. Она никогда не делала им замечаний. Достаточно было просто поднять глаза от стола и улыбнуться."],
+["Весной окно у дальней полки открывали настежь. Вместе с запахом мокрой земли в зал входили пчёлы, и те самые книги, которые лучше было не трогать до тепла, наконец находили своих читателей.","В апреле пришёл незнакомый мужчина с потёртым портфелем. Он долго стоял у стеллажа, потом спросил, нет ли у них сборника, который он читал в детстве, без обложки и с загнутым уголком на сороковой странице.","Мария Андреевна не ответила сразу. Она прошла к самой дальней полке, достала тонкую книжку в сером переплёте и протянула, раскрыв на сороковой странице. Уголок там был загнут давным-давно."],
+["Мужчина читал до вечера, не поднимая головы. Когда зажгли лампу, он аккуратно расправил уголок, закрыл книгу и отнёс её обратно на полку. Брать домой не стал, сказал, что теперь знает, где она живёт.","После его ухода Мария Андреевна ещё долго сидела за столом. За окном темнело, по стёклам стекали последние капли, а в зале пахло старой бумагой, чаем и немного весной.","Утром она пришла за час до открытия, как всегда. Поставила чайник, протёрла подоконники и пошла вдоль полок, здороваясь с корешками. У той самой книжки уголок на сороковой странице снова был загнут."]];
+const N=PAGES.length;
+const mkPage=i=>{i=((i%N)+N)%N;const d=document.createElement('div');d.className='pg';d.innerHTML=PAGES[i].map(t=>`<p>${t}</p>`).join('')+`<div class="ft">${i+1} из ${N}</div>`;return d};
+const $=s=>document.querySelector(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const rmEl=$('#rm');rmEl.checked=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const D=ms=>rmEl.checked?0:ms,EASE='cubic-bezier(.2,.8,.2,1)';
+const an=(el,kf,ms,e=EASE)=>el.animate(kf,{duration:D(ms),easing:e,fill:'forwards'}).finished;
+
+const V=[
+{k:'A',t:'Без анимации',tag:'сейчас',d:'Страница меняется мгновенно. Самый быстрый и надёжный вариант, никакой нагрузки.',dur:'0 мс'},
+{k:'B',t:'Сдвиг',d:'Старая страница уезжает, новая заезжает следом. Понятное направление, привычно по другим читалкам.',dur:'250 мс, ease-out'},
+{k:'C',t:'Наплыв',d:'Быстрое перетекание одной страницы в другую. Самое спокойное для глаз, не мешает чтению.',dur:'180 мс, ease-out'},
+{k:'D',t:'«Бумага»',d:'Новая страница накрывает старую с мягкой тенью по краю. Назад: верхний лист уезжает и открывает прежний.',dur:'280 мс, ease-out'},
+{k:'E',t:'Следует за пальцем',tag:'рекомендую',d:'Страница едет за пальцем и доезжает сама после отпускания. Если сдвинули меньше четверти, вернётся назад. Тап по краю листает сдвигом.',dur:'до 220 мс после отпускания'}];
+const F=[];
+V.forEach(v=>{
+ const c=document.createElement('section');c.className='card';
+ c.innerHTML=`<h3>${v.k}) ${v.t}${v.tag?`<span class="tag ${v.tag=='рекомендую'?'rec':''}">${v.tag}</span>`:''}</h3>
+ <div class="phone"><div class="scr vp" data-m="${v.k}"><div class="edge l"></div><div class="edge r"></div><div class="pill">меню</div></div></div>
+ <p class="desc">${v.d}</p><div class="row"><button class="btn auto">Авто</button><span class="dur">${v.dur}</span></div>`;
+ $('#vars').append(c);
+ const vp=c.querySelector('.vp'),f={m:v.k,vp,i:0,busy:false,pill:c.querySelector('.pill')};
+ f.cur=mkPage(0);vp.prepend(f.cur);F.push(f);
+ c.querySelector('.auto').onclick=()=>auto(f);
+ let sx=0,t0=0,drag=false,last=0;
+ vp.onpointerdown=e=>{if(f.busy)return;vp.setPointerCapture(e.pointerId);sx=e.clientX;t0=performance.now();drag=true;last=0;if(f.m=='E')dStart(f)};
+ vp.onpointermove=e=>{if(!drag)return;last=e.clientX-sx;if(f.m=='E')dMove(f,last)};
+ vp.onpointerup=e=>{if(!drag)return;drag=false;const dx=e.clientX-sx,v=Math.abs(dx)/(performance.now()-t0);
+  if(Math.abs(dx)<8){if(f.m=='E')dCancel(f);tap(f,e.clientX-vp.getBoundingClientRect().left)}
+  else if(f.m=='E')dEnd(f,dx,v);
+  else if(Math.abs(dx)>40)turn(f,dx<0?1:-1)};
+ vp.onpointercancel=()=>{if(drag){drag=false;if(f.m=='E')dEnd(f,0,0)}};
+});
+function tap(f,x){const w=f.vp.clientWidth;
+ if(x<w*.3)turn(f,-1,true);else if(x>w*.7)turn(f,1,true);
+ else{f.pill.classList.add('on');setTimeout(()=>f.pill.classList.remove('on'),900)}}
+async function turn(f,dir,tapped){
+ if(f.busy)return;f.busy=true;const vp=f.vp,old=f.cur,ni=f.i+dir,n=mkPage(ni),m=f.m;
+ if(m=='A'){vp.prepend(n)}
+ else if(m=='B'||m=='E'){vp.prepend(n);await Promise.all([an(n,[{transform:`translateX(${dir*100}%)`},{transform:'none'}],250),an(old,[{transform:'none'},{transform:`translateX(${-dir*100}%)`}],250)])}
+ else if(m=='C'){vp.prepend(n);n.style.zIndex=1;await an(n,[{opacity:0},{opacity:1}],180,'ease-out')}
+ else if(m=='D'){
+  if(dir>0){n.classList.add('sheet');n.style.zIndex=1;vp.prepend(n);await an(n,[{transform:'translateX(100%)'},{transform:'none'}],280,'cubic-bezier(.25,.8,.3,1)')}
+  else{old.classList.add('sheet');old.style.zIndex=1;vp.prepend(n);await an(old,[{transform:'none'},{transform:'translateX(104%)'}],280,'cubic-bezier(.4,.1,.6,1)')}}
+ vp.querySelectorAll('.pg').forEach(p=>p!==n&&p.remove());f.cur=n;f.i=ni;f.busy=false}
+/* режим E: страница идёт за пальцем */
+function dStart(f){f.pv=mkPage(f.i-1);f.nx=mkPage(f.i+1);[f.pv,f.nx].forEach(p=>{p.style.transform='translateX(110%)';f.vp.prepend(p)});f.cur.style.transition=f.pv.style.transition=f.nx.style.transition='none'}
+function dMove(f,dx){const w=f.vp.clientWidth;dx=Math.max(-w,Math.min(w,dx));
+ f.cur.style.transform=`translateX(${dx}px)`;
+ f.nx.style.transform=`translateX(${dx<0?w+dx:w*1.1}px)`;f.pv.style.transform=`translateX(${dx>0?-w+dx:-w*1.1}px)`}
+function dCancel(f){[f.pv,f.nx].forEach(p=>p&&p.remove());f.cur.style.transform='';f.cur.style.transition=''}
+async function dEnd(f,dx,v){const w=f.vp.clientWidth,go=Math.abs(dx)>w*.25||v>.5&&Math.abs(dx)>20,dir=dx<0?1:-1;
+ f.busy=true;const t=`transform ${D(220)}ms ${EASE}`;[f.cur,f.pv,f.nx].forEach(p=>p.style.transition=t);
+ if(go){f.cur.style.transform=`translateX(${-dir*w}px)`;(dir>0?f.nx:f.pv).style.transform='translateX(0)'}
+ else{f.cur.style.transform='translateX(0)';f.nx.style.transform=`translateX(${w*1.1}px)`;f.pv.style.transform=`translateX(${-w*1.1}px)`}
+ await sleep(D(220)+20);const keep=go?(dir>0?f.nx:f.pv):f.cur;
+ f.vp.querySelectorAll('.pg').forEach(p=>p!==keep&&p.remove());keep.style.transition=keep.style.transform='';
+ f.cur=keep;if(go)f.i+=dir;f.busy=false}
+async function auto(f){
+ if(f.busy)return;
+ if(f.m=='E'){for(const k of [-.14,-.5]){dStart(f);const w=f.vp.clientWidth,T=D(500);const s=performance.now();
+   await new Promise(r=>{const st=()=>{const p=T?Math.min(1,(performance.now()-s)/T):1;dMove(f,k*w*(1-Math.pow(1-p,2)));p<1?requestAnimationFrame(st):r()};st()});
+   await sleep(D(150));await dEnd(f,k*w,0);await sleep(700)}
+  await turn(f,-1);return}
+ await turn(f,1);await sleep(800);await turn(f,1);await sleep(800);await turn(f,-1)}
+$('#autoAll').onclick=()=>F.forEach(auto);
+document.querySelectorAll('#themeSeg button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('#themeSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+ document.querySelectorAll('.card').forEach(c=>c.classList.toggle('night',b.dataset.n=='1'))});
+if(matchMedia('(prefers-color-scheme: dark)').matches)document.querySelectorAll('#themeSeg button')[1].click();
+
+/* списки */
+const BK=[['Тихая гавань','Е. Лисина','#CFC3E8'],['Дорога к реке','А. Морозов','#BFD6C3'],['Зимние письма','М. Ветрова','#E9C9B5'],['Город без часов','И. Корнеев','#BCD0E3'],['Уголок сорокового','Н. Сомова','#E5D9A8']];
+const lst=()=>BK.map(b=>`<div class="bk"><i style="background:${b[2]}"></i><div><b>${b[0]}</b><span>${b[1]}</span></div></div>`).join('');
+const B=[['ios','Резинка (iOS)','Список тянется с сопротивлением и плавно возвращается. ~550 мс.'],['and','Растяжение (Android)','Список слегка растягивается от края и пружинит назад. ~350 мс.']];
+B.forEach(([k,t,d])=>{const c=document.createElement('section');c.className='card';
+ c.innerHTML=`<h3>${t}</h3><div class="phone"><div class="scr mini"><div class="hd">Библиотека</div><div class="lst">${lst()}</div></div></div><p class="desc">${d}</p><div class="row"><button class="btn">Авто</button></div>`;
+ $('#bounce').append(c);
+ const m=c.querySelector('.mini'),l=c.querySelector('.lst'),H=m.clientHeight;
+ const set=dy=>{l.style.transition='none';
+  if(k=='ios'){const x=Math.abs(dy),d=(x*.55*H)/(H+.55*x);l.style.transform=`translateY(${Math.sign(dy)*d}px)`}
+  else{const s=1+Math.min(Math.abs(dy),240)/700;l.style.transformOrigin=dy>0?'top':'bottom';l.style.transform=`scaleY(${s})`}};
+ const rel=()=>{l.style.transition=rmEl.checked?'none':(k=='ios'?'transform 550ms cubic-bezier(.2,.9,.3,1)':'transform 380ms cubic-bezier(.3,1.35,.5,1)');l.style.transform='none'};
+ let sy=0,on=false;
+ m.onpointerdown=e=>{m.setPointerCapture(e.pointerId);sy=e.clientY;on=true;m.style.cursor='grabbing'};
+ m.onpointermove=e=>{if(on&&!rmEl.checked)set(e.clientY-sy)};
+ m.onpointerup=m.onpointercancel=()=>{on=false;m.style.cursor='';rel()};
+ c.querySelector('.btn').onclick=async()=>{if(rmEl.checked)return;const s=performance.now();
+  await new Promise(r=>{const st=()=>{const p=Math.min(1,(performance.now()-s)/500);set(150*(1-Math.pow(1-p,2)));p<1?requestAnimationFrame(st):r()};st()});
+  await sleep(120);rel()}});
+
+/* появление карточек */
+const ST=[['24 мин','сегодня'],['38','страниц'],['6 дней','подряд'],['320','слов/мин']];
+const A=[['none','Сразу','Карточки на месте без движения.'],['fade','Проявление','Все вместе, прозрачность 0 → 1, 220 мс.'],['cas','Каскад','Прозрачность и подъём на 10 px, 240 мс, шаг между карточками 50 мс.']];
+A.forEach(([k,t,d])=>{const c=document.createElement('section');c.className='card';
+ c.innerHTML=`<h3>${t}${k=='cas'?'<span class="tag rec">рекомендую</span>':''}</h3><div class="phone"><div class="scr mini" style="cursor:default"><div class="hd">Статистика</div><div class="stats">${ST.concat(ST).map(s=>`<div class="st"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('')}</div></div></div><p class="desc">${d}</p><div class="row"><button class="btn">Повторить</button></div>`;
+ $('#appear').append(c);
+ const play=()=>{if(k=='none'||rmEl.checked)return;c.querySelectorAll('.st').forEach((s,i)=>s.animate(k=='fade'?[{opacity:0},{opacity:1}]:[{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:k=='fade'?220:240,delay:k=='fade'?0:Math.min(i,5)*50,easing:'cubic-bezier(.2,.8,.2,1)',fill:'backwards'}))};
+ c.querySelector('.btn').onclick=play;setTimeout(play,400)});
+</script>
