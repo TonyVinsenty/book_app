@@ -134,21 +134,25 @@ final class Hyphenation {
   static const _cacheSize = 20000;
 
   /// Offsets in [text] where a soft hyphen may go (before that character),
-  /// ascending. The last word stays whole: a piece of it alone on the last
-  /// line looks bad.
+  /// ascending. The last word breaks only so that at least [_lastPieceMin]
+  /// letters go to the last line: a tiny piece there looks bad, and a whole
+  /// last word that does not fit leaves huge gaps in the justified line.
   List<int> breaksOf(String text) {
     final result = <int>[];
     final words = _word.allMatches(text).toList();
-    if (words.isNotEmpty) words.removeLast();
-    for (final match in words) {
+    for (final (n, match) in words.indexed) {
       final word = match[0]!;
       if (word.length < 4) continue;
+      final last = n == words.length - 1;
       for (final i in _breaksOfWord(word)) {
+        if (last && word.length - i < _lastPieceMin) continue;
         result.add(match.start + i);
       }
     }
     return result;
   }
+
+  static const _lastPieceMin = 4;
 
   List<int> _breaksOfWord(String word) {
     if (_cache[word] case final cached?) return cached;
