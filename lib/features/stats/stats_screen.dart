@@ -246,10 +246,9 @@ class _SavedCard extends StatelessWidget {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final period = switch (overview.period) {
       StatsPeriod.week => l10n.statsForWeek,
-      StatsPeriod.month => l10n.statsForMonth(_inPhrase(
-        DateFormat.LLLL(locale).format(overview.from),
-        Localizations.localeOf(context),
-      )),
+      StatsPeriod.month => l10n.statsForMonth(
+        _inPhrase(DateFormat.LLLL(locale).format(overview.from), locale),
+      ),
       StatsPeriod.year => l10n.statsForYear(overview.from.year),
     };
     final read = saved.actual > Duration.zero;
@@ -666,7 +665,7 @@ class _DaysCard extends StatelessWidget {
                 if (partsOf(bar).values.any((v) => v > 0))
                   l10n.statsBar(spokenName.format(bar.from), spoken(bar)),
             ].join('; '),
-          ].map(_noFinalPeriod).join('. '),
+          ].where((part) => part.isNotEmpty).map(_noFinalPeriod).join('. '),
         ),
         if (modes.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -870,8 +869,8 @@ TextStyle? _secondary(BuildContext context) =>
         ?.copyWith(color: context.readingColors.textSecondary);
 
 /// A month name inside a phrase: Russian ones are lowercase there.
-String _inPhrase(String month, Locale locale) =>
-    locale.languageCode == 'ru' ? month.toLowerCase() : month;
+String _inPhrase(String month, String locale) =>
+    locale.startsWith('ru') ? month.toLowerCase() : month;
 
 /// A sentence to be joined with «. ».
 String _noFinalPeriod(String text) =>

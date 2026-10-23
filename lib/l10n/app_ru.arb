@@ -476,7 +476,7 @@
   "settingsLanguage": "Язык",
   "@settingsLanguage": {"description": "Reading settings: the language of the app"},
   "languageSystem": "Как в системе",
-  "@languageSystem": {"description": "App language option: Russian if the phone is in Russian, else English"},
+  "@languageSystem": {"description": "App language option: the first of the phone's languages the app has, else English"},
   "languageRussian": "Русский",
   "@languageRussian": {"description": "App language option: Russian; the same native name in every language"},
   "languageEnglish": "English",

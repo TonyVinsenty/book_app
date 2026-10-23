@@ -26,8 +26,8 @@ enum BookAlign { left, justify }
 /// When the night colors are used.
 enum NightMode { system, day, night }
 
-/// The language of the app: the phone's (Russian or else English), or a
-/// chosen one.
+/// The language of the app: the phone's (the first of its languages the app
+/// has, else English), or a chosen one.
 enum AppLanguage {
   system(null),
   ru('ru'),
@@ -37,6 +37,8 @@ enum AppLanguage {
 
   /// Null: as the phone.
   final String? code;
+
+  Locale? get locale => code == null ? null : Locale(code!);
 }
 
 /// How the book text looks (ADR 0003, addendum 2 п. 1). Stored in the

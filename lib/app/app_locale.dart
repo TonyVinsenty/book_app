@@ -1,11 +1,12 @@
 import 'dart:ui';
 
 /// The app's language: the first of the phone's languages the app has,
-/// else English (the stores' common language).
+/// else English (the stores' common language). The phone's region is kept:
+/// dates and times in en_GB are not those of en_US.
 Locale resolveAppLocale(List<Locale>? preferred, Iterable<Locale> supported) {
   for (final locale in preferred ?? const <Locale>[]) {
-    for (final candidate in supported) {
-      if (candidate.languageCode == locale.languageCode) return candidate;
+    if (supported.any((l) => l.languageCode == locale.languageCode)) {
+      return Locale(locale.languageCode, locale.countryCode);
     }
   }
   return supported.firstWhere(

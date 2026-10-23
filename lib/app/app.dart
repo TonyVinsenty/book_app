@@ -45,10 +45,7 @@ class _BookAppState extends ConsumerState<BookApp> {
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: switch (settings.language.code) {
-        final code? => Locale(code),
-        null => null,
-      },
+      locale: settings.language.locale,
       localeListResolutionCallback: resolveAppLocale,
       // The whole app takes the reading palette (ADR 0003, addendum 2).
       theme: buildAppTheme(settings.palette, night: false),

@@ -25,6 +25,13 @@ void main() {
     );
   });
 
+  test('the phone region is kept for dates and times', () {
+    expect(
+      resolveAppLocale([const Locale('en', 'GB')], supported),
+      const Locale('en', 'GB'),
+    );
+  });
+
   test('other languages and none get English', () {
     expect(
       resolveAppLocale([const Locale('de')], supported).languageCode,

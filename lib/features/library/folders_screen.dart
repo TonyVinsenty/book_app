@@ -161,14 +161,18 @@ Future<PickedFolder?> _pick(BuildContext context, WidgetRef ref) async {
 }
 
 /// "Просмотрена 21 окт., 14:05".
-String _scanned(AppLocalizations l10n, DateTime? at, String locale) {
+String _scanned(BuildContext context, DateTime? at, String locale) {
+  final l10n = AppLocalizations.of(context);
   if (at == null) return l10n.foldersNotScanned;
   final day = at.year == DateTime.now().year
       ? DateFormat.MMMd(locale)
       : DateFormat.yMMMd(locale);
-  return l10n.foldersScannedAt(
-    '${day.format(at)}, ${DateFormat.jm(locale).format(at)}',
+  // The phone's 12/24-hour choice, not only the language's.
+  final time = MaterialLocalizations.of(context).formatTimeOfDay(
+    TimeOfDay.fromDateTime(at),
+    alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
   );
+  return l10n.foldersScannedAt('${day.format(at)}, $time');
 }
 
 class _Card extends StatelessWidget {
@@ -208,7 +212,7 @@ class _OwnFolder extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
-          '$hint\n${_scanned(l10n, folder.scannedAt, locale)}',
+          '$hint\n${_scanned(context, folder.scannedAt, locale)}',
           style: TextStyle(color: colors.textSecondary),
         ),
       ),
@@ -252,7 +256,7 @@ class _PickedFolder extends ConsumerWidget {
             if (folder.lost)
               l10n.foldersLost
             else
-              _scanned(l10n, folder.scannedAt, locale),
+              _scanned(context, folder.scannedAt, locale),
             if (folder.tooBig) l10n.foldersTooBig(maxFolderBooks),
             if (collection != null) l10n.foldersInCollection(collection.name),
           ].join('\n'),
