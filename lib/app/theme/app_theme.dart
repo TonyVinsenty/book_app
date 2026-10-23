@@ -16,6 +16,15 @@ class ReadingTheme extends ThemeExtension<ReadingTheme> {
   @override
   ReadingTheme lerp(ReadingTheme? other, double t) =>
       other == null ? this : ReadingTheme(colors.lerp(other.colors, t));
+
+  // Equal themes keep the app from animating between them on every change
+  // of the settings (a new font size rebuilds the theme).
+  @override
+  bool operator ==(Object other) =>
+      other is ReadingTheme && other.colors == colors;
+
+  @override
+  int get hashCode => colors.hashCode;
 }
 
 extension ReadingThemeContext on BuildContext {

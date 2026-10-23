@@ -45,6 +45,13 @@ void main() {
         expect(theme.appBarTheme.backgroundColor, c.background);
         expect(theme.appBarTheme.scrolledUnderElevation, 0);
       });
+
+      test('$name: the same theme again is equal (no animation)', () {
+        expect(
+          buildAppTheme(palette, night: night),
+          buildAppTheme(palette, night: night),
+        );
+      });
     }
   }
 

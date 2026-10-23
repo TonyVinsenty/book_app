@@ -56,6 +56,26 @@ class ReadingColors {
     chartPhrase: Color.lerp(chartPhrase, other.chartPhrase, t)!,
     chartGuide: Color.lerp(chartGuide, other.chartGuide, t)!,
   );
+
+  List<Color> get _all => [
+    background,
+    text,
+    textSecondary,
+    surface,
+    accent,
+    orp,
+    highlight,
+    chartWord,
+    chartPhrase,
+    chartGuide,
+  ];
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReadingColors && listEquals(other._all, _all);
+
+  @override
+  int get hashCode => Object.hashAll(_all);
 }
 
 /// The four pastel palettes; each has a day and a night variant.
