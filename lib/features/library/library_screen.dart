@@ -140,28 +140,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           child: Column(
             children: [
               const _BackToBook(),
-              Row(
-                children: [
-                  Expanded(
-                    child: PillTabs(
-                      tabs: {
-                        _Tab.books: l10n.libraryTabBooks,
-                        _Tab.collections: l10n.libraryTabCollections,
-                        _Tab.stats: l10n.libraryTabStats,
-                      },
-                      selected: _tab,
-                      onChanged: (tab) => setState(() => _tab = tab),
-                      margin: const EdgeInsets.fromLTRB(16, 6, 0, 4),
-                    ),
-                  ),
-                  // With no books the reading settings are out of reach.
-                  IconButton(
-                    onPressed: () => unawaited(chooseLanguage(context, ref)),
-                    tooltip: l10n.settingsLanguage,
-                    icon: const Icon(Icons.language),
-                  ),
-                  const SizedBox(width: 4),
-                ],
+              PillTabs(
+                tabs: {
+                  _Tab.books: l10n.libraryTabBooks,
+                  _Tab.collections: l10n.libraryTabCollections,
+                  _Tab.stats: l10n.libraryTabStats,
+                },
+                selected: _tab,
+                onChanged: (tab) => setState(() => _tab = tab),
               ),
               if (queue.busy) _ImportProgress(queue: queue),
               Expanded(
@@ -173,6 +159,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     EmptyMessage(
                       title: l10n.libraryEmpty,
                       hint: l10n.libraryEmptyHint,
+                      // Needed once; with books it is in the reading
+                      // settings (owner, 2026-10-24).
+                      action: TextButton.icon(
+                        onPressed: () =>
+                            unawaited(chooseLanguage(context, ref)),
+                        icon: const Icon(Icons.language),
+                        label: Text(l10n.settingsLanguage),
+                      ),
                     ),
                   AsyncData(:final value) when books => _BooksTab(view: value),
                   AsyncData(:final value) => _CollectionsTab(view: value),

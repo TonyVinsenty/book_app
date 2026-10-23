@@ -346,7 +346,7 @@ void main() {
 
   testWidgets('the language is chosen with no books', (tester) async {
     await pumpLibrary(tester);
-    await tester.tap(find.byTooltip('Язык'));
+    await tester.tap(find.text('Язык'));
     await tester.pumpAndSettle();
     expect(find.text('Как в системе'), findsOneWidget);
     await tester.tap(find.text('English'));
@@ -356,6 +356,11 @@ void main() {
     );
     expect(container.read(readingSettingsProvider).language, AppLanguage.en);
     expect(find.text('English'), findsNothing);
+  });
+
+  testWidgets('with books the language is not in the library', (tester) async {
+    await pumpLibrary(tester, books: [_book(1, title: 'Война и мир')]);
+    expect(find.text('Язык'), findsNothing);
   });
 
   testWidgets('the folder button opens "Папки"', (tester) async {
