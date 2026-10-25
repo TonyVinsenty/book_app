@@ -17,6 +17,7 @@ import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
 import 'package:book_app/data/settings_repository.dart';
 import 'package:book_app/data/stats_repository.dart';
+import 'package:book_app/features/reader/chapter_slider.dart';
 import 'package:book_app/features/reader/contents_screen.dart';
 import 'package:book_app/features/reader/font_size_button.dart';
 import 'package:book_app/features/reader/guide_layer.dart';
@@ -2186,25 +2187,65 @@ class ReaderViewState extends ConsumerState<ReaderView>
               ],
             ),
             if (last > 1)
-              Semantics(
-                label: l10n.readerBookPages,
-                child: Slider(
-                  value: (_dragPage ?? current.toDouble()).clamp(
-                    1,
-                    last.toDouble(),
-                  ),
-                  min: 1,
-                  max: last.toDouble(),
-                  activeColor: colors.accent,
-                  inactiveColor: colors.textSecondary.withValues(alpha: 0.3),
-                  semanticFormatterCallback: (v) => dragLabel(v.round()),
-                  onChangeStart: (v) => setState(() => _dragPage = v),
-                  onChanged: (v) => setState(() => _dragPage = v),
-                  onChangeEnd: (v) {
-                    setState(() => _dragPage = null);
-                    _jumpToBookPage(v.round());
-                  },
-                ),
+              LayoutBuilder(
+                builder: (context, box) {
+                  final chapters = chapterPages(
+                    _contents,
+                    pagination.chapterStarts,
+                  );
+                  // The track is the slider less the room of the thumb.
+                  final pagesPerPixel = (last - 1) / max(box.maxWidth - 48, 1);
+                  // Near a chapter start, the thumb sticks to it.
+                  void dragTo(double value) {
+                    final to =
+                        snapToChapter(
+                          value,
+                          chapters,
+                          8 * pagesPerPixel,
+                        )?.toDouble() ??
+                        value;
+                    if (to != value && to != _dragPage) {
+                      unawaited(HapticFeedback.selectionClick());
+                    }
+                    setState(() => _dragPage = to);
+                  }
+
+                  return Semantics(
+                    label: l10n.readerBookPages,
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackShape: ChapterTrackShape(
+                          marks: [
+                            for (final page in chapters)
+                              (page - 1) / (last - 1),
+                          ],
+                          color: colors.textSecondary.withValues(alpha: 0.5),
+                          activeColor: colors.surface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      child: Slider(
+                        value: (_dragPage ?? current.toDouble()).clamp(
+                          1,
+                          last.toDouble(),
+                        ),
+                        min: 1,
+                        max: last.toDouble(),
+                        activeColor: colors.accent,
+                        inactiveColor: colors.textSecondary.withValues(
+                          alpha: 0.3,
+                        ),
+                        semanticFormatterCallback: (v) => dragLabel(v.round()),
+                        onChangeStart: dragTo,
+                        onChanged: dragTo,
+                        onChangeEnd: (v) {
+                          final to = (_dragPage ?? v).round();
+                          setState(() => _dragPage = null);
+                          _jumpToBookPage(to);
+                        },
+                      ),
+                    ),
+                  );
+                },
               )
             else
               const SizedBox(height: 8),
