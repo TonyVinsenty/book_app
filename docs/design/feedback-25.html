@@ -1,0 +1,325 @@
+<title>Verso — панель чтения и статистика</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,500&display=swap">
+<style>
+/* Layout: page = notes + rows of 360px phone frames. Each frame has its own theme (.night / .day) copied from the app palettes. */
+:root{--pg:#171615;--pgtx:#EAE6DF;--pgmut:#A29B90;--pg2:#242220;--pgline:#37342F;--ui:'Manrope',system-ui,sans-serif;--book:'Literata',Georgia,serif;color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--pg:#F2F0EC;--pgtx:#2B2926;--pgmut:#5F5950;--pg2:#E4E0D8;--pgline:#D2CDC3;color-scheme:light}}
+:root[data-theme="light"]{--pg:#F2F0EC;--pgtx:#2B2926;--pgmut:#5F5950;--pg2:#E4E0D8;--pgline:#D2CDC3;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pgtx);font:15px/1.5 var(--ui);padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:20px;margin:44px 0 4px;text-wrap:balance}
+.lead{color:var(--pgmut);margin:0 0 14px;max-width:70ch}
+.note{background:var(--pg2);border:1px solid var(--pgline);border-radius:14px;padding:16px 18px;max-width:78ch}
+.note p{margin:0 0 8px}.note p:last-child{margin:0}
+.note b{font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-top:18px}
+figure{margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}
+figcaption{font-size:13px;color:var(--pgmut);max-width:360px}
+figcaption b{color:var(--pgtx)}
+
+/* ===== phone ===== */
+.ph{--bg:#F6F0E4;--tx:#3A332B;--t2:#6A5F50;--sf:#EBE2D0;--sf2:#E1D6BF;--ac:#9A6B43;--onac:#FFF8EC;--orp:#C2492F;--line:#D3C6AB;--gr:#3F7A57;--grbg:#DCE6D3;--h1:#E3CFAE;--h1t:#3A332B;--h2:#C9A06F;--h2t:#2B241C;--h3:#8A5C36;--h3t:#FFF8EC;--pop:#3A332B;--poptx:#F6F0E4;--shadow:rgba(58,51,43,.25);
+ width:360px;max-width:100%;border-radius:34px;overflow:hidden;position:relative;background:var(--bg);color:var(--tx);border:1px solid var(--line);font-family:var(--ui)}
+.ph.night{--bg:#1F1B17;--tx:#E6DCCB;--t2:#A89C8A;--sf:#2D2822;--sf2:#38312A;--ac:#D0A070;--onac:#1F1B17;--orp:#FF8A6B;--line:#443C32;--gr:#8FB597;--grbg:#27322A;--h1:#4A3E30;--h1t:#E6DCCB;--h2:#8A6A48;--h2t:#FFF8EC;--h3:#D0A070;--h3t:#1F1B17;--pop:#E6DCCB;--poptx:#1F1B17;--shadow:rgba(0,0,0,.55)}
+.sb{height:28px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:12px;font-weight:600;color:var(--t2)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+
+/* ===== reader ===== */
+.rd{height:660px;display:flex;flex-direction:column}
+.book{flex:1;padding:18px 26px;font:400 17px/1.7 var(--book);color:var(--tx);overflow:hidden;opacity:.5}
+.book p{margin:0 0 .6em}
+.panel{background:var(--sf);border-radius:22px 22px 0 0;padding:14px 20px 18px;box-shadow:0 -8px 24px var(--shadow);position:relative}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+.t1{font-size:15px;font-weight:600;line-height:1.3;color:var(--tx)}  /* style 1 */
+.t2{font-size:13px;font-weight:500;line-height:1.3;color:var(--t2);font-variant-numeric:tabular-nums} /* style 2 */
+.t1 b{font-variant-numeric:tabular-nums}
+.l{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.l .t1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk{position:relative;height:44px;margin:0 -2px;touch-action:none}
+.trk .rail{position:absolute;left:10px;right:10px;top:20px;height:4px;border-radius:2px;background:var(--line)}
+.trk .fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--ac)}
+.trk .tk{position:absolute;top:13px;width:2px;height:18px;margin-left:-1px;border-radius:1px;background:var(--t2);opacity:.6}
+.trk .tk.on{background:var(--bg);opacity:.9}
+.trk .tk.hit{opacity:1;background:var(--tx);height:24px;top:10px;width:3px;margin-left:-1.5px}
+.trk .th{position:absolute;top:12px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--ac);border:3px solid var(--sf);box-shadow:0 0 0 1px var(--ac)}
+.trk .th.big{width:28px;height:28px;top:8px;margin-left:-14px;box-shadow:0 0 0 6px color-mix(in srgb,var(--ac) 30%,transparent),0 0 0 1px var(--ac)}
+.inner{position:absolute;left:10px;right:10px;top:0;bottom:0}
+.sub{display:flex;justify-content:space-between;gap:12px;margin-top:-2px}
+.link{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;width:100%;border:0;background:none;padding:0;text-align:left}
+.link svg{flex:none;color:var(--ac)}
+.link .t1{display:flex;gap:8px;align-items:center}
+.card{background:var(--bg);border-radius:14px;padding:0 14px}
+.tools{display:flex;align-items:center;gap:8px;margin-top:10px}
+.tools .sp{flex:1}
+.bt{min-width:48px;height:48px;border-radius:14px;border:1px solid var(--line);background:none;font-weight:700;font-size:15px}
+.bt.s{font-size:12px}
+.bt.pri{padding:0 18px;color:var(--ac);font-weight:700;font-size:14px}
+.dim{opacity:.35}
+.back{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:18px;background:var(--bg);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ac);margin-bottom:10px}
+.three{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:0;margin-top:-4px}
+.three div{padding:6px 0}
+.three .lab{font-size:13px;font-weight:500;color:var(--t2)}
+.three .val{font-size:15px;font-weight:600}
+.three .chev{display:flex;align-items:center;gap:2px;color:var(--ac)}
+.three .btn{border:0;background:none;text-align:left;padding:6px 0;min-height:48px}
+.collapsed{height:40px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums}
+.bar-pg{height:3px;background:var(--line);margin:0 26px;border-radius:2px;opacity:.0}
+
+/* density demo */
+.dens{background:var(--sf);border-radius:16px;padding:12px 18px;width:360px;max-width:100%;border:1px solid var(--line)}
+.dens .t2{margin-top:2px}
+
+/* ===== stats ===== */
+.st{padding:0 16px 22px;display:flex;flex-direction:column;gap:12px}
+.hd{font-size:22px;font-weight:800;padding:6px 4px 2px}
+.tabs{display:flex;background:var(--sf);border-radius:14px;padding:4px;gap:4px}
+.tabs button{flex:1;height:44px;border:0;border-radius:11px;background:none;font-weight:600;font-size:14px;color:var(--t2)}
+.tabs button.on{background:var(--bg);color:var(--tx);box-shadow:0 1px 3px var(--shadow)}
+.cd{background:var(--sf);border-radius:20px;padding:16px 18px;position:relative}
+.cd h3{margin:0;font-size:13px;font-weight:600;color:var(--t2);letter-spacing:.02em}
+.big{font-size:30px;font-weight:800;line-height:1.1;margin-top:6px}
+.cd p{margin:6px 0 0;font-size:14px;color:var(--t2)}
+.cd.sv{background:var(--grbg)}
+.cd.sv .big{color:var(--gr)}
+.cd.sv .big small{font-size:15px;font-weight:700}
+.cd.sv .sen{color:var(--tx);margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--gr) 30%,transparent);font-size:14px}
+.cd.sv .sen b{color:var(--gr)}
+.cal-h{display:flex;justify-content:space-between;align-items:baseline}
+.cal-h .t2{font-size:13px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+.cal .dw{font-size:11px;font-weight:600;color:var(--t2);text-align:center;padding-bottom:2px}
+.cal .d{aspect-ratio:1;border-radius:10px;border:0;background:var(--bg);padding:0;font-size:13px;font-weight:600;color:var(--t2);font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+.cal .e{background:none}
+.cal .d.f{color:var(--tx);background:color-mix(in srgb,var(--bg) 60%,var(--sf))}
+.cal .l1{background:var(--h1);color:var(--h1t)}.cal .l2{background:var(--h2);color:var(--h2t)}.cal .l3{background:var(--h3);color:var(--h3t)}
+.cal .d.today:not(.sel){outline:1.5px solid var(--ac);outline-offset:1px}
+.cal .d.sel{outline:2px solid var(--tx);outline-offset:1px}
+.pop{position:absolute;right:0;background:var(--pop);color:var(--poptx);border-radius:12px;padding:9px 13px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 6px 18px var(--shadow);z-index:3;font-variant-numeric:tabular-nums}
+.pop::after{content:"";position:absolute;bottom:-5px;right:var(--x,22px);width:10px;height:10px;background:var(--pop);transform:rotate(45deg);border-radius:2px}
+.leg{display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:10px;font-size:12px;color:var(--t2)}
+.leg i{width:14px;height:14px;border-radius:4px;display:block}
+.tot{display:flex;flex-direction:column}
+.tot .r{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
+.tot .r:first-of-type{border-top:0}
+.tot .r span{color:var(--t2);min-width:0}
+.tot .r b{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tot .r b.g{color:var(--gr)}.tot .r b.a{color:var(--ac)}
+.tot .r span small{display:block;font-size:12px;opacity:.85}
+.ch-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.seg{display:flex;background:var(--bg);border-radius:10px;padding:3px}
+.seg button{height:34px;min-width:44px;padding:0 12px;border:0;border-radius:8px;background:none;font-size:13px;font-weight:600;color:var(--t2)}
+.seg button.on{background:var(--ac);color:var(--onac)}
+.bars{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:14px}
+.bars .c{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px}
+.bars .v{font-size:11px;font-weight:700;color:var(--tx);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bars .v.z{color:var(--t2);font-weight:500}
+.bars .b{width:100%;max-width:34px;border-radius:7px 7px 3px 3px;background:var(--ac);min-height:3px}
+.bars .b.z{background:var(--line);height:3px}
+.bars-x{display:flex;gap:6px;margin-top:6px}
+.bars-x span{flex:1;text-align:center;font-size:11px;font-weight:600;color:var(--t2)}
+.bars-x span.now{color:var(--tx)}
+.ph.small .st{padding-bottom:18px}
+.cap{font-size:13px;color:var(--t2);margin-top:10px}
+@media (prefers-reduced-motion:no-preference){.bars .b{transition:height .25s}}
+</style>
+
+<div class="wrap">
+<h1>Verso: панель чтения и статистика</h1>
+<p class="lead">Макеты по вашим замечаниям. Тёмная тема основная, дневная показана в вариантах А и «Неделя».</p>
+
+<div class="note">
+<p><b>Часть 1. Панель внизу.</b> У всех вариантов два стиля текста вместо трёх: основной (жирнее) и вторичный (светлее). Всё из старой панели осталось. На ползунке теперь метки глав, бегунок «прилипает» к ним при перетаскивании.</p>
+<p><b>А.</b> Глава слева, процент справа; под ползунком страницы и «до конца главы»; ниже отдельная строка «до конца книги» со стрелкой.</p>
+<p><b>Б.</b> То же, но строка «до конца книги» лежит в мягкой плашке, а время до конца главы стоит рядом со страницами. Самый спокойный.</p>
+<p><b>В.</b> Три колонки в одну строку: страницы, глава, книга. Самая компактная, но мелкие подписи.</p>
+<p><b>Рекомендую Б.</b> Показано, как она выглядит при перетаскивании: сверху название главы и страница, остальное приглушается. У книг с сотнями глав метки прореживаются (внизу), прилипание остаётся ко всем главам.</p>
+<p><b>Часть 2. Статистика.</b> «Месяц»: сэкономленное время, календарь с числами (нажатие на день показывает окошко), итоги года. Графики по дням убраны, скорость и «комфортный темп» убраны. «Неделя» и «Год»: один график со столбиками и переключателем «Минуты / Страницы» (он рабочий, нажмите). Про единицы: оставил «сл/мин», это привычная мера скорости чтения, и она одинакова для обоих режимов; для понимания добавлена подсказка про страницы.</p>
+</div>
+
+<h2>Часть 1. Панель чтения</h2>
+<p class="lead">Свёрнутое состояние осталось прежним.</p>
+<div class="row">
+ <figure>
+  <div class="ph night"><div class="rd"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="book"><p>Он остановился у окна и долго смотрел на мокрую мостовую. Дождь шёл уже третий день, и казалось, что город понемногу растворяется в сером воздухе.</p><p>— Вы всё ещё ждёте письма? — спросила она, не поднимая глаз.</p><p>Ответа не последовало. Часы в соседней комнате пробили четверть, и звук ещё долго висел в тишине, как нитка на сквозняке.</p></div>
+   <div class="collapsed">стр. 453 / 1176 · 38,6 %</div></div></div>
+  <figcaption><b>Сейчас, свёрнуто.</b> Только строка внизу, без кнопок.</figcaption>
+ </figure>
+
+ <figure>
+  <div class="ph day"><div class="rd"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="book"><p>Он остановился у окна и долго смотрел на мокрую мостовую. Дождь шёл уже третий день, и казалось, что город понемногу растворяется в сером воздухе.</p><p>— Вы всё ещё ждёте письма? — спросила она, не поднимая глаз.</p><p>Ответа не последовало. Часы в соседней комнате пробили четверть.</p></div>
+   <div class="panel"><div class="grab"></div>
+    <div class="l"><span class="t1">Глава 12. Возвращение в Лондон</span><span class="t2">38,6 %</span></div>
+    <div class="trk" data-p="38.6" data-n="24" data-seed="3"></div>
+    <div class="sub"><span class="t2">стр. 453 / 1176</span><span class="t2">до конца главы 7 стр.</span></div>
+    <button class="link" aria-label="Статистика книги"><span class="t1">≈ 4 мин до конца главы · 6 ч 32 мин до конца книги</span><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 4l6 6-6 6"/></svg></button>
+    <div class="tools"><button class="bt s" aria-label="Меньше">A−</button><button class="bt" aria-label="Больше">A+</button><span class="sp"></span><button class="bt pri">Настройки</button></div>
+   </div></div></div>
+  <figcaption><b>А · дневная тема.</b> Две строки над ползунком и под ним; время одной строкой с «›».</figcaption>
+ </figure>
+</div>
+
+<div class="row">
+ <figure>
+  <div class="ph night"><div class="rd"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="book"><p>Он остановился у окна и долго смотрел на мокрую мостовую. Дождь шёл уже третий день.</p><p>— Вы всё ещё ждёте письма? — спросила она, не поднимая глаз.</p></div>
+   <div class="panel"><div class="grab"></div>
+    <div class="l"><span class="t1">Глава 12. Возвращение в Лондон</span><span class="t2">38,6 %</span></div>
+    <div class="trk" data-p="38.6" data-n="24" data-seed="3"></div>
+    <div class="sub"><span class="t2">стр. 453 / 1176</span><span class="t2">до конца главы 7 стр. · ≈ 4 мин</span></div>
+    <div class="card" style="margin-top:10px"><button class="link"><span class="t1">6 ч 32 мин до конца книги</span><span style="display:flex;align-items:center;gap:6px" class="t2">Подробнее<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--ac)"><path d="M7 4l6 6-6 6"/></svg></span></button></div>
+    <div class="tools"><button class="bt s">A−</button><button class="bt">A+</button><span class="sp"></span><button class="bt pri">Настройки</button></div>
+   </div></div></div>
+  <figcaption><b>Б · рекомендую.</b> Книга в отдельной плашке (понятно, что она нажимается); время главы рядом со страницами.</figcaption>
+ </figure>
+
+ <figure>
+  <div class="ph night"><div class="rd"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="book"><p>Он остановился у окна и долго смотрел на мокрую мостовую. Дождь шёл уже третий день.</p><p>— Вы всё ещё ждёте письма? — спросила она, не поднимая глаз.</p></div>
+   <div class="panel"><div class="grab"></div>
+    <div class="l"><span class="t1">Глава 12. Возвращение в Лондон</span></div>
+    <div class="trk" data-p="38.6" data-n="24" data-seed="3"></div>
+    <div class="three">
+     <div><div class="lab">Страница</div><div class="val">453 / 1176</div></div>
+     <div><div class="lab">Глава</div><div class="val">4 мин</div></div>
+     <button class="btn" style="color:inherit"><div class="lab">Книга</div><div class="val chev">6 ч 32 мин<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 4l6 6-6 6"/></svg></div></button>
+    </div>
+    <div class="tools"><button class="bt s">A−</button><button class="bt">A+</button><span class="sp"></span><button class="bt pri">Настройки</button></div>
+   </div></div></div>
+  <figcaption><b>В.</b> Три колонки, ничего не переносится. Компактно, но «до конца главы 7 стр.» и процент пропали бы.</figcaption>
+ </figure>
+
+ <figure>
+  <div class="ph night"><div class="rd"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="book"><p>Он остановился у окна и долго смотрел на мокрую мостовую. Дождь шёл уже третий день.</p><p>— Вы всё ещё ждёте письма? — спросила она, не поднимая глаз.</p></div>
+   <div class="panel"><div class="grab"></div>
+    <span class="back">↶ Вернуться на стр. 453</span>
+    <div class="l"><span class="t1">Глава 17. Письмо без подписи</span><span class="t2">52,0 %</span></div>
+    <div class="trk" data-p="52" data-n="24" data-seed="3" data-drag="1"></div>
+    <div class="sub"><span class="t2">перейти на стр. 612 / 1176</span><span class="t2">глава 17 из 24</span></div>
+    <div class="dim">
+    <div class="card" style="margin-top:10px"><button class="link"><span class="t1">6 ч 32 мин до конца книги</span><span class="t2">Подробнее ›</span></button></div>
+    <div class="tools"><button class="bt s">A−</button><button class="bt">A+</button><span class="sp"></span><button class="bt pri">Настройки</button></div></div>
+   </div></div></div>
+  <figcaption><b>Б · перетаскивание.</b> Бегунок приклеился к началу главы 17 (метка выше и светлее), название и страница обновляются на лету. Остальное притушено. Кнопка «Вернуться» появляется после прыжка.</figcaption>
+ </figure>
+</div>
+
+<h2>Метки глав: много глав</h2>
+<p class="lead">Метки, стоящие ближе 7 px, не рисуются. Бегунок всё равно прилипает ко всем главам.</p>
+<div class="row">
+ <figure><div class="dens"><div class="t2">24 главы: рисуются все</div><div class="trk" data-p="38.6" data-n="24" data-seed="3"></div></div></figure>
+ <figure><div class="dens"><div class="t2">312 глав: метки прорежены, не ближе 7 px друг к другу</div><div class="trk" data-p="38.6" data-n="312" data-seed="5" data-gap="7"></div></div></figure>
+</div>
+
+<h2>Часть 2. Статистика</h2>
+<p class="lead">Пример: октябрь 2026, читали 23, 24 и 25 октября. Нажмите на день в календаре и на переключатель «Минуты / Страницы».</p>
+<div class="row">
+ <figure>
+  <div class="ph night"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="st">
+    <div class="hd">Статистика</div>
+    <div class="tabs"><button>Неделя</button><button class="on">Месяц</button><button>Год</button></div>
+    <div class="cd sv"><h3>Скорочтение сэкономило</h3><div class="big">7 <small>мин</small></div><p>за октябрь · 3 дня чтения</p>
+      <div class="sen">Без скорочтения эти страницы заняли бы <b>18 мин</b>, у вас ушло <b>11 мин</b>.</div></div>
+    <div class="cd"><div class="cal-h"><h3>Октябрь</h3><span class="t2">3 дня чтения</span></div>
+      <div class="cal" id="cal"></div>
+      <div class="leg">меньше <i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i> больше</div></div>
+    <div class="cd tot"><h3 style="margin-bottom:4px">Итоги · 2026 год</h3>
+      <div class="r"><span>Книг прочитано</span><b>0</b></div>
+      <div class="r"><span>Время чтения</span><b>2 ч 12 мин</b></div>
+      <div class="r"><span>Страниц прочитано</span><b>100 стр.</b></div>
+      <div class="r"><span>Средняя скорость<small>обычное чтение</small></span><b class="a">185 сл/мин</b></div>
+      <div class="r"><span>Средняя скорость<small>скорочтение</small></span><b class="g">306 сл/мин</b></div>
+      <div class="cap" style="margin-top:2px">Для сравнения: страница книги примерно 250 слов.</div></div>
+   </div></div>
+  <figcaption><b>Месяц.</b> Три карточки. Столбиков по дням нет: их заменяет календарь с числами.</figcaption>
+ </figure>
+
+ <div style="display:flex;flex-direction:column;gap:28px;min-width:0">
+ <figure>
+  <div class="ph day small"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="st">
+    <div class="tabs"><button class="on">Неделя</button><button>Месяц</button><button>Год</button></div>
+    <div class="cd sv"><h3>Скорочтение сэкономило</h3><div class="big">7 <small>мин</small></div><p>за неделю · 3 дня чтения</p></div>
+    <div class="cd"><div class="ch-h"><h3>Чтение по дням</h3><div class="seg" data-chart="wk"><button class="on" data-m="min">Минуты</button><button data-m="pg">Страницы</button></div></div>
+      <div class="bars" id="wk"></div><div class="bars-x" id="wkx"></div></div>
+   </div></div>
+  <figcaption><b>Неделя · дневная тема.</b> Семь столбиков, число на каждом, один график с переключателем. Дни без чтения — «—».</figcaption>
+ </figure>
+
+ <figure>
+  <div class="ph night small"><div class="sb"><span>9:41</span><span>●●●</span></div>
+   <div class="st">
+    <div class="tabs"><button>Неделя</button><button>Месяц</button><button class="on">Год</button></div>
+    <div class="cd sv"><h3>Скорочтение сэкономило</h3><div class="big">7 <small>мин</small></div><p>за 2026 год · 3 дня чтения</p></div>
+    <div class="cd"><div class="ch-h"><h3>Чтение по месяцам</h3><div class="seg" data-chart="yr"><button class="on" data-m="min">Минуты</button><button data-m="pg">Страницы</button></div></div>
+      <div class="bars" id="yr"></div><div class="bars-x" id="yrx"></div></div>
+    <div class="cd tot"><h3 style="margin-bottom:4px">Итоги · 2026 год</h3>
+      <div class="r"><span>Книг прочитано</span><b>0</b></div>
+      <div class="r"><span>Время чтения</span><b>2 ч 12 мин</b></div>
+      <div class="r"><span>Страниц прочитано</span><b>100 стр.</b></div>
+      <div class="r"><span>Средняя скорость<small>обычное чтение</small></span><b class="a">185 сл/мин</b></div>
+      <div class="r"><span>Средняя скорость<small>скорочтение</small></span><b class="g">306 сл/мин</b></div></div>
+   </div></div>
+  <figcaption><b>Год.</b> 12 столбиков, итоги года те же, что внизу «Месяца».</figcaption>
+ </figure>
+ </div>
+</div>
+</div>
+
+<script>
+// ---- slider tracks
+function rng(s){return function(){s=(s*16807)%2147483647;return s/2147483647}}
+function chapters(n,seed){const r=rng(seed*977+13);let a=[0],c=0;for(let i=1;i<n;i++){c+=.5+r();a.push(c)}const t=c+.5+r();return a.map(x=>x/t*100)}
+document.querySelectorAll('.trk').forEach(el=>{
+  const n=+el.dataset.n,p=+el.dataset.p,gap=+(el.dataset.gap||0),drag=el.dataset.drag;
+  const w=el.clientWidth||300, iw=w-20, ch=chapters(n,+el.dataset.seed);
+  let pos=p, hit=-1;
+  if(drag){hit=ch.reduce((b,x,i)=>Math.abs(x-p)<Math.abs(ch[b]-p)?i:b,0);pos=ch[hit]}
+  let html='<div class="rail"></div><div class="inner"><div class="rail" style="left:0;right:0;top:20px;background:var(--line)"></div><div class="fill" style="top:20px;height:4px;width:'+pos+'%"></div>';
+  let last=-99;
+  ch.forEach((x,i)=>{const px=x/100*iw;if(i===hit){html+='<i class="tk hit" style="left:'+x+'%"></i>';last=px;return}
+    if(gap&&px-last<gap&&i!==0)return;last=px;html+='<i class="tk'+(x<pos?' on':'')+'" style="left:'+x+'%"></i>'});
+  html+='<i class="th'+(drag?' big':'')+'" style="left:'+pos+'%"></i></div>';
+  el.innerHTML=html;el.querySelector(':scope>.rail').remove();
+});
+// ---- calendar
+(function(){const cal=document.getElementById('cal');const data={23:[63,48],24:[37,30],25:[32,22]};
+ let h='';'ПнВтСрЧтПтСбВс'.match(/../g).forEach(d=>h+='<div class="dw">'+d+'</div>');
+ for(let i=0;i<3;i++)h+='<div class="d e"></div>';
+ for(let d=1;d<=31;d++){const v=data[d];let c='d';if(v){c+=v[0]>=50?' l3':v[0]>=35?' l2':' l1'}else if(d<25)c+=' f';
+  if(d===25)c+=' today sel';h+='<button class="'+c+'" data-d="'+d+'" aria-label="'+d+' октября">'+d+'</button>'}
+ cal.innerHTML=h;
+ function show(d){cal.querySelectorAll('.pop').forEach(x=>x.remove());cal.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
+  const b=cal.querySelector('[data-d="'+d+'"]');b.classList.add('sel');const v=data[d];
+  const pop=document.createElement('div');pop.className='pop';pop.textContent=d+' октября · '+(v?v[0]+' мин · '+v[1]+' стр.':'не читали');
+  const card=cal.parentElement;card.appendChild(pop);
+  const cr=card.getBoundingClientRect(),br=b.getBoundingClientRect();
+  pop.style.top=(br.top-cr.top-pop.offsetHeight-8)+'px';
+  const right=cr.right-br.right-8;pop.style.right=Math.max(8,right)+'px';
+  const popR=pop.getBoundingClientRect(),cx=br.left+br.width/2;
+  pop.style.setProperty('--x',(popR.right-cx-5)+'px');
+ }
+ cal.addEventListener('click',e=>{const b=e.target.closest('.d[data-d]');if(b)show(b.dataset.d)});
+ requestAnimationFrame(()=>show(25));
+ document.fonts&&document.fonts.ready.then(()=>show(25));
+})();
+// ---- bar charts with toggle
+function bars(id,xid,vals,labels,unit,now){const el=document.getElementById(id),x=document.getElementById(xid),mx=Math.max.apply(null,vals)||1;
+ el.innerHTML=vals.map(v=>'<div class="c"><span class="v'+(v?'':' z')+'">'+(v?v+(unit?' '+unit:''):'—')+'</span><div class="b'+(v?'':' z')+'" style="'+(v?'height:'+Math.max(6,v/mx*104)+'px':'')+'"></div></div>').join('');
+ x.innerHTML=labels.map((l,i)=>'<span'+(i===now?' class="now"':'')+'>'+l+'</span>').join('')}
+const W={min:[0,0,0,0,63,37,32],pg:[0,0,0,0,48,30,22]},Y={min:[0,0,0,0,0,0,0,0,0,132,0,0],pg:[0,0,0,0,0,0,0,0,0,100,0,0]};
+const WL='Пн Вт Ср Чт Пт Сб Вс'.split(' '),YL='Я Ф М А М И И А С О Н Д'.split(' ');
+function draw(k,m){k==='wk'?bars('wk','wkx',W[m],WL,m==='min'?'мин':'стр.',6):bars('yr','yrx',Y[m],YL,'',9)}
+draw('wk','min');draw('yr','min');
+document.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ s.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));draw(s.dataset.chart,b.dataset.m)}));
+</script>

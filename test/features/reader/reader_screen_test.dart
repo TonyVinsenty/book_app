@@ -466,10 +466,12 @@ void main() {
     expect(statusBar, [false, true]);
     expect(find.text('Глава 1'), findsOneWidget);
     expect(
-      find.text(
-        'стр. 5 / ${reader(tester).pagination.pageCount.value}'
-        '${percent(tester)} · до конца главы ${pages - 5} стр.',
-      ),
+      find.text('стр. 5 / ${reader(tester).pagination.pageCount.value}'),
+      findsOneWidget,
+    );
+    expect(find.text(percent(tester).substring(3)), findsOneWidget);
+    expect(
+      find.textContaining('до конца главы ${pages - 5} стр. · ≈ '),
       findsOneWidget,
     );
     expect(tester.getTopLeft(pageArea), top, reason: 'the page stays put');
@@ -2140,10 +2142,11 @@ void main() {
     await settle(tester);
     final line = find.textContaining('до конца книги');
     expect(line, findsOneWidget);
+    expect(tester.widget<Text>(line).data, startsWith('≈ '));
     expect(
-      tester.widget<Text>(line).data,
-      allOf(startsWith('≈ '), contains('до конца главы ·')),
-      reason: 'the time to the chapter end first',
+      find.textContaining(RegExp(r'^до конца главы \d+ стр\. · ≈ ')),
+      findsOneWidget,
+      reason: 'the time to the chapter end by its pages',
     );
 
     await tester.tap(line);

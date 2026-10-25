@@ -403,14 +403,18 @@
   "@readerFontLargerShort": {
     "description": "Label of the A+ button (larger book text); the tooltip is readerFontLarger"
   },
-  "readerPageAndChapterLeft": "{page} · {left}",
-  "@readerPageAndChapterLeft": {
-    "description": "Reader bottom panel: the book page label, then the pages left in the chapter",
-    "placeholders": {
-      "page": {"type": "String"},
-      "left": {"type": "String"}
-    }
+  "readerPercent": "{percent} %",
+  "@readerPercent": {
+    "description": "Reader bottom panel, by the chapter title: the percent of the book read, to a tenth",
+    "placeholders": {"percent": {"type": "double", "format": "decimalPatternDigits", "optionalParameters": {"decimalDigits": 1}}}
   },
+  "readerChapterLeftTime": "{left} · ≈ {time}",
+  "@readerChapterLeftTime": {
+    "description": "Reader bottom panel, under the slider: the pages left in the chapter (readerPagesLeftInChapter), then the reading time left in it",
+    "placeholders": {"left": {"type": "String"}, "time": {"type": "String"}}
+  },
+  "readerBookMore": "Подробнее",
+  "@readerBookMore": {"description": "Reader bottom panel: the end of the «time left in the book» row; a tap opens the sheet about the book"},
   "settingsPaletteSample": "Аа",
   "@settingsPaletteSample": {
     "description": "Sample letters inside each palette circle in the reading settings"
@@ -697,10 +701,8 @@
   "@statsHours": {"description": "A duration of whole hours", "placeholders": {"hours": {"type": "int"}}},
   "statsHoursMinutes": "{hours} ч {minutes} мин",
   "@statsHoursMinutes": {"description": "A duration in hours and minutes", "placeholders": {"hours": {"type": "int"}, "minutes": {"type": "int"}}},
-  "readerTimeLeft": "≈ {chapter} до конца главы · {book} до конца книги",
-  "@readerTimeLeft": {"description": "Reader bottom panel: reading time left; tap opens the sheet about the book", "placeholders": {"chapter": {"type": "String"}, "book": {"type": "String"}}},
   "readerTimeLeftBook": "≈ {book} до конца книги",
-  "@readerTimeLeftBook": {"description": "Reader bottom panel: reading time left when the chapter ends with the book", "placeholders": {"book": {"type": "String"}}},
+  "@readerTimeLeftBook": {"description": "Reader bottom panel: reading time left in the book; tap opens the sheet about the book", "placeholders": {"book": {"type": "String"}}},
   "readerTimeLeftHint": "Статистика этой книги",
   "@readerTimeLeftHint": {"description": "Screen reader hint of the time left line: what a tap opens"},
   "bookStatsTitle": "Эта книга",

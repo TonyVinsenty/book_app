@@ -1937,7 +1937,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     child: _bottomPanel(
                       context,
                       insets,
-                      pageLabel: pageLabel,
+                      pageLabel: l10n.readerPageOfBook(
+                        numbers.page,
+                        numbers.total,
+                      ),
                       pagesLeft: _pagesLeftInChapter(chapter),
                       fontSize: style.fontSize,
                       showStats: settings.showStats,
@@ -2123,7 +2126,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _number(l10n, last, exact: total.exact),
     );
     final returnTo = _returnTo;
-    const sizes = ReadingSettings.fontSizes;
+    // Two text styles in the panel: the chapter title and the rest.
+    final secondary = text.bodySmall?.copyWith(color: colors.textSecondary);
+    final stats = showStats ? _bookStats : null;
+    final pagesLeftLabel = pagesLeft.exact
+        ? l10n.readerPagesLeftInChapter(pagesLeft.value)
+        : l10n.readerPagesLeftInChapterApprox(pagesLeft.value);
+    final chapterLeft = stats == null
+        ? pagesLeftLabel
+        : l10n.readerChapterLeftTime(
+            pagesLeftLabel,
+            formatDuration(l10n, stats.left(_wordsLeft().chapter)),
+          );
     return Material(
       color: colors.surface,
       elevation: 2,
@@ -2148,31 +2162,29 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   onPressed: _returnBack,
                 ),
               ),
-            Text(
-              title,
-              style: text.titleSmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              spacing: 12,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: text.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  l10n.readerPercent(
+                    drag == null
+                        ? tenthPercentOf(_word, widget.opened.tokens.length)
+                        : tenthPercentOf(drag, last),
+                  ),
+                  style: secondary,
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              drag == null
-                  ? l10n.readerPageAndChapterLeft(
-                      pageLabel,
-                      pagesLeft.exact
-                          ? l10n.readerPagesLeftInChapter(pagesLeft.value)
-                          : l10n.readerPagesLeftInChapterApprox(
-                              pagesLeft.value,
-                            ),
-                    )
-                  : dragLabel(drag),
-              style: text.bodySmall?.copyWith(color: colors.textSecondary),
-              // One line each: the slider does not jump (14.2, A7).
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (_bookStats case final stats? when showStats)
-              _timeLeftLine(context, stats),
             if (last > 1)
               Semantics(
                 label: l10n.readerBookPages,
@@ -2197,27 +2209,39 @@ class ReaderViewState extends ConsumerState<ReaderView>
             else
               const SizedBox(height: 8),
             Row(
+              spacing: 12,
               children: [
-                FontSizeButton(
-                  larger: false,
-                  onPressed: fontSize > sizes.first
-                      ? () => _changeFontSize(larger: false)
-                      : null,
+                Text(
+                  drag == null ? pageLabel : dragLabel(drag),
+                  style: secondary,
                 ),
-                const SizedBox(width: 8),
-                FontSizeButton(
-                  larger: true,
-                  onPressed: fontSize < sizes.last
-                      ? () => _changeFontSize(larger: true)
-                      : null,
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  icon: const Icon(Icons.tune),
-                  label: Text(l10n.readerSettings),
-                  onPressed: () => setState(() => _settingsShown = true),
-                ),
+                if (drag == null)
+                  Expanded(
+                    child: Text(
+                      chapterLeft,
+                      style: secondary,
+                      textAlign: TextAlign.end,
+                      // One line: the slider does not jump (14.2, A7).
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
               ],
+            ),
+            // While the slider is dragged, the rest steps back.
+            Opacity(
+              opacity: drag == null ? 1 : 0.35,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (stats != null) ...[
+                    const SizedBox(height: 10),
+                    _bookTimeLeft(context, stats),
+                  ],
+                  const SizedBox(height: 4),
+                  _fontAndSettings(fontSize),
+                ],
+              ),
             ),
           ],
         ),
@@ -2225,42 +2249,76 @@ class ReaderViewState extends ConsumerState<ReaderView>
     );
   }
 
-  /// «≈ 9 мин до конца главы · 3 ч 40 мин до конца книги», only the book
-  /// in its last chapter; a tap opens the sheet "This book".
-  Widget _timeLeftLine(BuildContext context, BookStats stats) {
+  Widget _fontAndSettings(double fontSize) {
+    final l10n = AppLocalizations.of(context);
+    const sizes = ReadingSettings.fontSizes;
+    return Row(
+      children: [
+        FontSizeButton(
+          larger: false,
+          onPressed: fontSize > sizes.first
+              ? () => _changeFontSize(larger: false)
+              : null,
+        ),
+        const SizedBox(width: 8),
+        FontSizeButton(
+          larger: true,
+          onPressed: fontSize < sizes.last
+              ? () => _changeFontSize(larger: true)
+              : null,
+        ),
+        const Spacer(),
+        TextButton.icon(
+          icon: const Icon(Icons.tune),
+          label: Text(l10n.readerSettings),
+          onPressed: () => setState(() => _settingsShown = true),
+        ),
+      ],
+    );
+  }
+
+  /// «≈ 3 ч 40 мин до конца книги — Подробнее ›» on a plate of its own; a
+  /// tap opens the sheet "This book".
+  Widget _bookTimeLeft(BuildContext context, BookStats stats) {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
-    final words = _wordsLeft();
+    final text = Theme.of(context).textTheme;
     return Semantics(
       hint: l10n.readerTimeLeftHint,
-      child: InkWell(
-        onTap: () => _openBookStats(stats),
-        borderRadius: BorderRadius.circular(8),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
-          child: Row(
-            spacing: 8,
-            children: [
-              Icon(Icons.schedule, size: 18, color: colors.textSecondary),
-              Expanded(
-                child: Text(
-                  words.chapter == words.book
-                      ? l10n.readerTimeLeftBook(
-                          formatDuration(l10n, stats.left(words.book)),
-                        )
-                      : l10n.readerTimeLeft(
-                          formatDuration(l10n, stats.left(words.chapter)),
-                          formatDuration(l10n, stats.left(words.book)),
-                        ),
-                  style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                  // The whole of it is in the sheet.
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      child: Material(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: _dragPage == null ? () => _openBookStats(stats) : null,
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: 14, end: 8),
+              child: Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.readerTimeLeftBook(
+                        formatDuration(l10n, stats.left(_wordsLeft().book)),
+                      ),
+                      style: text.titleSmall,
+                      // The whole of it is in the sheet.
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    l10n.readerBookMore,
+                    style: text.bodySmall?.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 20, color: colors.accent),
+                ],
               ),
-              Icon(Icons.keyboard_arrow_up, color: colors.accent),
-            ],
+            ),
           ),
         ),
       ),
