@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Long-press menu of the app icon (17.7): a Material glyph on a round plate. -->
+<!-- Long-press menu of the app icon (17.7, named as in iOS: quick_actions looks it up by name): a Material glyph; the launcher draws the plate. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
-    android:viewportWidth="48"
-    android:viewportHeight="48">
-    <path
-        android:fillColor="#F1E8DA"
-        android:pathData="M24,0a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+    android:viewportWidth="30"
+    android:viewportHeight="30">
     <group
-        android:translateX="12"
-        android:translateY="12">
+        android:translateX="3"
+        android:translateY="3">
         <path
             android:fillColor="#9A6B43"
             android:pathData="M12,11.55C9.64,9.35 6.48,8 3,8v11c3.48,0 6.64,1.35 9,3.55 2.36,-2.19 5.52,-3.55 9,-3.55V8c-3.48,0 -6.64,1.35 -9,3.55zM12,8c1.66,0 3,-1.34 3,-3s-1.34,-3 -3,-3 -3,1.34 -3,3 1.34,3 3,3z" />

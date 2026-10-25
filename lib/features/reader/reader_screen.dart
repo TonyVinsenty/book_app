@@ -2194,7 +2194,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     pagination.chapterStarts,
                   );
                   // The track is the slider less the room of the thumb.
-                  final pagesPerPixel = (last - 1) / max(box.maxWidth - 48, 1);
+                  final pagesPerPixel = (last - 1) / max(box.maxWidth - 36, 1);
                   // Near a chapter start, the thumb sticks to it.
                   void dragTo(double value) {
                     final to =
@@ -2230,6 +2230,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
                         ),
                         min: 1,
                         max: last.toDouble(),
+                        // Near the text, yet off the screen edge, where
+                        // Android takes a swipe for "back".
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 16,
+                        ),
                         activeColor: colors.accent,
                         inactiveColor: colors.textSecondary.withValues(
                           alpha: 0.3,

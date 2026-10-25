@@ -82,7 +82,7 @@ class ChapterTrackShape extends RoundedRectSliderTrackShape {
       isEnabled: isEnabled,
       isDiscrete: isDiscrete,
     );
-    final height = (sliderTheme.trackHeight ?? 4) + 6;
+    final height = (sliderTheme.trackHeight ?? 4) + 4;
     final rtl = textDirection == TextDirection.rtl;
     final active = Paint()..color = activeColor;
     final inactive = Paint()..color = color;

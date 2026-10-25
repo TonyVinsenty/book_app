@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app icon menu finds these by name (quick_actions), so the release
+     build must not drop them as unused. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/shortcut_library,@drawable/shortcut_book" />
