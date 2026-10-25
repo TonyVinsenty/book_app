@@ -229,12 +229,19 @@ final class YearTotals {
     required this.words,
     required this.time,
     required this.saved,
+    this.eyeWpm,
+    this.playWpm,
   });
 
   final int books;
   final int words;
   final Duration time;
   final SavedTime saved;
+
+  /// The year's reading by eye and speed reading, words a minute; null —
+  /// too little of it.
+  final int? eyeWpm;
+  final int? playWpm;
 }
 
 /// Totals of [year]: books by [finishedAt] (deleted books are not there),
@@ -246,11 +253,14 @@ YearTotals yearTotals(
   required int pageWpm,
 }) {
   final ofYear = rows.where((r) => r.day ~/ 10000 == year).toList();
+  final eye = pageSpeedsOf(ofYear);
   return YearTotals(
     books: finishedAt.where((t) => t?.year == year).length,
     words: ofYear.fold(0, (sum, r) => sum + r.words),
     time: Duration(milliseconds: ofYear.fold(0, (sum, r) => sum + r.activeMs)),
     saved: savedTime(ofYear, pageWpm: pageWpm),
+    eyeWpm: pageCount(eye) >= minPagesForSpeed ? medianWpm(eye) : null,
+    playWpm: playWpm(ofYear),
   );
 }
 

@@ -35,7 +35,7 @@ class StackedBars extends StatelessWidget {
   /// What the screen reader says instead.
   final String label;
 
-  static const _height = 72.0;
+  static const _height = 96.0;
 
   @override
   Widget build(BuildContext context) {
@@ -65,12 +65,17 @@ class StackedBars extends StatelessWidget {
                   spacing: 2,
                   children: [
                     if (values != null)
-                      Text(
-                        values[i],
-                        style: small,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.visible,
+                      SizedBox(
+                        height: labelHeight,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            values[i],
+                            style: small?.copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        ),
                       ),
                     _bar(parts, total(parts), highest),
                     // Smaller rather than into the next bar's name; of one

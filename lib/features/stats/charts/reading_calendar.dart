@@ -7,7 +7,8 @@ import 'package:intl/intl.dart';
 
 /// A month from Monday, in the palette accent (owner, 14.6 B4): a day the
 /// darker, the longer it was read; today outlined, the days to come only
-/// drawn round.
+/// drawn round. Each day has its date; a tap on a day that has come shows
+/// [dayText] over it.
 class ReadingCalendar extends StatelessWidget {
   const ReadingCalendar({
     super.key,
@@ -15,6 +16,7 @@ class ReadingCalendar extends StatelessWidget {
     required this.today,
     required this.colors,
     required this.label,
+    required this.dayText,
   });
 
   /// The days of one month, from the 1st.
@@ -24,6 +26,9 @@ class ReadingCalendar extends StatelessWidget {
 
   /// What the screen reader says instead.
   final String label;
+
+  /// What a tap on a day shows.
+  final String Function(DayBar day) dayText;
 
   static const _alpha = [0.0, 0.35, 0.65, 1.0];
 
@@ -69,7 +74,7 @@ class ReadingCalendar extends StatelessWidget {
               children: [
                 for (var i = 1; i < days.first.from.weekday; i++)
                   const SizedBox(),
-                for (final day in days) _day(day, reading.text),
+                for (final day in days) _day(context, day),
               ],
             ),
           ],
@@ -78,15 +83,16 @@ class ReadingCalendar extends StatelessWidget {
     );
   }
 
-  Widget _day(DayBar day, Color text) {
+  Widget _day(BuildContext context, DayBar day) {
+    final reading = context.readingColors;
     final level = day.future ? 0 : calendarLevel(day.totalMs);
     final now = DateUtils.isSameDay(day.from, today);
-    return DecoratedBox(
+    final cell = DecoratedBox(
       decoration: BoxDecoration(
         color: level == 0 ? null : colors.eye.withValues(alpha: _alpha[level]),
         borderRadius: BorderRadius.circular(7),
         border: now
-            ? Border.all(color: text, width: 2)
+            ? Border.all(color: reading.text, width: 2)
             : level == 0
             ? Border.all(
                 color: day.future
@@ -95,6 +101,35 @@ class ReadingCalendar extends StatelessWidget {
               )
             : null,
       ),
+      child: Center(
+        child: Text(
+          '${day.from.day}',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            // On the dark shades, the page color reads best.
+            color: level >= 2
+                ? reading.background
+                : level == 1
+                ? reading.text
+                : reading.textSecondary.withValues(alpha: day.future ? 0.5 : 1),
+          ),
+        ),
+      ),
+    );
+    if (day.future) return cell;
+    return Tooltip(
+      message: dayText(day),
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: false,
+      showDuration: const Duration(seconds: 3),
+      decoration: BoxDecoration(
+        color: reading.text,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      textStyle: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: reading.background, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: cell,
     );
   }
 }

@@ -414,7 +414,8 @@ class _TimeToRead extends ConsumerWidget {
     final words = inProgress
         ? book.wordCount * (100 - percent) ~/ 100
         : book.wordCount;
-    String time(int wpm) => formatDuration(l10n, _rounded(timeLeft(words, wpm)));
+    String time(int wpm) =>
+        formatDuration(l10n, _rounded(timeLeft(words, wpm)));
     final body = switch ((page, play)) {
       (final page?, final play?) => l10n.bookPageTimeBoth(
         time(page),

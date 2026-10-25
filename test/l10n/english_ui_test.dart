@@ -536,9 +536,9 @@ void main() {
         expect(find.text('Month'), findsOneWidget);
         expect(find.text('Year'), findsOneWidget);
         expect(find.text('Speed reading saved'), findsOneWidget);
-        expect(find.text('Minutes per day'), findsOneWidget);
-        expect(find.text('Pages per day'), findsOneWidget);
-        expect(find.text('Normally'), findsOneWidget);
+        expect(find.textContaining('Without speed reading'), findsOneWidget);
+        expect(find.text('Reading time'), findsOneWidget);
+        expect(find.text('Average speed'), findsNWidgets(2));
         check(tester);
 
         // Month period (the default): month and weekday names are English.
@@ -549,17 +549,19 @@ void main() {
 
         await tester.tap(find.text('Year'));
         await tester.pumpAndSettle();
-        expect(find.text('Minutes per month'), findsOneWidget);
-        expect(find.text('Jun'), findsWidgets);
-        expect(find.text('Jul'), findsWidgets);
+        expect(find.text('Reading by month'), findsOneWidget);
+        expect(find.text('Hours'), findsOneWidget);
+        expect(find.text('Jun'), findsOneWidget);
+        expect(find.text('Jul'), findsOneWidget);
         expect(find.textContaining('in 2026'), findsWidgets);
         expect(find.text('2026 in review'), findsOneWidget);
         check(tester);
 
         await tester.tap(find.text('Week'));
         await tester.pumpAndSettle();
-        expect(find.text('Minutes per day'), findsOneWidget);
-        expect(find.text('Fri'), findsNWidgets(3));
+        expect(find.text('Reading by day'), findsOneWidget);
+        expect(find.text('Minutes'), findsOneWidget);
+        expect(find.text('Fri'), findsOneWidget);
         expect(find.textContaining('this week'), findsWidgets);
         check(tester);
 
@@ -570,9 +572,11 @@ void main() {
       });
     }
 
-    testWidgets('numbers in the month view use a dot', (tester) async {
+    testWidgets('numbers in the year view use a dot', (tester) async {
       phone(tester, height: 6000);
       await pumpStats(tester, const StatsScreen());
+      await tester.tap(find.text('Year'));
+      await tester.pumpAndSettle();
       final all = texts(tester).join('\n');
       expect(RegExp(r'\d,\d{1,2}(?!\d)').hasMatch(all), isFalse, reason: all);
       expect(RegExp(r'\d\.\d').hasMatch(all), isTrue, reason: all);

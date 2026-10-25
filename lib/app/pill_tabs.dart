@@ -10,6 +10,7 @@ class PillTabs<T> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.margin = const EdgeInsets.fromLTRB(16, 6, 16, 4),
+    this.dense = false,
   });
 
   /// Each tab and its name, in order.
@@ -17,6 +18,9 @@ class PillTabs<T> extends StatelessWidget {
   final T selected;
   final ValueChanged<T> onChanged;
   final EdgeInsetsGeometry margin;
+
+  /// Smaller, on the page color: a switch inside a card.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +38,7 @@ class PillTabs<T> extends StatelessWidget {
             child: InkWell(
               onTap: on ? null : () => onChanged(tab),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: BoxConstraints(minHeight: dense ? 36 : 44),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -49,7 +53,7 @@ class PillTabs<T> extends StatelessWidget {
                         name,
                         maxLines: 1,
                         style: TextStyle(
-                          fontSize: 15.5,
+                          fontSize: dense ? 13 : 15.5,
                           fontWeight: FontWeight.w700,
                           color: on ? colors.background : colors.textSecondary,
                         ),
@@ -66,9 +70,9 @@ class PillTabs<T> extends StatelessWidget {
 
     return Container(
       margin: margin,
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(dense ? 3 : 4),
       decoration: ShapeDecoration(
-        color: colors.surface,
+        color: dense ? colors.background : colors.surface,
         shape: const StadiumBorder(),
       ),
       child: Row(
