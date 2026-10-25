@@ -114,15 +114,7 @@ final class StatsOverview {
       eyeSpeed: eye,
       bars: _barsOf(period, ofPeriod, today),
       calendar: _barsOf(StatsPeriod.month, rows, today),
-      year: yearTotals(
-        today.year,
-        finishedAt: finishedAt,
-        rows: rows,
-        pageWpm: pageSpeed([
-          pageSpeedsOf(rows.where((r) => r.day ~/ 10000 == today.year)),
-          pageSpeedsOf(rows),
-        ]).wpm,
-      ),
+      year: yearTotals(today.year, finishedAt: finishedAt, rows: rows),
     );
   }
 

@@ -292,6 +292,7 @@
   "statsYearSpeed": "Average speed",
   "statsYearEyeReading": "normal reading",
   "statsYearSpeedReading": "speed reading",
+  "statsWpmValue": "{wpm} wpm",
   "statsYearTitle": "{year} in review",
   "debugStatsMenu": "Test data",
   "debugStatsFill": "Fill with test data",

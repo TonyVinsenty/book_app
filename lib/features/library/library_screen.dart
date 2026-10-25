@@ -124,6 +124,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final l10n = AppLocalizations.of(context);
     final view = ref.watch(libraryViewProvider);
     final queue = ref.watch(importQueueProvider);
+    // "Библиотека" from the app icon menu: the books, whatever tab was on.
+    ref.listen(showBooksProvider, (_, _) => setState(() => _tab = _Tab.books));
     ref.listen(importQueueProvider, (previous, next) {
       final finished = next.finished;
       if (finished != null && previous?.finished == null) {
@@ -471,4 +473,14 @@ class _ImportDetails extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Asks the library to show the books tab: each call is one request.
+final showBooksProvider = NotifierProvider<ShowBooks, int>(ShowBooks.new);
+
+class ShowBooks extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void request() => state++;
 }

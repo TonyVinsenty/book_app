@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:book_app/data/db/app_database.dart';
 import 'package:book_app/data/library_view.dart';
 import 'package:book_app/data/providers.dart';
+import 'package:book_app/features/library/library_screen.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +82,7 @@ class _AppShortcutsState extends ConsumerState<AppShortcuts> {
     if (navigator == null) return;
     if (type == libraryShortcut) {
       navigator.popUntil((route) => route.isFirst);
+      ref.read(showBooksProvider.notifier).request();
     } else if (int.tryParse(type.replaceFirst(_bookPrefix, '')) case final id?
         when type.startsWith(_bookPrefix)) {
       unawaited(

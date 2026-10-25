@@ -280,11 +280,10 @@ void main() {
         row(ReadingMode.word, day: 20261023, words: 4000, minutes: 10),
         row(ReadingMode.word, day: 20251231, words: 9999, minutes: 99),
       ],
-      pageWpm: 200,
     );
-    expect(
-      (t.books, t.words, t.time.inMinutes, t.saved.saved.inMinutes),
-      (2, 7000, 25, 10),
-    );
+    expect((t.books, t.words, t.time.inMinutes), (2, 7000, 25));
+    // No measured pages, so no eye speed; 4000 words in 10 min of speed
+    // reading.
+    expect((t.eyeWpm, t.playWpm), (null, 400));
   });
 }

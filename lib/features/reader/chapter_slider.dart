@@ -5,12 +5,19 @@ import 'package:book_app/layout/book_pagination.dart';
 import 'package:flutter/material.dart';
 
 /// The book pages (from 1) the chapters of [lines] start on, in order and
-/// once each; the first page has no mark. [starts] — the start page of
-/// every section ([BookPagination.chapterStarts]).
-List<int> chapterPages(List<ContentsLine> lines, List<PageNumber> starts) {
+/// once each; the first page has no mark, nor a chapter past the [last]
+/// page (an empty one at the end). [starts] — the start page of every
+/// section ([BookPagination.chapterStarts]).
+List<int> chapterPages(
+  List<ContentsLine> lines,
+  List<PageNumber> starts, {
+  required int last,
+}) {
   final pages = {
     for (final line in lines)
-      if (line.sectionIndex < starts.length) starts[line.sectionIndex].value,
+      if (line.sectionIndex < starts.length &&
+          starts[line.sectionIndex].value <= last)
+        starts[line.sectionIndex].value,
   }..remove(1);
   return pages.toList()..sort();
 }

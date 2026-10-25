@@ -12,9 +12,14 @@ void main() {
       (title: 'Глава 1', level: 0, sectionIndex: 2),
       (title: 'Часть главы 1', level: 1, sectionIndex: 2),
       (title: 'Пролог', level: 0, sectionIndex: 1),
+      (title: 'Конец', level: 0, sectionIndex: 4),
       (title: 'Вне книги', level: 0, sectionIndex: 9),
     ];
-    expect(chapterPages(lines, starts), [5, 12]);
+    expect(chapterPages(lines, starts, last: 40), [5, 12, 30]);
+    expect(chapterPages(lines, starts, last: 29), [
+      5,
+      12,
+    ], reason: 'an empty chapter at the end starts past the last page');
   });
 
   test('snap: the nearest chapter start within reach, or none', () {

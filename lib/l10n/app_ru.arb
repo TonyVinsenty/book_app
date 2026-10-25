@@ -809,6 +809,8 @@
   "@statsYearEyeReading": {"description": "Stats, year totals: under statsYearSpeed — reading by eye"},
   "statsYearSpeedReading": "скорочтение",
   "@statsYearSpeedReading": {"description": "Stats, year totals: under statsYearSpeed — speed reading"},
+  "statsWpmValue": "{wpm} сл/мин",
+  "@statsWpmValue": {"description": "A speed in words a minute, e.g. «185 сл/мин»", "placeholders": {"wpm": {"type": "int"}}},
   "statsYearTitle": "Итоги · {year} год",
   "@statsYearTitle": {"description": "Statistics: the year in numbers", "placeholders": {"year": {"type": "int"}}},
   "debugStatsMenu": "Тестовые данные",

@@ -222,13 +222,12 @@ const wordsPerPage = 250;
 
 int pagesOf(int words) => (words / wordsPerPage).round();
 
-/// The year in numbers: finished books, words, time, saved by speed reading.
+/// The year in numbers: finished books, words, time and the two speeds.
 final class YearTotals {
   const YearTotals({
     required this.books,
     required this.words,
     required this.time,
-    required this.saved,
     this.eyeWpm,
     this.playWpm,
   });
@@ -236,7 +235,6 @@ final class YearTotals {
   final int books;
   final int words;
   final Duration time;
-  final SavedTime saved;
 
   /// The year's reading by eye and speed reading, words a minute; null —
   /// too little of it.
@@ -250,17 +248,15 @@ YearTotals yearTotals(
   int year, {
   required Iterable<DateTime?> finishedAt,
   required Iterable<ReadingDelta> rows,
-  required int pageWpm,
 }) {
   final ofYear = rows.where((r) => r.day ~/ 10000 == year).toList();
-  final eye = pageSpeedsOf(ofYear);
+  final (:page, :play) = measuredSpeeds(ofYear);
   return YearTotals(
     books: finishedAt.where((t) => t?.year == year).length,
     words: ofYear.fold(0, (sum, r) => sum + r.words),
     time: Duration(milliseconds: ofYear.fold(0, (sum, r) => sum + r.activeMs)),
-    saved: savedTime(ofYear, pageWpm: pageWpm),
-    eyeWpm: pageCount(eye) >= minPagesForSpeed ? medianWpm(eye) : null,
-    playWpm: playWpm(ofYear),
+    eyeWpm: page,
+    playWpm: play,
   );
 }
 

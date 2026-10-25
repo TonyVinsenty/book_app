@@ -2133,11 +2133,12 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final pagesLeftLabel = pagesLeft.exact
         ? l10n.readerPagesLeftInChapter(pagesLeft.value)
         : l10n.readerPagesLeftInChapterApprox(pagesLeft.value);
+    final wordsLeft = _wordsLeft();
     final chapterLeft = stats == null
         ? pagesLeftLabel
         : l10n.readerChapterLeftTime(
             pagesLeftLabel,
-            formatDuration(l10n, stats.left(_wordsLeft().chapter)),
+            formatDuration(l10n, stats.left(wordsLeft.chapter)),
           );
     return Material(
       color: colors.surface,
@@ -2180,7 +2181,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   l10n.readerPercent(
                     drag == null
                         ? tenthPercentOf(_word, widget.opened.tokens.length)
-                        : tenthPercentOf(drag, last),
+                        // Up to the start of that page, as by the word.
+                        : tenthPercentOf(drag - 1, last),
                   ),
                   style: secondary,
                 ),
@@ -2189,10 +2191,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             if (last > 1)
               LayoutBuilder(
                 builder: (context, box) {
-                  final chapters = chapterPages(
-                    _contents,
-                    pagination.chapterStarts,
-                  );
+                  final chapters = _chapterMarks(pagination, last);
                   // The track is the slider less the room of the thumb.
                   final pagesPerPixel = (last - 1) / max(box.maxWidth - 36, 1);
                   // Near a chapter start, the thumb sticks to it.
@@ -2283,7 +2282,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                 children: [
                   if (stats != null) ...[
                     const SizedBox(height: 10),
-                    _bookTimeLeft(context, stats),
+                    _bookTimeLeft(context, stats, wordsLeft.book),
                   ],
                   const SizedBox(height: 4),
                   _fontAndSettings(fontSize),
@@ -2295,6 +2294,20 @@ class ReaderViewState extends ConsumerState<ReaderView>
       ),
     );
   }
+
+  /// The chapter marks of the slider, counted again only when the pages
+  /// of the book change, not on every move of the thumb.
+  List<int> _chapterMarks(BookPagination pagination, int last) {
+    final key = (pagination, pagination.pageCount, last);
+    if (_marksOf != key) {
+      _marksOf = key;
+      _marks = chapterPages(_contents, pagination.chapterStarts, last: last);
+    }
+    return _marks;
+  }
+
+  Object? _marksOf;
+  var _marks = const <int>[];
 
   Widget _fontAndSettings(double fontSize) {
     final l10n = AppLocalizations.of(context);
@@ -2326,7 +2339,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// «≈ 3 ч 40 мин до конца книги — Подробнее ›» on a plate of its own; a
   /// tap opens the sheet "This book".
-  Widget _bookTimeLeft(BuildContext context, BookStats stats) {
+  Widget _bookTimeLeft(BuildContext context, BookStats stats, int words) {
     final l10n = AppLocalizations.of(context);
     final colors = context.readingColors;
     final text = Theme.of(context).textTheme;
@@ -2348,7 +2361,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                   Expanded(
                     child: Text(
                       l10n.readerTimeLeftBook(
-                        formatDuration(l10n, stats.left(_wordsLeft().book)),
+                        formatDuration(l10n, stats.left(words)),
                       ),
                       style: text.titleSmall,
                       // The whole of it is in the sheet.

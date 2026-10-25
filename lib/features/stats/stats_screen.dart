@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:book_app/app/pill_tabs.dart';
 import 'package:book_app/app/theme/app_theme.dart';
@@ -307,14 +308,14 @@ class _BarsCardState extends State<_BarsCard> {
     String valueOf(DayBar bar) => bar.future
         ? ''
         : pages
-        ? (bar.totalWords > 0 ? '${pagesOf(bar.totalWords)}' : '')
+        ? (bar.totalWords > 0 ? '${_pagesRead(bar.totalWords)}' : '')
         : bar.totalMs <= 0
         ? ''
         : byMonths
-        ? hours.format(bar.totalMs / 3600000)
-        : '${(bar.totalMs / 60000).round()}';
+        ? hours.format(max(bar.totalMs / 3600000, 0.1))
+        : '${max((bar.totalMs / 60000).round(), 1)}';
     String spoken(DayBar bar) => pages
-        ? l10n.statsPages(pagesOf(bar.totalWords))
+        ? l10n.statsPages(_pagesRead(bar.totalWords))
         : formatDuration(l10n, Duration(milliseconds: bar.totalMs));
     final spokenName = byMonths
         ? DateFormat.LLLL(locale)
@@ -444,7 +445,7 @@ class _CalendarCard extends StatelessWidget {
                 : l10n.statsCalendarDay(
                     date,
                     formatDuration(l10n, Duration(milliseconds: day.totalMs)),
-                    pagesOf(day.totalWords),
+                    _pagesRead(day.totalWords),
                   );
           },
         ),
@@ -501,7 +502,7 @@ class _YearCard extends StatelessWidget {
           ),
         );
     String speed(int? wpm) =>
-        wpm == null ? l10n.statsSpeedUnknown : '$wpm ${l10n.statsWpm}';
+        wpm == null ? l10n.statsSpeedUnknown : l10n.statsWpmValue(wpm);
     final line = Divider(height: 1, color: chart.line.withValues(alpha: 0.5));
     return _Card(
       title: l10n.statsYearTitle(year),
@@ -604,6 +605,9 @@ class _DebugMenu extends ConsumerWidget {
     );
   }
 }
+
+/// Pages of [words]: at least one when anything was read.
+int _pagesRead(int words) => words > 0 ? max(pagesOf(words), 1) : 0;
 
 TextStyle? _secondary(BuildContext context) =>
     Theme.of(context).textTheme.bodySmall
