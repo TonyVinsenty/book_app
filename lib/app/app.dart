@@ -1,4 +1,5 @@
 import 'package:book_app/app/app_locale.dart';
+import 'package:book_app/app/app_shortcuts.dart';
 import 'package:book_app/app/folder_scans.dart';
 import 'package:book_app/app/incoming_books.dart';
 import 'package:book_app/app/launch_splash.dart';
@@ -38,7 +39,10 @@ class _BookAppState extends ConsumerState<BookApp> {
       navigatorKey: _navigatorKey,
       builder: (context, child) {
         final app = FolderScans(
-          child: IncomingBooks(navigatorKey: _navigatorKey, child: child!),
+          child: IncomingBooks(
+            navigatorKey: _navigatorKey,
+            child: AppShortcuts(navigatorKey: _navigatorKey, child: child!),
+          ),
         );
         return widget.splash ? LaunchSplash(child: app) : app;
       },

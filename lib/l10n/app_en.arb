@@ -255,6 +255,7 @@
   "statsNotFaster": "speed reading isn’t faster than regular yet",
   "libraryTabStats": "Stats",
   "bookStatsAll": "Reading stats",
+  "shortcutLibrary": "Library",
   "statsTitle": "Stats",
   "statsPeriodWeek": "Week",
   "statsPeriodMonth": "Month",

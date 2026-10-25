@@ -735,6 +735,8 @@
   "@libraryTabStats": {"description": "Library tab with reading statistics"},
   "bookStatsAll": "Статистика чтения",
   "@bookStatsAll": {"description": "Sheet about the book: opens the statistics screen"},
+  "shortcutLibrary": "Библиотека",
+  "@shortcutLibrary": {"description": "Long-press menu of the app icon: opens the library"},
   "statsTitle": "Статистика",
   "@statsTitle": {"description": "Statistics screen title"},
   "statsPeriodWeek": "Неделя",
