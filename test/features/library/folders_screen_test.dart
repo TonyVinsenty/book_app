@@ -124,9 +124,15 @@ void main() {
   testWidgets('connects a folder and scans; the same one again — a notice', (
     tester,
   ) async {
+    final refsSentToPicker = <List<String>>[];
     await pumpFolders(
       tester,
-      pick: () async => (ref: 'tree:books', name: 'Книги'),
+      pick: (refs) async {
+        refsSentToPicker.add(refs);
+        // iOS resolves a newly made bookmark to the saved bookmark when the
+        // same folder is chosen again.
+        return (ref: refs.isEmpty ? 'tree:books' : refs.first, name: 'Книги');
+      },
     );
     await tester.tap(find.text('Подключить папку'));
     await settle(tester);
@@ -149,6 +155,10 @@ void main() {
     expect(find.text('Эта папка уже подключена'), findsOneWidget);
     expect(await rows(), hasLength(1));
     expect(scans, 1);
+    expect(refsSentToPicker, [
+      [],
+      ['tree:books'],
+    ]);
   });
 
   testWidgets('the checkbox puts the books into a collection by the name', (
@@ -165,7 +175,7 @@ void main() {
         );
     await pumpFolders(
       tester,
-      pick: () async => (ref: 'tree:sf', name: 'Фантастика'),
+      pick: (_) async => (ref: 'tree:sf', name: 'Фантастика'),
     );
     await tester.tap(find.text('Подключить папку'));
     await settle(tester);
@@ -194,7 +204,7 @@ void main() {
   ) async {
     await pumpFolders(
       tester,
-      pick: () async => (ref: 'tree:books', name: 'Книги'),
+      pick: (_) async => (ref: 'tree:books', name: 'Книги'),
     );
     await tester.tap(find.text('Подключить папку'));
     await settle(tester);
@@ -209,7 +219,7 @@ void main() {
     var fail = false;
     await pumpFolders(
       tester,
-      pick: () async {
+      pick: (_) async {
         if (fail) throw PlatformException(code: 'x');
         return null;
       },
@@ -235,7 +245,7 @@ void main() {
       ref: 'tree:old',
       lost: true,
     );
-    await pumpFolders(tester, pick: () async => (ref: 'tree:new', name: 'К'));
+    await pumpFolders(tester, pick: (_) async => (ref: 'tree:new', name: 'К'));
     expect(find.text('Нет доступа — подключите папку заново'), findsOneWidget);
 
     await tester.tap(find.text('Книги'));

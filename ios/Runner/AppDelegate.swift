@@ -41,7 +41,8 @@ import UniformTypeIdentifiers
       switch call.method {
       case "pickBooks": picker.pick(result)
       case "hasInitialFiles": incoming.hasInitialFiles(result)
-      case "pickFolder": folders.pick(result)
+      case "pickFolder":
+        folders.pick(call.arguments as? [String] ?? [], result)
       case "listFolder": folders.list(call.arguments as? String ?? "", result)
       case "copyFolderFiles":
         let args = call.arguments as? [String: Any]
@@ -252,6 +253,7 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
 
   private weak var registrar: FlutterPluginRegistrar?
   private var pending: FlutterResult?
+  private var existingRefs: [String] = []
 
   init(registrar: FlutterPluginRegistrar) {
     self.registrar = registrar
@@ -260,7 +262,7 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
     PickedFolders.io.async { try? FileManager.default.removeItem(at: PickedFolders.root) }
   }
 
-  func pick(_ result: @escaping FlutterResult) {
+  func pick(_ existingRefs: [String], _ result: @escaping FlutterResult) {
     if pending != nil {
       result(FlutterError(code: "busy", message: "A folder picker is already open", details: nil))
       return
@@ -271,6 +273,7 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
     }
     while let presented = host.presentedViewController { host = presented }
     pending = result
+    self.existingRefs = existingRefs
     let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
     picker.delegate = self
     host.present(picker, animated: true)
@@ -279,6 +282,8 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
   func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
     guard let result = pending else { return }
     pending = nil
+    let existingRefs = self.existingRefs
+    self.existingRefs = []
     guard let url = urls.first else {
       result(nil)
       return
@@ -286,7 +291,8 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
     PickedFolders.io.async {
       let scoped = url.startAccessingSecurityScopedResource()
       defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-      let ref = PickedFolders.bookmark(url)
+      let ref = PickedFolders.existingRef(for: url, refs: existingRefs)
+        ?? PickedFolders.bookmark(url)
       let name = (try? url.resourceValues(forKeys: [.localizedNameKey]))?.localizedName
       DispatchQueue.main.async {
         if let ref = ref {
@@ -357,6 +363,16 @@ private final class PickedFolders: NSObject, UIDocumentPickerDelegate {
         resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
     else { return nil }
     return (url, stale)
+  }
+
+  // Bookmark bytes can change when the same folder is picked again. Compare
+  // resolved folder URLs and return the saved bookmark for an existing row.
+  private static func existingRef(for url: URL, refs: [String]) -> String? {
+    let chosenPath = url.standardizedFileURL.resolvingSymlinksInPath().path
+    return refs.first { ref in
+      guard let saved = resolve(ref)?.url else { return false }
+      return saved.standardizedFileURL.resolvingSymlinksInPath().path == chosenPath
+    }
   }
 
   // Runs on io. Book files of the folder, subfolders included (8 levels,

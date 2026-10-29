@@ -72,9 +72,13 @@ class FoldersScreen extends ConsumerWidget {
 
   Future<void> _connect(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-    final chosen = await _pick(context, ref);
-    if (chosen == null || !context.mounted) return;
     final repo = ref.read(folderRepositoryProvider);
+    final existing = await repo.folders();
+    final chosen = await _pick(context, ref, [
+      for (final folder in existing)
+        if (folder.kind == FolderKind.picked && folder.ref != null) folder.ref!,
+    ]);
+    if (chosen == null || !context.mounted) return;
     if ((await repo.folders()).any((f) => f.ref == chosen.ref)) {
       if (context.mounted) showNotice(context, l10n.foldersAlready);
       return;
@@ -147,11 +151,15 @@ class _ConnectDialogState extends State<_ConnectDialog> {
 }
 
 /// The picker's answer; null when cancelled or failed (said in a notice).
-Future<PickedFolder?> _pick(BuildContext context, WidgetRef ref) async {
+Future<PickedFolder?> _pick(
+  BuildContext context,
+  WidgetRef ref, [
+  List<String> existingRefs = const [],
+]) async {
   final pick = ref.read(pickFolderProvider);
   if (pick == null) return null;
   try {
-    return await pick();
+    return await pick(existingRefs);
   } on PlatformException {
     if (context.mounted) {
       showNotice(context, AppLocalizations.of(context).foldersPickFailed);
@@ -288,9 +296,16 @@ class _PickedFolder extends ConsumerWidget {
   /// The access is back with a new handle; the seen files are kept.
   Future<void> _reconnect(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-    final chosen = await _pick(context, ref);
-    if (chosen == null) return;
     final repo = ref.read(folderRepositoryProvider);
+    final existing = await repo.folders();
+    final chosen = await _pick(context, ref, [
+      for (final folder in existing)
+        if (folder.id != this.folder.id &&
+            folder.kind == FolderKind.picked &&
+            folder.ref != null)
+          folder.ref!,
+    ]);
+    if (chosen == null) return;
     if ((await repo.folders()).any(
       (f) => f.id != folder.id && f.ref == chosen.ref,
     )) {

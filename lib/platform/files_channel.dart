@@ -56,7 +56,7 @@ Future<bool> _hasInitialFiles() async {
 typedef PickedFolder = ({String ref, String name});
 
 /// Lets the user choose a folder; null when cancelled.
-typedef PickFolder = Future<PickedFolder?> Function();
+typedef PickFolder = Future<PickedFolder?> Function(List<String> existingRefs);
 
 /// Gives back the access to a disconnected folder.
 typedef ReleaseFolder = Future<void> Function(String ref);
@@ -64,9 +64,10 @@ typedef ReleaseFolder = Future<void> Function(String ref);
 /// Platforms whose native side has the folder methods.
 final _canPickFolders = Platform.isAndroid || Platform.isIOS;
 
-Future<PickedFolder?> _pickFolder() async {
+Future<PickedFolder?> _pickFolder(List<String> existingRefs) async {
   final answer = await _channel.invokeMapMethod<String, String>(
     pickFolderMethod,
+    existingRefs,
   );
   if (answer == null) return null;
   return (ref: answer['ref']!, name: answer['name'] ?? '');
