@@ -156,7 +156,7 @@ void main() {
     expect(await rows(), hasLength(1));
     expect(scans, 1);
     expect(refsSentToPicker, [
-      [],
+      <String>[],
       ['tree:books'],
     ]);
   });

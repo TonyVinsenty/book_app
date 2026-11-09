@@ -74,6 +74,7 @@ class FoldersScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final repo = ref.read(folderRepositoryProvider);
     final existing = await repo.folders();
+    if (!context.mounted) return;
     final chosen = await _pick(context, ref, [
       for (final folder in existing)
         if (folder.kind == FolderKind.picked && folder.ref != null) folder.ref!,
@@ -298,6 +299,7 @@ class _PickedFolder extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final repo = ref.read(folderRepositoryProvider);
     final existing = await repo.folders();
+    if (!context.mounted) return;
     final chosen = await _pick(context, ref, [
       for (final folder in existing)
         if (folder.id != this.folder.id &&
