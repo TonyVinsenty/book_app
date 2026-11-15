@@ -12,6 +12,8 @@
 - Владелец не программист: объяснять просто, по-русски, без техники; спрашивать только о важных решениях или когда нужен тест на устройстве. Код, идентификаторы, коммиты — на английском.
 - Коммиты делать самому (каждый пункт — отдельный коммит, автор `TonyVinsenty <tvinsenty@gmail.com>`); **push — только по просьбе владельца**. Репозиторий: https://github.com/TonyVinsenty/book_app
 - Основной телефон владельца — iPhone (без Mac: облачная сборка + Sideloadly, как в MoneyAPP — `D:/Projects/Claude/MoneyAPP/docs/how-to-iphone.md`); Android — эмулятор `Pixel_8`. Нативный код iOS держать минимальным: проверить его можно только облачной сборкой.
+- Любые визуальные изменения самостоятельно проверять на `Pixel_8`: открыть изменённый экран, посмотреть фактическую компоновку и проверить касания. Макеты и виджет-тесты дополняют эту проверку, но не заменяют её.
+- `flutter run` с отладочной сборкой разрешён для проверки на эмуляторе. Отдельный APK для установки или передачи, в том числе релизный, собирать только по явной просьбе владельца. iOS build в GitHub Actions и IPA также запускать/готовить только по явной просьбе. Push исходников не даёт разрешения на сборку.
 - Тексты интерфейса — только в ARB (пока только русский, всё переводимо); на «вы», гендерно-нейтрально.
 - Проект не зависит от MoneyAPP/SmokingAPP; оттуда берём только опыт (сборка, подпись, CI).
 
@@ -24,9 +26,9 @@
 
 ## Команды
 - Проверка: `flutter analyze` и `flutter test` (быстро, на Windows); формат `.dart` — автоматически хуком после каждой правки (`.claude/hooks/format-dart.sh`).
-- Эмулятор: скилл `/emulator-check` (сборка, установка, скриншот, журнал). Вручную: `flutter build apk --debug --target-platform android-x64`, пакет `com.tonyvinsenty.bookapp`.
+- Эмулятор: скилл `/emulator-check` или `flutter run -d emulator-5554` для визуальной проверки, пакет `com.tonyvinsenty.bookapp`. Отдельный `flutter build apk` — только по явной просьбе владельца.
 - Релизный APK: скилл `/release-apk` (ключ — переменная `BOOKAPP_KEYSTORE_PROPERTIES`, инструкция владельцу — `docs/how-to-android-release.md`; без ключа релиз не собирается).
-- iPhone: GitHub → Actions → «iOS build» → Run workflow (`.github/workflows/ios-build.yml`, без подписи) → `.ipa` в Sideloadly (`docs/how-to-iphone.md`). Запуск workflow и push — только по просьбе владельца.
+- iPhone: GitHub → Actions → «iOS build» → Run workflow (`.github/workflows/ios-build.yml`, без подписи) → `.ipa` в Sideloadly (`docs/how-to-iphone.md`). Владелец запускает сборку сам, если отдельно не попросил сделать это нас. Push — только по просьбе владельца.
 - Тексты: `lib/l10n/app_ru.arb` → `flutter pub get` генерирует `lib/l10n/generated/` (не коммитится).
 - Шрифты: `tool/fonts/build_fonts.py` (статичные, урезанные до нужных алфавитов; Lora и PT Serif — без изменений из-за лицензии). Палитры и тема — `lib/app/theme/`, цвета для экранов — `context.readingColors`.
 - Идентификатор приложения `com.tonyvinsenty.bookapp` (Android и iOS) не менять: иначе обновление станет другим приложением. Видимое имя «Verso» (`AndroidManifest.xml`, `Info.plist`, ARB `appTitle`); в магазинах «Verso» занято — там нужна добавка (например, «Verso Reader»).
