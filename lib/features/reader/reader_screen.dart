@@ -27,6 +27,8 @@ import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/page_strip.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
+import 'package:book_app/features/reader/tts_panel.dart';
+import 'package:book_app/features/reader/tts_playback.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/features/stats/book_stats_sheet.dart';
 import 'package:book_app/features/stats/stats_format.dart';
@@ -50,6 +52,7 @@ import 'package:book_app/stats/stats_buffer.dart';
 import 'package:book_app/stats/stats_calc.dart';
 import 'package:book_app/stats/stats_records.dart';
 import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -180,6 +183,21 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// The settings panel replaces the panels (the status bar stays).
   bool _settingsShown = false;
+
+  final _pageGestureKey = GlobalKey();
+  ({int first, int last})? _selection;
+  int? _selectionAnchor;
+  bool _selectionDragging = false;
+  Timer? _selectionTurnTimer;
+  Offset? _selectionDragPoint;
+  bool? _draggingStartHandle;
+  Offset _handleDragOffset = Offset.zero;
+  late final _tts = ref.read(ttsPlaybackProvider);
+  bool _ttsFollow = false;
+  int? _speechWord;
+  int? _speechEnd;
+  int? _savedSpeechWord;
+  int? _speechRequestedWord;
 
   /// The largest top inset seen at this screen size: the status bar comes
   /// and goes with the panels, and the page must not move (ADR 0003,
@@ -324,9 +342,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
   @override
   void initState() {
     super.initState();
+    if (_tts.status.value.active) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_tts.belongsTo(this)) unawaited(_tts.stop());
+      });
+    }
     final tokens = widget.opened.tokens;
     _word = widget.opened.wordIndex;
     _section = tokens.isEmpty ? 0 : tokens[_word].sectionIndex;
+    _tts.status.addListener(_speechChanged);
+    unawaited(_restoreSpeechPosition());
     unawaited(
       ref.read(bookRepositoryProvider).markOpened(widget.opened.book.id),
     );
@@ -366,6 +391,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   @override
   void dispose() {
+    _tts.status.removeListener(_speechChanged);
+    if (_tts.belongsTo(this)) unawaited(_tts.stop());
+    _selectionTurnTimer?.cancel();
     unawaited(_keepScreenOn(false));
     unawaited(_showStatusBar(true));
     _lit.dispose();
@@ -519,6 +547,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// Turns the strip on or off; the place stays on [_word] (п. 12).
   void _switchStrip(bool on) {
+    _resetSelection();
     _stripOn = on;
     _settleTurn();
     _stripPlaced = false;
@@ -608,7 +637,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final scroll = _stripScroll;
     if (scroll == null || !scroll.hasClients || _strip == null) return;
     final offset = scroll.offset;
-    if (_layOutAround(offset)) _rebuild();
+    if (_layOutAround(offset) || _selection != null) _rebuild();
     _followStrip(offset);
   }
 
@@ -648,6 +677,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   bool _onStripNotification(ScrollNotification note) {
     if (note.depth != 0) return false;
     if (note is UserScrollNotification) _stripScrolled = true;
+    if (note is ScrollStartNotification && note.dragDetails != null) {
+      _ttsFollow = false;
+    }
     if (note is ScrollEndNotification) _onStripEnd();
     return false;
   }
@@ -754,6 +786,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// book is split again only if the pages change (not for a new color).
   void _relayoutIfNeeded(Size pageSize, PageStyle style) {
     if (pageSize == _pageSize && style == _style) return;
+    _resetSelection();
     // The highlighted word, unless a page was turned away from it; the
     // strip follows it while it plays, its row may be on the way in.
     final guide = _guide;
@@ -854,6 +887,133 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   void _previous() => _stripOn ? _scrollBy(-1) : _turnTo(-1);
 
+  Future<void> _restoreSpeechPosition() async {
+    final raw = await ref
+        .read(settingsRepositoryProvider)
+        .get(SettingKeys.ttsPosition(widget.opened.book.id));
+    if (!mounted || raw == null) return;
+    final word = int.tryParse(raw);
+    if (word == null || word < 0 || word >= widget.opened.tokens.length) return;
+    setState(() {
+      _savedSpeechWord = word;
+      _speechWord = word;
+      _speechEnd = _sentenceEnd(word);
+    });
+  }
+
+  int _sentenceEnd(int word) {
+    final tokens = widget.opened.tokens;
+    var end = word + 1;
+    while (end < tokens.length &&
+        !tokens[end - 1].sentenceEnd &&
+        !tokens[end].paragraphStart &&
+        !tokens[end].sectionStart) {
+      end++;
+    }
+    return end;
+  }
+
+  void _speechChanged() {
+    if (!mounted || !_tts.belongsTo(this)) return;
+    final status = _tts.status.value;
+    if (_speechWord == status.word && _speechEnd == status.endWord) return;
+    setState(() {
+      _speechWord = status.word ?? _savedSpeechWord;
+      _speechEnd =
+          status.endWord ??
+          (_savedSpeechWord == null ? null : _sentenceEnd(_savedSpeechWord!));
+      if (status.word != null) _savedSpeechWord = status.word;
+    });
+  }
+
+  void _openTts() {
+    if (_guide != null) _exitGuide();
+    _setPanels(false);
+    final settings = ref.read(settingsRepositoryProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => TtsPanel(
+        settings: settings,
+        playback: _tts,
+        start: _startTts,
+        pageWord: page.firstWord,
+        savedWord: _savedSpeechWord,
+        requestedWord: _speechRequestedWord,
+        wordCount: widget.opened.tokens.length,
+        sentenceStart: widget.opened.tokens.sentenceStartOf,
+        paragraphStart: _paragraphStart,
+        sentenceText: (word) {
+          final tokens = widget.opened.tokens;
+          return tokens.textBetween(word, _sentenceEnd(word) - 1);
+        },
+      ),
+    );
+  }
+
+  Future<void> _speakFrom(int word) async {
+    _speechRequestedWord = word;
+    final settings = ref.read(settingsRepositoryProvider);
+    final address = await settings.get(SettingKeys.ttsServerUrl);
+    final token = await settings.get(SettingKeys.ttsServerToken);
+    if (!mounted) return;
+    final uri = address == null ? null : Uri.tryParse(address);
+    if (uri == null || uri.scheme != 'http' || token == null || token.isEmpty) {
+      _openTts();
+      return;
+    }
+    final speed =
+        int.tryParse(await settings.get(SettingKeys.ttsSpeed) ?? '') ?? 100;
+    if (!mounted) return;
+    unawaited(_startTts(uri, token, word, speed));
+    _openTts();
+  }
+
+  int _paragraphStart(int word) {
+    final tokens = widget.opened.tokens;
+    for (var i = word; i > 0; i--) {
+      if (tokens[i].paragraphStart || tokens[i].sectionStart) return i;
+    }
+    return 0;
+  }
+
+  Future<void> _startTts(Uri server, String token, int word, int speed) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    final tokens = widget.opened.tokens;
+    _ttsFollow = true;
+    return _tts.start(
+      owner: this,
+      server: server,
+      token: token,
+      title: widget.opened.book.title,
+      stopLabel: l10n.ttsStop,
+      firstWord: word,
+      speed: speed,
+      savePosition: (word) => ref
+          .read(settingsRepositoryProvider)
+          .set(SettingKeys.ttsPosition(widget.opened.book.id), '$word'),
+      pageAt: (word) {
+        if (word >= tokens.length) return null;
+        final end = _sentenceEnd(word);
+        return (
+          firstWord: word,
+          endWord: end,
+          text: tokens.textBetween(word, end - 1),
+        );
+      },
+      onPage: (word) {
+        // Starting from an already visible page doesn't reposition the strip.
+        if (!_ttsFollow || _selection != null) return;
+        final section = tokens.sectionOf(word);
+        final nextPage = _layoutOf(section).pageOfWord(word);
+        if (section == _section && nextPage == _page) return;
+        _show(section, nextPage, turned: true, word: word, fromSpeech: true);
+      },
+    );
+  }
+
   /// A side tap in the strip: on or back by a screen less a line, the row
   /// cut at the edge whole on the other side (ADR 0003, addendum 5 п. 8);
   /// 250 ms, at once if the system asks for less motion.
@@ -866,6 +1026,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ? map.forward(position.pixels)
         : map.backward(position.pixels);
     if (to == null) return;
+    _ttsFollow = false;
     _stripScrolled = true;
     _stripScrollTo(scroll, to);
   }
@@ -918,8 +1079,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _turnTo(int dir, {double from = 0}) {
     final to = _pageBeside(dir);
     if (to == null) return _slide(from);
-    _show(to.$1, to.$2, turned: dir > 0);
-    _slide(from + dir * _turnWidth);
+    final selecting = _selection != null;
+    _show(to.$1, to.$2, turned: dir > 0, keepSelection: selecting);
+    if (!selecting) _slide(from + dir * _turnWidth);
   }
 
   void _settleTurn() {
@@ -956,16 +1118,20 @@ class ReaderViewState extends ConsumerState<ReaderView>
     int pageIndex, {
     bool keepReturn = false,
     bool turned = false,
+    bool keepSelection = false,
+    bool fromSpeech = false,
     int? word,
   }) {
     // A jump (contents, slider) does not carry a slide over; a turn starts
     // its own after this.
     _settleTurn();
+    if (!fromSpeech) _ttsFollow = false;
     final shown = _layoutOf(section).pages[pageIndex];
     final guide = _guide;
     if (guide != null && !guide.isPlaying) guide.pageTurned(shown.firstWord);
     _readOn();
     setState(() {
+      if (!keepSelection) _resetSelection();
       _section = section;
       _page = pageIndex;
       _word = word ?? shown.firstWord;
@@ -1151,11 +1317,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     ),
   );
 
-  Future<void> _onLongPress(LongPressStartDetails details) async {
+  void _onLongPress(LongPressStartDetails details) {
+    _settleTurn();
     final hit = _hitAt(details.localPosition);
     // A label is above long presses too (ADR 0008 п. 8).
     if (_guide?.isPlaying != true && !_panelsShown) {
-      if (_noteAt(hit) case final id?) return _openNote(id);
+      if (_noteAt(hit) case final id?) {
+        if (_selection != null) _dismissSelection();
+        return _openNote(id);
+      }
     }
     final word = hit?.chapter.wordAt(hit.page, hit.point);
     if (word == null) return;
@@ -1164,12 +1334,149 @@ class ReaderViewState extends ConsumerState<ReaderView>
       _guideSeek(word);
       return _playGuide();
     }
-    await _speedRead(word);
+    _setPanels(false);
+    _ttsFollow = false;
+    setState(() {
+      final selection = _selection;
+      _selectionAnchor = selection == null
+          ? word
+          : (word - selection.first).abs() <= (word - selection.last).abs()
+          ? selection.last
+          : selection.first;
+      _selection = (
+        first: min(word, _selectionAnchor!),
+        last: max(word, _selectionAnchor!),
+      );
+    });
+  }
+
+  void _dragSelection(Offset point, {bool? startHandle}) {
+    _extendSelection(point, startHandle: startHandle);
+    _selectionDragPoint = point;
+    if (_selectionDirection(point) == 0) {
+      _selectionTurnTimer?.cancel();
+      _selectionTurnTimer = null;
+      return;
+    }
+    _selectionTurnTimer ??= Timer.periodic(const Duration(milliseconds: 440), (
+      _,
+    ) {
+      final point = _selectionDragPoint!;
+      final direction = _selectionDirection(point);
+      if (direction == 0) return;
+      if (_stripOn) {
+        final scroll = _stripScroll;
+        if (scroll == null || !scroll.hasClients) return;
+        final position = scroll.position;
+        final target = (scroll.offset + direction * _strip!.windowHeight * .75)
+            .clamp(position.minScrollExtent, position.maxScrollExtent);
+        if (target == scroll.offset) return;
+        _stripScrolled = true;
+        _ttsFollow = false;
+        scroll.jumpTo(target);
+      } else {
+        final page = _pageBeside(direction);
+        if (page == null) return;
+        _show(page.$1, page.$2, turned: direction > 0, keepSelection: true);
+      }
+      // On the next page, start at the leading edge for a forward turn
+      // and the trailing edge for a backward turn.
+      final inset = min(8.0, _style!.bodyLine / 2);
+      final edge = _stripOn
+          ? Offset(
+              point.dx,
+              direction < 0
+                  ? _strip!.windowTop + inset
+                  : _strip!.windowBottom - inset,
+            )
+          : Offset(
+              direction < 0
+                  ? _margin.left + _pageSize!.width - inset
+                  : _margin.left + inset,
+              point.dy,
+            );
+      _extendSelection(edge, startHandle: startHandle);
+    });
+  }
+
+  int _selectionDirection(Offset point) {
+    const band = 24.0;
+    if (_stripOn) {
+      if (point.dy < _strip!.windowTop + band) return -1;
+      if (point.dy > _strip!.windowBottom - band) return 1;
+    } else {
+      if (point.dx < _margin.left + band) return -1;
+      if (point.dx > _margin.left + _pageSize!.width - band) return 1;
+    }
+    return 0;
+  }
+
+  void _extendSelection(Offset position, {bool? startHandle}) {
+    final selection = _selection;
+    if (selection == null) return;
+    final hit = _hitAt(position);
+    final word = hit?.chapter.wordAt(hit.page, hit.point, nearestOnLine: true);
+    if (word == null) return;
+    final range = switch (startHandle) {
+      true => (first: min(word, selection.last), last: selection.last),
+      false => (first: selection.first, last: max(word, selection.first)),
+      null => (
+        first: min(_selectionAnchor!, word),
+        last: max(_selectionAnchor!, word),
+      ),
+    };
+    if (range == selection) return;
+    setState(() {
+      _selection = range;
+      _selectionDragging = true;
+    });
+  }
+
+  void _finishSelectionDrag() {
+    _selectionTurnTimer?.cancel();
+    _selectionTurnTimer = null;
+    _selectionDragPoint = null;
+    _draggingStartHandle = null;
+    _selectionAnchor = null;
+    if (_selectionDragging) setState(() => _selectionDragging = false);
+  }
+
+  void _resetSelection() {
+    _selectionTurnTimer?.cancel();
+    _selectionTurnTimer = null;
+    _selectionDragPoint = null;
+    _draggingStartHandle = null;
+    _selection = null;
+    _selectionAnchor = null;
+    _selectionDragging = false;
+  }
+
+  void _dismissSelection() => setState(_resetSelection);
+
+  Future<void> _copySelection(int first, int last) async {
+    final selection = _selection;
+    final text = widget.opened.tokens.textBetween(first, last);
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+    } on PlatformException {
+      if (mounted) {
+        showNotice(context, AppLocalizations.of(context).readerCopyFailed);
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (_selection == selection) _dismissSelection();
+    showNotice(
+      context,
+      AppLocalizations.of(context).readerTextCopied,
+      duration: const Duration(seconds: 2),
+    );
   }
 
   /// Speed reading from [word] in [picked] (the saved mode by default); back
   /// on the page of the last word shown.
   Future<void> _speedRead(int word, {SpeedMode? picked}) async {
+    if (_tts.belongsTo(this)) unawaited(_tts.stop());
     _closePageAt(word);
     _setPanels(false);
     _readOn();
@@ -1549,6 +1856,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   void _onTapUp(TapUpDetails details, double width) {
+    if (_selection != null) return _dismissSelection();
     // A tap lands on the page as it will rest, so a slide ends first.
     _settleTurn();
     final x = details.localPosition.dx;
@@ -1667,7 +1975,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// The page follows the finger (owner, 14.3), unless the highlight plays
   /// (its swipes go back by a sentence) or the system asks for less motion.
   void _onDragStart(DragStartDetails details) {
-    if ((_guide?.isPlaying ?? false) ||
+    if (_selection != null ||
+        (_guide?.isPlaying ?? false) ||
         MediaQuery.disableAnimationsOf(context)) {
       return;
     }
@@ -1750,12 +2059,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
     _syncPageMeter();
     return PopScope(
-      // Back closes the panels first.
-      canPop: !_panelsShown && _guide == null,
+      canPop: _selection == null && !_panelsShown && _guide == null,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         // Back closes the panels and the settings, then the highlight.
-        if (_panelsShown) {
+        if (_selection != null) {
+          _dismissSelection();
+        } else if (_panelsShown) {
           _setPanels(false);
         } else if (_settingsShown) {
           setState(() => _settingsShown = false);
@@ -1807,6 +2117,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                 Padding(
                   padding: insets,
                   child: GestureDetector(
+                    key: _pageGestureKey,
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (d) => _onTapUp(d, area.width),
                     // In the strip a swipe sideways does not turn (п. 8).
@@ -1823,6 +2134,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
                         ? (d) => _onGuideSwipe(d, vertical: true)
                         : null,
                     onLongPressStart: _onLongPress,
+                    onLongPressMoveUpdate: (d) {
+                      if (_selectionAnchor != null) {
+                        _dragSelection(d.localPosition);
+                      }
+                    },
+                    onLongPressEnd: (_) => _finishSelectionDrag(),
+                    onLongPressCancel: _finishSelectionDrag,
                     child: _stripOn
                         ? Column(
                             children: [
@@ -1843,8 +2161,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
                                       key: ObjectKey(_stripScroll),
                                       map: _strip!,
                                       controller: _stripScroll!,
-                                      // While the highlight plays, swipes
-                                      // change its speed (п. 10).
+                                      // A selection handle can scroll at the
+                                      // edge. Other touches scroll normally.
                                       physics: guide != null && guide.isPlaying
                                           ? const NeverScrollableScrollPhysics()
                                           : null,
@@ -1948,6 +2266,27 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     ),
                   ),
                 ],
+                if (_selection case final selection?)
+                  ..._selectionControls(
+                    selection.first,
+                    selection.last,
+                    insets,
+                    area.height - readerFooterHeight,
+                    colors,
+                    l10n,
+                  ),
+                Positioned(
+                  right: insets.right + 8,
+                  top: _panelsShown ? insets.top + 60 : null,
+                  bottom: _panelsShown
+                      ? null
+                      : insets.bottom + readerFooterHeight,
+                  child: TtsMiniPlayer(
+                    playback: _tts,
+                    open: _openTts,
+                    owner: this,
+                  ),
+                ),
               ],
             );
           },
@@ -1955,6 +2294,156 @@ class ReaderViewState extends ConsumerState<ReaderView>
       ),
     );
   }
+
+  ({Offset point, double height})? _selectionEdge(
+    int word, {
+    required bool start,
+  }) {
+    if (!_stripOn) {
+      final edge = layout.wordEdge(_page, word, start: start);
+      if (edge == null) return null;
+      return (point: edge.point + _margin.topLeft, height: edge.height);
+    }
+    final section = widget.opened.tokens.sectionOf(word);
+    final map = _strip!;
+    final chapter = map.pagesOf(section) as ChapterLayout?;
+    final scroll = _stripScroll!;
+    if (chapter == null || !scroll.hasClients) return null;
+    final page = chapter.pageOfWord(word);
+    // A hyphenated word can start at the bottom of the preceding page.
+    final previous = start && page > 0
+        ? chapter.wordEdge(page - 1, word, start: true)
+        : null;
+    final edge = previous ?? chapter.wordEdge(page, word, start: start);
+    if (edge == null) return null;
+    final top = map.pageTop(section, previous == null ? page : page - 1);
+    return (
+      point: edge.point + Offset(_margin.left, top - scroll.offset),
+      height: edge.height,
+    );
+  }
+
+  List<Widget> _selectionControls(
+    int first,
+    int last,
+    EdgeInsets insets,
+    double bottom,
+    ReadingColors colors,
+    AppLocalizations l10n,
+  ) {
+    final from = _selectionEdge(first, start: true);
+    final to = _selectionEdge(last, start: false);
+    final origin = insets.topLeft;
+    bool visible(Offset point) => point.dy > 0 && point.dy <= bottom;
+    final fromVisible = from != null && visible(from.point);
+    final toVisible = to != null && visible(to.point);
+    final anchor = fromVisible
+        ? from
+        : toVisible
+        ? to
+        : (point: Offset(_turnWidth / 2, bottom - 8), height: 0.0);
+    final drag = _selectionDragPoint ?? anchor.point;
+    return [
+      if (fromVisible || _draggingStartHandle == true)
+        _selectionHandle(
+          fromVisible ? from.point : drag,
+          origin,
+          from?.height ?? 0,
+          colors,
+          start: true,
+        ),
+      if (toVisible || _draggingStartHandle == false)
+        _selectionHandle(
+          toVisible ? to.point : drag,
+          origin,
+          to?.height ?? 0,
+          colors,
+          start: false,
+        ),
+      if (!_selectionDragging)
+        Positioned.fill(
+          child: AdaptiveTextSelectionToolbar.buttonItems(
+            anchors: TextSelectionToolbarAnchors(
+              primaryAnchor: anchor.point + origin - Offset(0, anchor.height),
+              secondaryAnchor: anchor.point + origin + const Offset(0, 14),
+            ),
+            buttonItems: [
+              ContextMenuButtonItem(
+                type: ContextMenuButtonType.copy,
+                onPressed: () => unawaited(_copySelection(first, last)),
+              ),
+              ContextMenuButtonItem(
+                label: l10n.readerSpeedRead,
+                onPressed: () {
+                  _dismissSelection();
+                  unawaited(_speedRead(first));
+                },
+              ),
+              ContextMenuButtonItem(
+                label: l10n.ttsMenu,
+                onPressed: () {
+                  _dismissSelection();
+                  unawaited(_speakFrom(first));
+                },
+              ),
+            ],
+          ),
+        ),
+    ];
+  }
+
+  Widget _selectionHandle(
+    Offset point,
+    Offset origin,
+    double lineHeight,
+    ReadingColors colors, {
+    required bool start,
+  }) => Positioned(
+    key: ValueKey(start),
+    left: point.dx + origin.dx - 17,
+    top: point.dy + origin.dy - 4,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      dragStartBehavior: DragStartBehavior.down,
+      onPanDown: (details) {
+        final box =
+            _pageGestureKey.currentContext!.findRenderObject() as RenderBox;
+        final local = box.globalToLocal(details.globalPosition);
+        _handleDragOffset = point - Offset(0, lineHeight / 2) - local;
+      },
+      onPanStart: (_) => setState(() {
+        _draggingStartHandle = start;
+        _selectionDragging = true;
+      }),
+      onPanUpdate: (details) {
+        final box =
+            _pageGestureKey.currentContext!.findRenderObject() as RenderBox;
+        _dragSelection(
+          box.globalToLocal(details.globalPosition) + _handleDragOffset,
+          startHandle: start,
+        );
+      },
+      onPanEnd: (_) => _finishSelectionDrag(),
+      onPanCancel: _finishSelectionDrag,
+      child: SizedBox(
+        width: 34,
+        height: 40,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.accent,
+                shape: BoxShape.circle,
+              ),
+              child: const SizedBox.square(dimension: 12),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   /// Page [index] of [chapter] in the strip: only as tall as its text,
   /// painted as on a turned page; the next page goes on right under it.
@@ -1994,6 +2483,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     required bool dark,
   }) {
     final lit = _litWord;
+    final selection = _selection;
+    final speech = _speechWord;
+    final speechEnd = _speechEnd;
     return Stack(
       children: [
         if (_guide != null)
@@ -2017,6 +2509,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
                     ]),
               litColor: colors.highlight,
               litAnimation: _lit,
+              selected: selection != null
+                  ? chapter.selectionBoxes(
+                      index,
+                      selection.first,
+                      selection.last,
+                    )
+                  : speech != null && speechEnd != null
+                  ? chapter.selectionBoxes(index, speech, speechEnd - 1)
+                  : const [],
+              selectionColor: colors.accent.withValues(alpha: 0.28),
             ),
           ),
         ),
@@ -2054,6 +2556,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// the right.
   Widget _topPanel(BuildContext context, EdgeInsets insets) {
     final l10n = AppLocalizations.of(context);
+    final buttonStyle = TextButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+    );
     return Material(
       color: context.readingColors.surface,
       elevation: 2,
@@ -2068,19 +2573,34 @@ class ReaderViewState extends ConsumerState<ReaderView>
           height: 56,
           child: Row(
             children: [
-              TextButton.icon(
-                icon: const Icon(Icons.arrow_back),
-                label: Text(l10n.readerLibrary),
-                // Not `maybePop`: the open panels hold back the pop.
-                onPressed: () => Navigator.of(context).pop(),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    style: buttonStyle,
+                    icon: const Icon(Icons.arrow_back),
+                    label: Text(
+                      l10n.readerLibrary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Not `maybePop`: the open panels hold back the pop.
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
               ),
-              const Spacer(),
               IconButton(
                 icon: const Icon(Icons.toc),
                 tooltip: l10n.readerContents,
                 onPressed: _openContents,
               ),
+              IconButton(
+                icon: const Icon(Icons.headphones),
+                tooltip: l10n.ttsTitle,
+                onPressed: _openTts,
+              ),
               TextButton.icon(
+                style: buttonStyle,
                 icon: const Icon(Icons.speed),
                 label: Text(l10n.readerSpeedRead),
                 // In the strip, from the top row.
@@ -2411,6 +2931,8 @@ class _PagePainter extends CustomPainter {
     required this.lit,
     required this.litColor,
     required this.litAnimation,
+    this.selected = const [],
+    this.selectionColor = const Color(0x00000000),
   }) : super(repaint: litAnimation);
 
   final ChapterLayout chapter;
@@ -2419,6 +2941,8 @@ class _PagePainter extends CustomPainter {
   /// Boxes of the lit words on this page.
   final List<Rect> lit;
   final Color litColor;
+  final List<Rect> selected;
+  final Color selectionColor;
 
   /// Full for the first 70%, then fades out.
   final AnimationController litAnimation;
@@ -2441,6 +2965,12 @@ class _PagePainter extends CustomPainter {
         );
       }
     }
+    if (selected.isNotEmpty) {
+      final paint = Paint()..color = selectionColor;
+      for (final box in selected) {
+        canvas.drawRect(box, paint);
+      }
+    }
     chapter.paintPage(canvas, page);
   }
 
@@ -2449,5 +2979,7 @@ class _PagePainter extends CustomPainter {
       old.chapter != chapter ||
       old.page != page ||
       !listEquals(old.lit, lit) ||
+      !listEquals(old.selected, selected) ||
+      old.selectionColor != selectionColor ||
       old.litColor != litColor;
 }

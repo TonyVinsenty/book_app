@@ -506,6 +506,8 @@
     "description": "Paused speed reading: go back to the start of the sentence"
   },
   "readerSpeedRead": "Скорочтение",
+  "readerTextCopied": "Текст скопирован",
+  "readerCopyFailed": "Не удалось скопировать текст",
   "@readerSpeedRead": {
     "description": "Reader top bar button: speed reading from the first word of the page"
   },
@@ -818,5 +820,25 @@
   "debugStatsFill": "Заполнить тестовыми данными",
   "@debugStatsFill": {"description": "Debug build only: replace statistics with made-up ones"},
   "debugStatsClear": "Очистить статистику",
-  "@debugStatsClear": {"description": "Debug build only: forget all statistics"}
+  "@debugStatsClear": {"description": "Debug build only: forget all statistics"},
+  "ttsTitle": "Озвучка Silero",
+  "ttsAddress": "Адрес ПК в Wi-Fi",
+  "ttsToken": "Ключ доступа",
+  "ttsPageHint": "Озвучка продолжится после закрытия панели. Перелистывание не меняет место озвучки.",
+  "ttsInvalidConnection": "Укажите адрес http:// и ключ доступа.",
+  "ttsPlay": "Слушать",
+  "ttsPause": "Пауза",
+  "ttsStop": "Остановить",
+  "ttsPlayFromPage": "Слушать с этой страницы",
+  "ttsFailed": "Не удалось загрузить озвучку.",
+  "ttsMenu": "Озвучка",
+  "ttsSavedPlace": "Вы остановились на предложении: {text}",
+  "@ttsSavedPlace": {"placeholders": {"text": {"type": "String"}}},
+  "ttsBackSentence": "Предыдущее предложение",
+  "ttsBackParagraph": "Предыдущий абзац",
+  "ttsSlower": "Медленнее",
+  "ttsFaster": "Быстрее",
+  "ttsConnection": "Настроить подключение",
+  "ttsPagesPlayed": "Страниц озвучено: {count}",
+  "@ttsPagesPlayed": {"placeholders": {"count": {"type": "int"}}}
 }

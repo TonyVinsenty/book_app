@@ -2,13 +2,15 @@ name: book_app
 description: "Book reader with seamless switch to speed reading (RSVP)."
 publish_to: 'none'
 
-version: 0.1.0+20
+version: 0.1.0+23
 
 environment:
   sdk: ^3.13.4
 
 dependencies:
   archive: ^4.5.2
+  audio_service: ^0.18.19
+  audio_session: ^0.2.4
   crypto: ^3.0.7
   drift: ^2.35.2
   flutter:
@@ -17,6 +19,7 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^3.4.3
   intl: ^0.20.3
+  just_audio: ^0.10.6
   path_provider: ^2.1.6
   quick_actions: ^1.1.1
   sqlite3: ^3.7.1

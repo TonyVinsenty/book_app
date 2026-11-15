@@ -29,6 +29,27 @@ List<String> flagged(String paragraph, int flag) {
 }
 
 void main() {
+  test('copied word range keeps source spacing and excludes note labels', () {
+    final tokens = tokenize(
+      const BookContent(
+        meta: BookMeta(title: 't', sourceFormat: SourceFormat.fb2),
+        sections: [
+          Section(
+            blocks: [
+              ParagraphBlock(
+                text: 'Начало: слово1,  затем\nстрока.',
+                spans: [Span(13, 14, SpanKind.noteRef, noteId: 'n1')],
+              ),
+              ImageBlock(assetId: 'image'),
+            ],
+          ),
+          Section(blocks: [ParagraphBlock(text: 'Новый абзац. Конец.')]),
+        ],
+      ),
+    );
+    expect(tokens.textBetween(1, 5), 'слово,  затем\nстрока.\nНовый абзац.');
+  });
+
   group('splitting', () {
     const cases = <String, List<String>>{
       'Привет, мир!': ['Привет,', 'мир!'],

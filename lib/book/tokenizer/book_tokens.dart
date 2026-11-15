@@ -67,25 +67,26 @@ final class BookTokens {
   }
 
   /// The word as shown: its chars in the block without note labels.
-  String textOf(int i) {
-    final block = _block(i);
-    final s = _starts[i];
-    final e = _ends[i];
-    // On hot paths (phrases, RSVP): nothing is allocated without labels.
-    StringBuffer? out;
-    var from = s;
-    for (final span in block.spans) {
-      if (span.kind != SpanKind.noteRef ||
-          span.end <= from ||
-          span.start >= e) {
-        continue;
+  String textOf(int i) => _block(i).textWithoutNotes(_starts[i], _ends[i]);
+
+  /// The source between two words, both included, with paragraph breaks.
+  String textBetween(int first, int last) {
+    final out = StringBuffer();
+    for (var s = _sections[first]; s <= _sections[last]; s++) {
+      final blocks = content.sections[s].blocks;
+      final from = s == _sections[first] ? _blocks[first] : 0;
+      final to = s == _sections[last] ? _blocks[last] : blocks.length - 1;
+      for (var b = from; b <= to; b++) {
+        if (blocks[b] case final TextBlock block) {
+          final start = s == _sections[first] && b == from ? _starts[first] : 0;
+          final end = s == _sections[last] && b == to
+              ? _ends[last]
+              : block.text.length;
+          if (out.isNotEmpty) out.writeln();
+          out.write(block.textWithoutNotes(start, end));
+        }
       }
-      out ??= StringBuffer();
-      if (span.start > from) out.write(block.text.substring(from, span.start));
-      from = span.end < e ? span.end : e;
     }
-    if (out == null) return block.text.substring(s, e);
-    out.write(block.text.substring(from, e));
     return out.toString();
   }
 

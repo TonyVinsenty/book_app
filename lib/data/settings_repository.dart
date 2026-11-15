@@ -60,6 +60,12 @@ final class SettingsRepository {
 
 /// Keys of the settings store.
 abstract final class SettingKeys {
+  /// Local Wi-Fi speech server used by the reader.
+  static const ttsServerUrl = 'tts.serverUrl';
+  static const ttsServerToken = 'tts.serverToken';
+  static const ttsSpeed = 'tts.speed';
+  static String ttsPosition(int bookId) => 'tts.position.$bookId';
+
   /// Speed reading pace of the word mode, words per minute.
   static const speedWpm = 'speed.wpm';
 

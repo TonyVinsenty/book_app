@@ -186,6 +186,25 @@ sealed class TextBlock extends Block {
   final String text;
   final List<Span> spans;
 
+  /// Source text in [start, end) without inline footnote labels.
+  String textWithoutNotes(int start, int end) {
+    StringBuffer? out;
+    var from = start;
+    for (final span in spans) {
+      if (span.kind != SpanKind.noteRef ||
+          span.end <= from ||
+          span.start >= end) {
+        continue;
+      }
+      out ??= StringBuffer();
+      if (span.start > from) out.write(text.substring(from, span.start));
+      from = span.end < end ? span.end : end;
+    }
+    if (out == null) return text.substring(start, end);
+    out.write(text.substring(from, end));
+    return out.toString();
+  }
+
   List<List<Object?>>? get _spansJson =>
       spans.isEmpty ? null : [for (final s in spans) s.toJson()];
 }

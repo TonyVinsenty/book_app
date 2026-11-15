@@ -15,7 +15,7 @@ import android.provider.DocumentsContract.Document
 import android.provider.OpenableColumns
 import android.view.WindowManager
 import androidx.core.content.FileProvider
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
@@ -23,7 +23,7 @@ import java.io.FileNotFoundException
 import java.util.concurrent.Executors
 
 // Channel and method names are checked against Dart by test/guards.
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
     private val filesChannel = "com.tonyvinsenty.bookapp/files"
     private val screenChannel = "com.tonyvinsenty.bookapp/screen"
     private val shareChannel = "com.tonyvinsenty.bookapp/share"

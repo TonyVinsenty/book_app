@@ -4,6 +4,7 @@ import 'package:book_app/app/app.dart';
 import 'package:book_app/app/font_licenses.dart';
 import 'package:book_app/data/providers.dart';
 import 'package:book_app/data/reading_settings.dart';
+import 'package:book_app/features/reader/tts_playback.dart';
 import 'package:book_app/layout/hyphenation.dart';
 import 'package:book_app/platform/files_channel.dart';
 import 'package:flutter/material.dart';
@@ -12,12 +13,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
-  final (storage, hyphenation) = await (
+  final (storage, hyphenation, tts) = await (
     openStorageOverrides(),
     Hyphenation.load(),
+    TtsPlayback.initialize(),
   ).wait;
   final container = ProviderContainer(
-    overrides: [...storage, hyphenationProvider.overrideWithValue(hyphenation)],
+    overrides: [
+      ...storage,
+      hyphenationProvider.overrideWithValue(hyphenation),
+      ttsPlaybackProvider.overrideWithValue(tts),
+    ],
   );
   // Listen before asking, so files that come meanwhile wait in the stream.
   container.read(incomingFilesProvider);

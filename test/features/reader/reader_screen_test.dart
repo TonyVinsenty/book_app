@@ -29,6 +29,7 @@ import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/reader_screen.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
+import 'package:book_app/features/reader/tts_panel.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
 import 'package:book_app/features/speed/speed_controls.dart';
 import 'package:book_app/features/stats/book_stats_sheet.dart';
@@ -44,7 +45,9 @@ import 'package:book_app/speed/timing.dart';
 import 'package:book_app/stats/stats_records.dart';
 import 'package:drift/drift.dart' show DatabaseConnection, driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -740,8 +743,7 @@ void main() {
     await closeApp(tester);
   });
 
-  /// Long-presses word [word] of the current page.
-  Future<void> longPressWord(WidgetTester tester, int word) async {
+  Offset wordPosition(WidgetTester tester, int word) {
     final state = reader(tester);
     final box = state.layout
         .wordBoxes(state.layout.pageOfWord(word), word)
@@ -749,9 +751,191 @@ void main() {
     final page = find.byWidgetPredicate(
       (w) => w is CustomPaint && w.size == state.layout.pageSize,
     );
-    await tester.longPressAt(tester.getTopLeft(page) + box.center);
+    return tester.getTopLeft(page) + box.center;
+  }
+
+  Future<void> startSpeedAt(WidgetTester tester, Offset position) async {
+    await tester.longPressAt(position);
+    await tester.pumpAndSettle();
+    final toolbar = find.byType(AdaptiveTextSelectionToolbar);
+    expect(toolbar, findsOneWidget);
+    await tester.tap(
+      find.descendant(of: toolbar, matching: find.text('Скорочтение')),
+    );
     await settle(tester);
     await tester.pumpAndSettle();
+  }
+
+  Future<void> startSpeedFromWord(WidgetTester tester, int word) =>
+      startSpeedAt(tester, wordPosition(tester, word));
+
+  RsvpScreenState rsvp(WidgetTester tester) =>
+      tester.state<RsvpScreenState>(find.byType(RsvpScreen));
+
+  testWidgets('hold and drag backwards to copy a range of book text', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final state = reader(tester);
+    final first = state.page.firstWord + 2;
+    final last = first + 5;
+    String? copied;
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String;
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    final gesture = await tester.startGesture(wordPosition(tester, last));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 1));
+    await gesture.moveTo(wordPosition(tester, first));
+    await tester.pump();
+    expect(find.text('Копировать'), findsNothing);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(RsvpScreen), findsNothing);
+    await tester.tap(find.text('Копировать'));
+    await tester.pumpAndSettle();
+
+    final tokens = state.widget.opened.tokens;
+    expect(
+      copied,
+      [for (var i = first; i <= last; i++) tokens.textOf(i)].join(' '),
+    );
+    expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
+    expect(find.text('Текст скопирован'), findsOneWidget);
+    expect(reader(tester).placeWord, state.page.firstWord);
+    await closeApp(tester);
+  });
+
+  testWidgets('a selection handle extends the range before speed reading', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final state = reader(tester);
+    final first = state.page.firstWord + 2;
+    final last = first + 4;
+    await tester.longPressAt(wordPosition(tester, last));
+    await tester.pumpAndSettle();
+    expect(find.byType(RsvpScreen), findsNothing);
+
+    final handle = find.byWidgetPredicate(
+      (w) => w is Positioned && w.key == const ValueKey(true),
+    );
+    final page = state.layout.pageOfWord(last);
+    final edge = state.layout.wordEdge(page, last, start: true)!;
+    final box = state.layout.wordBoxes(page, last).first;
+    final start =
+        wordPosition(tester, last) + Offset(edge.point.dx - box.center.dx, 0);
+    final drag = await tester.startGesture(tester.getCenter(handle));
+    await drag.moveBy(wordPosition(tester, first) - start);
+    await drag.up();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Скорочтение'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(rsvp(tester).widget.startWord, first);
+    await closeApp(tester);
+  });
+
+  testWidgets('a selected word opens speech controls at that word', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openBook(tester);
+    final word = reader(tester).page.firstWord + 3;
+    await tester.longPressAt(wordPosition(tester, word));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Озвучка'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TtsPanel), findsOneWidget);
+    expect(tester.widget<TtsPanel>(find.byType(TtsPanel)).requestedWord, word);
+    await closeApp(tester);
+  });
+
+  for (final vertical in [false, true]) {
+    testWidgets('copy a selection across pages (vertical: $vertical)', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await openBook(tester);
+      if (vertical) {
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(ReaderView)),
+        );
+        final settings = container.read(readingSettingsProvider);
+        container
+            .read(readingSettingsProvider.notifier)
+            .set(settings.copyWith(verticalScroll: true));
+        await tester.pumpAndSettle();
+      }
+      final state = reader(tester);
+      final tokens = state.widget.opened.tokens;
+      final firstPage = state.page;
+      final first = firstPage.firstWord + 2;
+      Offset positionOf(int word) {
+        if (!vertical) return wordPosition(tester, word);
+        final chapter = state.layout;
+        final index = chapter.pageOfWord(word);
+        final tile = find
+            .byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics &&
+                  widget.properties.label == chapter.pageText(index),
+            )
+            .first;
+        final box = chapter.wordBoxes(index, word).first;
+        return tester.getTopLeft(tile) + box.center;
+      }
+
+      String? copied;
+      final messenger = tester.binding.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String;
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+
+      await tester.longPressAt(positionOf(first));
+      await tester.pumpAndSettle();
+      final screen = tester.getRect(find.byType(ReaderView));
+      if (vertical) {
+        final scrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable),
+        );
+        scrollable.position.jumpTo(state.layout.pageExtent(0) + 10);
+      } else {
+        await tester.flingFrom(
+          Offset(screen.right - 40, screen.bottom - 60),
+          Offset(-screen.width * .7, 0),
+          800,
+        );
+      }
+      await tester.pumpAndSettle();
+      expect(state.page.firstWord, greaterThan(first));
+      expect(find.text('Копировать'), findsOneWidget);
+
+      final last = state.page.firstWord + (vertical ? 28 : 4);
+      await tester.longPressAt(positionOf(last));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey(false)), findsOneWidget);
+      await tester.tap(find.text('Копировать'));
+      await tester.pumpAndSettle();
+      expect(copied, tokens.textBetween(first, last));
+      await closeApp(tester);
+    });
   }
 
   /// A tap in the middle of speed reading: start or pause.
@@ -760,10 +944,7 @@ void main() {
     await tester.pump();
   }
 
-  RsvpScreenState rsvp(WidgetTester tester) =>
-      tester.state<RsvpScreenState>(find.byType(RsvpScreen));
-
-  testWidgets('a long press reads from the word; leaving lights the last one', (
+  testWidgets('speed starts at the selected word and lights the last one', (
     tester,
   ) async {
     // The status bar is hidden: the page keeps its room, speed reading
@@ -776,7 +957,7 @@ void main() {
     await tapAt(tester, 0.95);
     final start = reader(tester).page.firstWord + 5;
 
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final engine = rsvp(tester).engine;
     // Opens paused on the pressed word, with the controls.
     expect(engine.isPlaying, isFalse);
@@ -862,7 +1043,7 @@ void main() {
 
     // The speed set before is kept; system back while playing also returns
     // to the page of the word.
-    await longPressWord(tester, reader(tester).page.firstWord);
+    await startSpeedFromWord(tester, reader(tester).page.firstWord);
     expect(find.text('325 сл/мин'), findsOneWidget);
     expect((rsvp(tester).engine.timing as SmartPace).wordsPerMinute, 325);
     await tapRsvp(tester);
@@ -939,7 +1120,7 @@ void main() {
     await tapAt(tester, 0.95);
     final start = reader(tester).page.firstWord + 5;
 
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final screen = rsvp(tester);
     final engine = screen.engine;
     final tokens = screen.widget.opened.tokens;
@@ -1027,7 +1208,7 @@ void main() {
     await tapAt(tester, 0.95);
     final start = reader(tester).page.firstWord + 7;
 
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final engine = rsvp(tester).engine;
     expect(engine.steps, isA<WordSteps>());
     expect(find.text('300 сл/мин'), findsOneWidget);
@@ -1093,7 +1274,7 @@ void main() {
     );
     await openBook(tester);
     await tapAt(tester, 0.95);
-    await longPressWord(tester, reader(tester).page.firstWord + 5);
+    await startSpeedFromWord(tester, reader(tester).page.firstWord + 5);
 
     expect(rsvp(tester).widget.mode, SpeedMode.word);
     expect(rsvp(tester).engine.steps, isA<WordSteps>());
@@ -1174,7 +1355,7 @@ void main() {
     final start = reader(tester).page.firstWord + 3;
 
     // A long press starts the saved mode: on the page, on a pause.
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final guide = reader(tester).guide!;
     expect(find.byType(RsvpScreen), findsNothing);
     expect(find.byType(GuideLayer), findsOneWidget);
@@ -1262,7 +1443,7 @@ void main() {
     final tokens = reader(tester).widget.opened.tokens;
     await tapAt(tester, 0.95);
     final start = reader(tester).page.firstWord + 7;
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final guide = reader(tester).guide!;
     expect(find.byType(GuidePanel), findsOneWidget);
     expect(find.text('250 сл/мин'), findsOneWidget);
@@ -1514,7 +1695,7 @@ void main() {
     expect(reader(tester).layout.sectionIndex, 1);
     final start = reader(tester).page.firstWord + 6;
 
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     await tapRsvp(tester);
     await tester.pump(const Duration(seconds: 2));
     await tapRsvp(tester);
@@ -1881,7 +2062,7 @@ void main() {
       () => SettingsRepository(db).set(SettingKeys.speedMode, 'guide'),
     );
     await openBook(tester);
-    await longPressWord(tester, reader(tester).page.firstWord + 5);
+    await startSpeedFromWord(tester, reader(tester).page.firstWord + 5);
     expect(rsvp(tester).widget.mode, SpeedMode.word);
     expect(find.byType(SegmentedButton<SpeedMode>), findsNothing);
     expect(find.text('Подсветка'), findsNothing);
@@ -1964,7 +2145,7 @@ void main() {
     final start = page.firstWord + 30;
     expect(page.endWord, greaterThan(start + 20));
     wait(10);
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     // The time in speed reading is not the page's.
     wait(100);
     await tester.tap(find.byTooltip('Выйти из скорочтения'));
@@ -2015,7 +2196,7 @@ void main() {
     await openBook(tester);
     await tapAt(tester, 0.95);
     final start = reader(tester).page.firstWord + 5;
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final engine = rsvp(tester).engine;
     wait(30); // paused at the start: not counted
 
@@ -2058,7 +2239,7 @@ void main() {
     await tapAt(tester, 0.95);
     final start = reader(tester).page.firstWord + 5;
     wait(10);
-    await longPressWord(tester, start);
+    await startSpeedFromWord(tester, start);
     final guide = reader(tester).guide!;
     wait(30); // on a pause: neither page nor highlight
 
@@ -2325,9 +2506,7 @@ void main() {
         (w) => w is CustomPaint && w.size == chapter.pageSize,
       ),
     );
-    await tester.longPressAt(tester.getTopLeft(tile) + box.center);
-    await settle(tester);
-    await tester.pumpAndSettle();
+    await startSpeedAt(tester, tester.getTopLeft(tile) + box.center);
     expect(rsvp(tester).widget.startWord, word);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
@@ -2735,9 +2914,7 @@ void main() {
     final held = chapter.wordBoxes(page, lower).first;
     final at = tester.getTopLeft(stripTile(tester, page)) + held.center;
     expect(at.dy, lessThan(tester.getSize(find.byType(ReaderView)).height));
-    await tester.longPressAt(at);
-    await settle(tester);
-    await tester.pumpAndSettle();
+    await startSpeedAt(tester, at);
     expect(rsvp(tester).widget.startWord, lower);
     await tapRsvp(tester);
     await tester.pump(const Duration(seconds: 3));
@@ -2866,11 +3043,10 @@ void main() {
     expect(chapter.pages.indexOf(reader(tester).page), 0);
     final word = chapter.pages[1].firstWord + 3;
     final box = chapter.wordBoxes(1, word).first;
-    await tester.longPressAt(
+    await startSpeedAt(
+      tester,
       tester.getTopLeft(stripTile(tester, 1)) + box.center,
     );
-    await settle(tester);
-    await tester.pumpAndSettle();
     expect(reader(tester).guide!.word, word);
     await tester.tap(find.text('Выйти из подсветки'));
     await tester.pumpAndSettle();

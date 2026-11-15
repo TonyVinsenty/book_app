@@ -138,9 +138,7 @@ final class ChapterLayout implements StripPages {
   String pageText(int index) => [
     for (final slice in pages[index].slices)
       ?switch (_section.blocks[slice.blockIndex]) {
-        TextBlock(:final text, :final spans) => _withoutLabels(
-          text,
-          spans,
+        final TextBlock block => block.textWithoutNotes(
           slice.charStart,
           slice.charEnd,
         ),
@@ -148,27 +146,6 @@ final class ChapterLayout implements StripPages {
         ImageBlock() => null,
       },
   ].join('\n');
-
-  /// [text] from [start] to [end] without note labels: a screen reader
-  /// would read them glued to the words.
-  static String _withoutLabels(
-    String text,
-    List<Span> spans,
-    int start,
-    int end,
-  ) {
-    final out = StringBuffer();
-    var from = start;
-    for (final s in spans) {
-      if (s.kind != SpanKind.noteRef || s.end <= from || s.start >= end) {
-        continue;
-      }
-      if (s.start > from) out.write(text.substring(from, s.start));
-      from = math.min(end, math.max(from, s.end));
-    }
-    out.write(text.substring(from, end));
-    return out.toString();
-  }
 
   /// Pictures on page [index], top to bottom.
   List<PageImage> pageImages(int index) => [
@@ -237,7 +214,7 @@ final class ChapterLayout implements StripPages {
 
   /// The word on page [index] under [point] (page coordinates), or null if
   /// no word is within about a letter of it (ADR 0003 п. 3).
-  int? wordAt(int index, Offset point) {
+  int? wordAt(int index, Offset point, {bool nearestOnLine = false}) {
     final page = pages[index];
     for (final slice in page.slices) {
       final layout = _blocks[slice.blockIndex]!;
@@ -269,8 +246,9 @@ final class ChapterLayout implements StripPages {
       int? best;
       var bestDistance = double.infinity;
       for (final word in [next - 1, next]) {
-        if (word < page.firstWord ||
-            word >= page.endWord ||
+        if (word < 0 ||
+            word >= _tokens.length ||
+            _tokens[word].sectionIndex != sectionIndex ||
             _tokens[word].blockIndex != slice.blockIndex) {
           continue;
         }
@@ -289,28 +267,95 @@ final class ChapterLayout implements StripPages {
         }
       }
       final tolerance = style.textScaler.scale(style.fontSize);
-      return bestDistance <= tolerance ? best : null;
+      return nearestOnLine || bestDistance <= tolerance ? best : null;
     }
     return null;
   }
 
   /// Rectangles of [wordIndex] on page [index] (page coordinates), one per
   /// line it takes; empty if the word is not on that page.
-  List<Rect> wordBoxes(int index, int wordIndex) {
+  List<Rect> wordBoxes(int index, int wordIndex) =>
+      _wordTextBoxes(index, wordIndex).map((box) => box.toRect()).toList();
+
+  /// A selection boundary and its line height in page coordinates.
+  ({Offset point, double height})? wordEdge(
+    int index,
+    int wordIndex, {
+    required bool start,
+  }) {
+    final boxes = _wordTextBoxes(index, wordIndex);
+    if (boxes.isEmpty) return null;
+    final box = start ? boxes.first : boxes.last;
+    return (
+      point: Offset(start ? box.start : box.end, box.bottom),
+      height: box.bottom - box.top,
+    );
+  }
+
+  List<TextBox> _wordTextBoxes(int index, int wordIndex) {
     if (wordIndex < 0 || wordIndex >= _tokens.length) return const [];
     final token = _tokens[wordIndex];
     if (token.sectionIndex != sectionIndex) return const [];
-    final boxes = <Rect>[];
+    final boxes = <TextBox>[];
     for (final slice in pages[index].slices) {
       if (slice.blockIndex != token.blockIndex) continue;
       final layout = _blocks[slice.blockIndex]!;
       final block = layout.metrics;
       final top = block.tops[slice.firstLine];
       final bottom = block.tops[slice.endLine];
-      for (final box in _boxesOf(layout, wordIndex)) {
-        final middle = box.center.dy;
+      for (final box in _textBoxes(layout, token.charStart, token.charEnd)) {
+        final middle = (box.top + box.bottom) / 2;
         if (middle < top || middle >= bottom) continue;
-        boxes.add(box.shift(Offset(block.dx, slice.top - top)));
+        final dy = slice.top - top;
+        boxes.add(
+          TextBox.fromLTRBD(
+            box.left + block.dx,
+            box.top + dy,
+            box.right + block.dx,
+            box.bottom + dy,
+            box.direction,
+          ),
+        );
+      }
+    }
+    return boxes;
+  }
+
+  /// Text rectangles for a word range, including the spaces between words.
+  List<Rect> selectionBoxes(int index, int first, int last) {
+    final from = _tokens[first];
+    final to = _tokens[last];
+    if (sectionIndex < from.sectionIndex || sectionIndex > to.sectionIndex) {
+      return const [];
+    }
+    final boxes = <Rect>[];
+    for (final slice in pages[index].slices) {
+      final layout = _blocks[slice.blockIndex]!;
+      final block = layout.metrics;
+      if (!block.isText) continue;
+      var start = slice.charStart;
+      var end = slice.charEnd;
+      if (sectionIndex == from.sectionIndex) {
+        if (slice.blockIndex < from.blockIndex) continue;
+        if (slice.blockIndex == from.blockIndex) {
+          start = math.max(start, from.charStart);
+        }
+      }
+      if (sectionIndex == to.sectionIndex) {
+        if (slice.blockIndex > to.blockIndex) break;
+        if (slice.blockIndex == to.blockIndex) {
+          end = math.min(end, to.charEnd);
+        }
+      }
+      if (start >= end) continue;
+      final top = block.tops[slice.firstLine];
+      final bottom = block.tops[slice.endLine];
+      final shift = Offset(block.dx, slice.top - top);
+      for (final box in _textBoxes(layout, start, end)) {
+        final rect = box.toRect();
+        if (rect.center.dy >= top && rect.center.dy < bottom) {
+          boxes.add(rect.shift(shift));
+        }
       }
     }
     return boxes;
@@ -350,15 +395,21 @@ final class ChapterLayout implements StripPages {
   /// Boxes of a word in its block painter's coordinates.
   Iterable<Rect> _boxesOf(_BlockLayout layout, int wordIndex) {
     final token = _tokens[wordIndex];
+    return _textBoxes(
+      layout,
+      token.charStart,
+      token.charEnd,
+    ).map((box) => box.toRect());
+  }
+
+  List<TextBox> _textBoxes(_BlockLayout layout, int start, int end) {
     final prefix = layout.metrics.prefix;
-    return layout.painter!
-        .getBoxesForSelection(
-          TextSelection(
-            baseOffset: layout.hyphens.toPainter(token.charStart) + prefix,
-            extentOffset: layout.hyphens.toPainter(token.charEnd) + prefix,
-          ),
-        )
-        .map((box) => box.toRect());
+    return layout.painter!.getBoxesForSelection(
+      TextSelection(
+        baseOffset: layout.hyphens.toPainter(start) + prefix,
+        extentOffset: layout.hyphens.toPainter(end) + prefix,
+      ),
+    );
   }
 
   /// Paints the text of page [index]; its pictures are widgets on top
