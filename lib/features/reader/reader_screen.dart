@@ -959,7 +959,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final token = await settings.get(SettingKeys.ttsServerToken);
     if (!mounted) return;
     final uri = address == null ? null : Uri.tryParse(address);
-    if (uri == null || uri.scheme != 'http' || token == null || token.isEmpty) {
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        token == null ||
+        token.isEmpty) {
       _openTts();
       return;
     }

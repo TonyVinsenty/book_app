@@ -69,7 +69,7 @@ class _TtsPanelState extends State<TtsPanel> {
     final token = _token.text.trim();
     final uri = Uri.tryParse(address);
     if (uri == null ||
-        uri.scheme != 'http' ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
         uri.host.isEmpty ||
         uri.userInfo.isNotEmpty ||
         token.isEmpty) {
@@ -174,7 +174,7 @@ class _TtsPanelState extends State<TtsPanel> {
                   keyboardType: TextInputType.url,
                   decoration: InputDecoration(
                     labelText: l10n.ttsAddress,
-                    hintText: 'http://192.168.1.10:8765',
+                    hintText: 'https://example.modal.run',
                     border: const OutlineInputBorder(),
                   ),
                 ),
