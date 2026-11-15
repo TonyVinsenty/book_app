@@ -44,7 +44,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Скорость голоса  100%'), findsOneWidget);
+    expect(find.text('Скорость голоса 100%'), findsOneWidget);
     expect(find.byTooltip('Предыдущий абзац'), findsOneWidget);
     expect(find.byTooltip('Следующее предложение'), findsOneWidget);
     expect(tester.takeException(), isNull);

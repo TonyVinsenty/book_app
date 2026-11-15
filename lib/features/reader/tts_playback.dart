@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
-typedef SpeechPage = ({int firstWord, int endWord, String text});
+typedef SpeechPage = ({int firstWord, int endWord, int page, String text});
 typedef SpeechStatus = ({
   bool active,
   bool playing,
@@ -24,6 +24,8 @@ typedef SpeechStatus = ({
 final ttsPlaybackProvider = Provider<TtsPlayback>((ref) => TtsPlayback());
 
 class TtsPlayback extends BaseAudioHandler {
+  static const bufferedAheadPages = 3;
+  static const retainedBehindPages = 2;
   static Future<TtsPlayback> initialize() => AudioService.init(
     builder: TtsPlayback.new,
     config: const AudioServiceConfig(
@@ -104,30 +106,39 @@ class TtsPlayback extends BaseAudioHandler {
       );
       if (_run != run) return;
       await run.player.setSpeed(run.speed / 100);
-      await _fill(run, 3);
+      await _fill(run);
     } catch (error) {
       if (_run == run) unawaited(_end(error: error));
     }
   }
 
-  Future<void> _fill(_SpeechRun run, int count) async {
+  Future<void> _fill(_SpeechRun run) async {
     run.filling = true;
     try {
-      // Every refill starts on the second prepared page or later. Drop
-      // finished sources before adding more, keeping the cache bounded.
-      while ((run.player.currentIndex ?? 0) > 0) {
+      // Keep recent pages so the back buttons can seek locally.
+      while (run.pages.isNotEmpty &&
+          run.pages.first.page < run.currentPage - retainedBehindPages &&
+          (run.player.currentIndex ?? 0) > 0) {
         final oldest = run.pages.first;
         await run.player.removeAudioSourceAt(0);
         if (_run != run) return;
         run.pages.removeAt(0);
         await run.deleteFile(oldest.index);
       }
-      for (var added = 0; added < count && _run == run; added++) {
+      final firstPage = run.pages.isEmpty
+          ? run.pageAt(run.nextWord)?.page
+          : run.currentPage >= 0
+          ? run.currentPage
+          : run.pages.first.page;
+      if (firstPage == null) return;
+      final targetPage = firstPage + bufferedAheadPages;
+      for (var added = 0; added < 80 && _run == run; added++) {
         final page = run.pageAt(run.nextWord);
         if (page == null) {
           run.exhausted = true;
           break;
         }
+        if (page.page >= targetPage && added > 0) break;
         final index = run.prepared;
         final file = await run.download(page.text, index);
         if (_run != run) return;
@@ -135,6 +146,7 @@ class TtsPlayback extends BaseAudioHandler {
           index: index,
           word: page.firstWord,
           endWord: page.endWord,
+          page: page.page,
         );
         final source = AudioSource.file(file.path, tag: queued);
         final player = run.player;
@@ -158,6 +170,7 @@ class TtsPlayback extends BaseAudioHandler {
             if (_run == run && run.playing) _play(run);
           }
         }
+        run.notifyPrepared();
       }
     } catch (error) {
       if (_run == run) {
@@ -166,6 +179,7 @@ class TtsPlayback extends BaseAudioHandler {
       }
     } finally {
       run.filling = false;
+      run.notifyPrepared();
       _update(run);
     }
   }
@@ -179,6 +193,7 @@ class TtsPlayback extends BaseAudioHandler {
           player.playing &&
           player.processingState == ProcessingState.ready) {
         run.current = page.index;
+        run.currentPage = page.page;
         run.currentWord = page.word;
         run.currentEndWord = page.endWord;
         unawaited(_savePosition?.call(page.word) ?? Future<void>.value());
@@ -194,14 +209,10 @@ class TtsPlayback extends BaseAudioHandler {
       unawaited(_end(error: run.error));
       return;
     }
-    if (!run.exhausted && !run.filling && run.playing) {
-      final duration = player.duration;
-      final nearEnd =
-          duration != null &&
-          player.position.inMicroseconds >= duration.inMicroseconds * .8;
-      if (completed || (run.current >= run.refillAt && nearEnd)) {
-        run.refillAt = run.prepared;
-        run.job = _fill(run, 2);
+    if (!run.exhausted && !run.filling && run.playing && run.current >= 0) {
+      final lastPage = run.pages.lastOrNull?.page ?? run.currentPage;
+      if (lastPage - run.currentPage <= 1) {
+        run.job = _fill(run);
       }
     }
     _publish(run);
@@ -285,6 +296,39 @@ class TtsPlayback extends BaseAudioHandler {
 
   int? get currentWord => _run?.currentWord;
 
+  /// Returns false only when the requested sentence is outside the cache.
+  Future<bool> seekToWord(int word) async {
+    final run = _run;
+    if (run == null) return false;
+    var localIndex = run.pages.indexWhere((page) => page.word == word);
+    // A forward skip may arrive while the next sentence is still being made.
+    // Wait briefly for that same request instead of starting a second run.
+    while (localIndex < 0 &&
+        run.filling &&
+        word >= run.nextWord &&
+        _run == run) {
+      final next = run.nextPrepared.future;
+      await next.timeout(const Duration(seconds: 5), onTimeout: () {});
+      if (_run != run) return true;
+      localIndex = run.pages.indexWhere((page) => page.word == word);
+      if (!run.filling) break;
+    }
+    if (localIndex < 0) return false;
+    final page = run.pages[localIndex];
+    await run.player.seek(Duration.zero, index: localIndex);
+    if (_run != run) return true;
+    run.current = page.index;
+    run.currentPage = page.page;
+    run.currentWord = page.word;
+    run.currentEndWord = page.endWord;
+    unawaited(_savePosition?.call(page.word) ?? Future<void>.value());
+    run.onPage(page.word);
+    run.playing = true;
+    _play(run);
+    _update(run);
+    return true;
+  }
+
   Future<void> _end({Object? error}) async {
     final run = _run;
     _run = null;
@@ -316,7 +360,7 @@ class TtsPlayback extends BaseAudioHandler {
   }
 }
 
-typedef _QueuedSpeech = ({int index, int word, int endWord});
+typedef _QueuedSpeech = ({int index, int word, int endWord, int page});
 
 class _SpeechRun {
   _SpeechRun({
@@ -340,6 +384,7 @@ class _SpeechRun {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
   final subscriptions = <StreamSubscription<dynamic>>[];
   final pages = <_QueuedSpeech>[];
+  Completer<void> nextPrepared = Completer<void>();
   Directory? directory;
   Future<void>? job;
   int nextWord;
@@ -347,13 +392,19 @@ class _SpeechRun {
   int? currentWord;
   int? currentEndWord;
   int prepared = 0;
-  int refillAt = 1;
   int current = -1;
+  int currentPage = -1;
   bool playing = true;
   bool playerRequested = false;
   bool filling = false;
   bool exhausted = false;
   Object? error;
+
+  void notifyPrepared() {
+    final pending = nextPrepared;
+    nextPrepared = Completer<void>();
+    if (!pending.isCompleted) pending.complete();
+  }
 
   File _fileAt(int index) => File('${directory!.path}/$index.wav');
 

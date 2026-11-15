@@ -945,30 +945,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
     _setPanels(false);
     _readingWordBeforeSpeech ??= _word;
     setState(() {
+      _resetSelection();
       _speechMode = true;
       _speechWord = _speechRequestedWord ?? _savedSpeechWord;
       _speechEnd = _speechWord == null ? null : _sentenceEnd(_speechWord!);
     });
-    final word = _speechWord;
-    if (word != null && word < widget.opened.tokens.length) {
-      final section = widget.opened.tokens.sectionOf(word);
-      final nextPage = _layoutOf(section).pageOfWord(word);
-      if (section != _section || nextPage != _page) {
-        _show(
-          section,
-          nextPage,
-          word: word,
-          fromSpeech: true,
-          saveReadingPosition: false,
-        );
-      }
-    }
   }
 
   void _closeTts() {
     unawaited(_tts.stop());
     final previous = _readingWordBeforeSpeech;
     setState(() {
+      _resetSelection();
       _speechMode = false;
       _choosingSpeechWord = false;
       _speechRequestedWord = null;
@@ -1036,6 +1024,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
           ? _paragraphStart(previous)
           : tokens.sentenceStartOf(previous);
     }
+    if (await _tts.seekToWord(word)) return;
     final settings = ref.read(settingsRepositoryProvider);
     final connection = await loadTtsConnection(settings);
     final uri = Uri.tryParse(connection.url);
@@ -1081,9 +1070,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
       pageAt: (word) {
         if (word >= tokens.length) return null;
         final end = _sentenceEnd(word);
+        final section = tokens.sectionOf(word);
+        final chapterLayout = _layoutOf(section);
         return (
           firstWord: word,
           endWord: end,
+          page:
+              _pagination!.pagesBefore(section).value +
+              chapterLayout.pageOfWord(word),
           text: tokens.textBetween(word, end - 1),
         );
       },
@@ -1414,6 +1408,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
   void _onLongPress(LongPressStartDetails details) {
     _settleTurn();
     final hit = _hitAt(details.localPosition);
+    if (_speechMode) {
+      final word = hit?.chapter.wordAt(hit.page, hit.point);
+      if (word == null) return;
+      if (_choosingSpeechWord) return _chooseSpeechWord(word);
+      setState(() => _selection = (first: word, last: word));
+      return;
+    }
     // A label is above long presses too (ADR 0008 п. 8).
     if (_guide?.isPlaying != true && !_panelsShown) {
       if (_noteAt(hit) case final id?) {
@@ -1423,10 +1424,6 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
     final word = hit?.chapter.wordAt(hit.page, hit.point);
     if (word == null) return;
-    if (_speechMode && _choosingSpeechWord) {
-      _chooseSpeechWord(word);
-      return;
-    }
     unawaited(HapticFeedback.selectionClick());
     if (_guide != null) {
       _guideSeek(word);
@@ -1965,6 +1962,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
       if (word != null) _chooseSpeechWord(word);
       return;
     }
+    if (_speechMode) {
+      if (x < width / 3) _previous();
+      if (x > width * 2 / 3) _next();
+      return;
+    }
     if (_stripStopped) {
       // A tap on the moving strip only stops it (ADR 0003, addendum 5 п. 8).
       _stripStopped = false;
@@ -2393,15 +2395,16 @@ class ReaderViewState extends ConsumerState<ReaderView>
                           ),
                         ),
                       ],
-                      if (_selection case final selection?)
-                        ..._selectionControls(
-                          selection.first,
-                          selection.last,
-                          contentInsets,
-                          area.height - readerFooterHeight,
-                          colors,
-                          l10n,
-                        ),
+                      if (!_speechMode)
+                        if (_selection case final selection?)
+                          ..._selectionControls(
+                            selection.first,
+                            selection.last,
+                            contentInsets,
+                            area.height - readerFooterHeight,
+                            colors,
+                            l10n,
+                          ),
                     ],
                   );
                 },
@@ -2427,6 +2430,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
                       start: _startTts,
                       pageWord: page.firstWord,
                       savedWord: _savedSpeechWord,
+                      savedPageDelta: _speechPageDelta(),
                       requestedWord: _speechRequestedWord,
                       choosingPlace: _choosingSpeechWord,
                       choosePlace: () =>
@@ -2699,6 +2703,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
   /// the right.
   Widget _speechHeader(BuildContext context, EdgeInsets insets) {
     final l10n = AppLocalizations.of(context);
+    final section = _section;
+    final chapter =
+        switch (currentLineOf(_contents, section)) {
+          final i? => _contents[i].title,
+          null => widget.opened.tokens.content.sections[section].title,
+        } ??
+        l10n.readerChapterNumber(widget.opened.tokens.chapterNumberOf(section));
     return Material(
       color: context.readingColors.surface,
       child: Padding(
@@ -2714,7 +2725,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
             children: [
               Expanded(
                 child: Text(
-                  _speechActive ? widget.opened.book.title : l10n.ttsTitle,
+                  chapter,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium,
@@ -2730,6 +2741,18 @@ class ReaderViewState extends ConsumerState<ReaderView>
         ),
       ),
     );
+  }
+
+  int? _speechPageDelta() {
+    final saved = _savedSpeechWord;
+    final pagination = _pagination;
+    if (saved == null || pagination == null) return null;
+    final section = widget.opened.tokens.sectionOf(saved);
+    final chapterLayout = _layoutOf(section);
+    final savedPage =
+        pagination.pagesBefore(section).value + chapterLayout.pageOfWord(saved);
+    final visiblePage = pagination.pagesBefore(_section).value + _page;
+    return visiblePage - savedPage;
   }
 
   Widget _topPanel(BuildContext context, EdgeInsets insets) {

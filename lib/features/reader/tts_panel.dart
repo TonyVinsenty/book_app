@@ -16,6 +16,7 @@ class TtsPanel extends StatefulWidget {
     required this.start,
     required this.pageWord,
     required this.savedWord,
+    required this.savedPageDelta,
     required this.requestedWord,
     required this.choosePlace,
     required this.choosingPlace,
@@ -33,6 +34,9 @@ class TtsPanel extends StatefulWidget {
   start;
   final int pageWord;
   final int? savedWord;
+
+  /// Positive when the saved speech position is behind the visible page.
+  final int? savedPageDelta;
   final int? requestedWord;
   final VoidCallback choosePlace;
   final bool choosingPlace;
@@ -47,6 +51,7 @@ class _TtsPanelState extends State<TtsPanel> {
   bool _ready = false;
   String _voice = 'eugene';
   int _speed = 100;
+  int _startOption = 1;
   String? _error;
 
   @override
@@ -147,19 +152,66 @@ class _TtsPanelState extends State<TtsPanel> {
     }
     setState(() => _error = null);
     unawaited(
-      widget.start(
-        uri,
-        token,
-        _voice,
-        widget.requestedWord ?? widget.savedWord ?? widget.pageWord,
-        _speed,
-      ),
+      widget.start(uri, token, _voice, switch (_startOption) {
+        0 => widget.savedWord ?? widget.pageWord,
+        2 => widget.requestedWord ?? widget.pageWord,
+        _ => widget.pageWord,
+      }, _speed),
     );
   }
 
   Future<void> _selectVoice(String voice) async {
     setState(() => _voice = voice);
     await widget.settings.set(SettingKeys.ttsVoice, voice);
+  }
+
+  @override
+  void didUpdateWidget(TtsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.requestedWord != null &&
+        widget.requestedWord != oldWidget.requestedWord) {
+      _startOption = 2;
+    }
+  }
+
+  Widget _startChoice(int option, String label, {VoidCallback? onTap}) {
+    final selected = _startOption == option;
+    return InkWell(
+      onTap: onTap ?? () => setState(() => _startOption = option),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 40),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: option == 0 ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _lastPositionLabel(AppLocalizations l10n) {
+    final distance = widget.savedPageDelta;
+    if (distance == null) return l10n.ttsFromLastPosition;
+    final hint = distance == 0
+        ? l10n.ttsOnThisPage
+        : distance > 0
+        ? l10n.ttsPagesEarlier(distance)
+        : l10n.ttsPagesLater(-distance);
+    return '${l10n.ttsFromLastPosition} · $hint';
   }
 
   @override
@@ -238,31 +290,32 @@ class _TtsPanelState extends State<TtsPanel> {
                 ],
               ),
               const SizedBox(height: 9),
-              if (widget.choosingPlace)
-                Text(l10n.ttsChoosePlaceHint, textAlign: TextAlign.center)
-              else
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _ready ? _start : null,
-                        icon: const Icon(Icons.play_arrow),
-                        label: Text(l10n.ttsContinue),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: widget.choosePlace,
-                        child: Text(
-                          l10n.ttsChoosePlace,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              if (widget.savedWord != null)
+                _startChoice(0, _lastPositionLabel(l10n)),
+              _startChoice(1, l10n.ttsFromCurrentPage),
+              _startChoice(
+                2,
+                widget.choosingPlace
+                    ? l10n.ttsChoosePlaceHint
+                    : widget.requestedWord == null
+                    ? l10n.ttsChoosePlace
+                    : l10n.ttsFromSelectedWord,
+                onTap: () {
+                  setState(() => _startOption = 2);
+                  widget.choosePlace();
+                },
+              ),
+              const SizedBox(height: 4),
+              FilledButton.icon(
+                onPressed:
+                    _ready &&
+                        !widget.choosingPlace &&
+                        (_startOption != 2 || widget.requestedWord != null)
+                    ? _start
+                    : null,
+                icon: const Icon(Icons.play_arrow),
+                label: Text(l10n.ttsPlay),
+              ),
               if (_error != null || widget.playback.status.value.error != null)
                 Text(
                   _error ?? l10n.ttsFailed,
@@ -314,38 +367,50 @@ class TtsPlayerBar extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '${l10n.ttsSpeechSpeed}  ${status.speed}%',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ),
-                SizedBox(
-                  height: 52,
-                  child: Stack(
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _button(
-                              Icons.keyboard_double_arrow_left,
-                              l10n.ttsBackParagraph,
-                              backParagraph,
-                              width: 42,
-                            ),
-                            _button(
-                              Icons.keyboard_arrow_left,
-                              l10n.ttsBackSentence,
-                              backSentence,
-                              width: 42,
-                            ),
-                          ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '${l10n.ttsSpeechSpeed} ${status.speed}%',
+                          style: Theme.of(context).textTheme.labelMedium,
                         ),
                       ),
-                      Center(
+                    ),
+                    const SizedBox(width: 8),
+                    _button(
+                      Icons.remove,
+                      l10n.ttsSlower,
+                      status.speed > 70 ? () => changeSpeed(-10) : null,
+                    ),
+                    _button(
+                      Icons.add,
+                      l10n.ttsFaster,
+                      status.speed < 130 ? () => changeSpeed(10) : null,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _button(
+                        Icons.keyboard_double_arrow_left,
+                        l10n.ttsBackParagraph,
+                        backParagraph,
+                      ),
+                    ),
+                    Expanded(
+                      child: _button(
+                        Icons.keyboard_arrow_left,
+                        l10n.ttsBackSentence,
+                        backSentence,
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
                         child: IconButton.filled(
                           tooltip: status.playing
                               ? l10n.ttsPause
@@ -359,38 +424,16 @@ class TtsPlayerBar extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _button(
-                              Icons.keyboard_arrow_right,
-                              l10n.ttsNextSentence,
-                              forwardSentence,
-                              width: 40,
-                            ),
-                            const SizedBox(
-                              height: 32,
-                              child: VerticalDivider(width: 6),
-                            ),
-                            _button(
-                              Icons.remove,
-                              l10n.ttsSlower,
-                              status.speed > 70 ? () => changeSpeed(-10) : null,
-                              width: 36,
-                            ),
-                            _button(
-                              Icons.add,
-                              l10n.ttsFaster,
-                              status.speed < 130 ? () => changeSpeed(10) : null,
-                              width: 36,
-                            ),
-                          ],
-                        ),
+                    ),
+                    Expanded(
+                      child: _button(
+                        Icons.keyboard_arrow_right,
+                        l10n.ttsNextSentence,
+                        forwardSentence,
                       ),
-                    ],
-                  ),
+                    ),
+                    const Spacer(),
+                  ],
                 ),
               ],
             ),
@@ -400,16 +443,12 @@ class TtsPlayerBar extends StatelessWidget {
     );
   }
 
-  Widget _button(
-    IconData icon,
-    String tooltip,
-    VoidCallback? onPressed, {
-    required double width,
-  }) => IconButton(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    icon: Icon(icon, size: 29),
-    constraints: BoxConstraints.tightFor(width: width, height: 48),
-    padding: EdgeInsets.zero,
-  );
+  Widget _button(IconData icon, String tooltip, VoidCallback? onPressed) =>
+      IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 29),
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
+        padding: EdgeInsets.zero,
+      );
 }

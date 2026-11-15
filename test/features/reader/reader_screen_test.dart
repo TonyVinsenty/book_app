@@ -879,8 +879,10 @@ void main() {
       await tester.tap(find.text('Отмена'));
       await tester.pumpAndSettle();
     }
-    expect(find.text('Режим озвучивания'), findsOneWidget);
+    expect(find.byTooltip('Закрыть режим озвучивания'), findsOneWidget);
     expect(find.byType(TtsPanel), findsOneWidget);
+    expect(reader(tester).placeWord, readingWord);
+    expect(find.text('С начала текущей страницы'), findsOneWidget);
     final names = ['Евгений', 'Михаил', 'Ксения', 'Алиса'];
     final widths = [
       for (final name in names)
@@ -909,7 +911,13 @@ void main() {
     await tester.tapAt(wordPosition(tester, word));
     await tester.pumpAndSettle();
     expect(tester.widget<TtsPanel>(find.byType(TtsPanel)).requestedWord, word);
-    expect(find.text('Выбрать место'), findsOneWidget);
+    expect(find.text('С выбранного слова'), findsOneWidget);
+    await tapAt(tester, 0.5);
+    expect(reader(tester).panelsShown, isFalse);
+    await tester.longPressAt(wordPosition(tester, word));
+    await tester.pumpAndSettle();
+    expect(find.text('Скорочтение'), findsNothing);
+    expect(reader(tester).panelsShown, isFalse);
     await tester.tap(find.byTooltip('Закрыть режим озвучивания'));
     await tester.pumpAndSettle();
     expect(find.byType(TtsPanel), findsNothing);
