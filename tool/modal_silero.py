@@ -71,6 +71,7 @@ def serve():
     shutil.copyfile("/opt/verso/v5_6_ru.pt", model_dir / "v5_6_ru.pt")
     model, _ = silero_tts(language="ru", speaker="v5_6_ru")
     api = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    voices = {"eugene", "aidar", "xenia", "baya"}
 
     @api.post("/v1/synthesize")
     async def synthesize(request: Request, x_tts_token: str = Header(default="")):
@@ -82,8 +83,11 @@ def serve():
         try:
             data = await request.json()
             phrase = data["text"]
+            voice = data.get("voice", "eugene")
             if not isinstance(phrase, str) or not phrase.strip() or len(phrase) > 10000:
                 raise ValueError("Invalid text")
+            if voice not in voices:
+                raise ValueError("Invalid voice")
             from silero_server import chunks_of
 
             parts = list(chunks_of(phrase))
@@ -94,7 +98,7 @@ def serve():
             ) as wav:
                 for index, (part, pause) in enumerate(parts):
                     samples = model.apply_tts(
-                        text=part, speaker="eugene", sample_rate=48000,
+                        text=part, speaker=voice, sample_rate=48000,
                     ).detach().cpu().numpy()
                     wav.write(samples)
                     if index + 1 < len(parts):

@@ -21,6 +21,7 @@ from silero import silero_tts
 RATE = 48000
 MAX_CHARS = 130
 MAX_REQUEST = 65536
+VOICES = {"eugene", "aidar", "xenia", "baya"}
 
 
 class BodyError(Exception):
@@ -56,8 +57,8 @@ class TtsServer(ThreadingHTTPServer):
         self.cache_dir = cache_dir
         self.model_lock = threading.Lock()
 
-    def synthesize(self, text):
-        key = hashlib.sha256(("v5_6_ru/eugene\0" + text).encode()).hexdigest()
+    def synthesize(self, text, voice="eugene"):
+        key = hashlib.sha256((f"v5_6_ru/{voice}\0" + text).encode()).hexdigest()
         target = self.cache_dir / f"{key}.wav"
         if target.exists():
             return target
@@ -75,7 +76,7 @@ class TtsServer(ThreadingHTTPServer):
                 ) as wav:
                     for index, (part, pause) in enumerate(parts):
                         samples = self.model.apply_tts(
-                            text=part, speaker="eugene", sample_rate=RATE
+                            text=part, speaker=voice, sample_rate=RATE
                         ).detach().cpu().numpy()
                         wav.write(samples)
                         if index + 1 < len(parts):
@@ -151,9 +152,12 @@ class Handler(BaseHTTPRequestHandler):
         try:
             data = json.loads(self.read_body())
             text = data["text"]
+            voice = data.get("voice", "eugene")
             if not isinstance(text, str) or not text.strip() or len(text) > 10000:
                 return self.send_json(400, {"error": "Invalid text"})
-            wav = self.server.synthesize(text)
+            if voice not in VOICES:
+                return self.send_json(400, {"error": "Invalid voice"})
+            wav = self.server.synthesize(text, voice)
         except BodyError as error:
             return self.send_json(error.status, {"error": str(error)})
         except (ValueError, KeyError, TypeError, UnicodeDecodeError) as error:

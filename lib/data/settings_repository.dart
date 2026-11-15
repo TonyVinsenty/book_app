@@ -60,9 +60,11 @@ final class SettingsRepository {
 
 /// Keys of the settings store.
 abstract final class SettingKeys {
-  /// Local Wi-Fi speech server used by the reader.
+  /// Speech server used by the reader.
   static const ttsServerUrl = 'tts.serverUrl';
   static const ttsServerToken = 'tts.serverToken';
+  static const ttsConnectionOverride = 'tts.connectionOverride';
+  static const ttsVoice = 'tts.voice';
   static const ttsSpeed = 'tts.speed';
   static String ttsPosition(int bookId) => 'tts.position.$bookId';
 

@@ -53,6 +53,7 @@ class TtsPlayback extends BaseAudioHandler {
     required Object owner,
     required Uri server,
     required String token,
+    required String voice,
     required String title,
     required String stopLabel,
     required int firstWord,
@@ -66,6 +67,7 @@ class TtsPlayback extends BaseAudioHandler {
     final run = _SpeechRun(
       server: server,
       token: token,
+      voice: voice,
       stopLabel: stopLabel,
       nextWord: firstWord,
       speed: speed,
@@ -320,6 +322,7 @@ class _SpeechRun {
   _SpeechRun({
     required this.server,
     required this.token,
+    required this.voice,
     required this.stopLabel,
     required this.nextWord,
     required this.speed,
@@ -329,6 +332,7 @@ class _SpeechRun {
 
   final Uri server;
   final String token;
+  final String voice;
   final String stopLabel;
   final SpeechPage? Function(int word) pageAt;
   final void Function(int word) onPage;
@@ -368,7 +372,7 @@ class _SpeechRun {
     request.followRedirects = false;
     request.headers.contentType = ContentType.json;
     request.headers.set('X-TTS-Token', token);
-    final body = utf8.encode(jsonEncode({'text': text}));
+    final body = utf8.encode(jsonEncode({'text': text, 'voice': voice}));
     request.contentLength = body.length;
     request.add(body);
     final timeout = const Duration(seconds: 90);

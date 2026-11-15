@@ -27,6 +27,7 @@ import 'package:book_app/features/reader/note_view.dart';
 import 'package:book_app/features/reader/page_images.dart';
 import 'package:book_app/features/reader/page_strip.dart';
 import 'package:book_app/features/reader/settings_panel.dart';
+import 'package:book_app/features/reader/tts_connection.dart';
 import 'package:book_app/features/reader/tts_panel.dart';
 import 'package:book_app/features/reader/tts_playback.dart';
 import 'package:book_app/features/speed/rsvp_screen.dart';
@@ -193,6 +194,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
   bool? _draggingStartHandle;
   Offset _handleDragOffset = Offset.zero;
   late final _tts = ref.read(ttsPlaybackProvider);
+  bool _speechMode = false;
+  bool _speechActive = false;
+  bool _choosingSpeechWord = false;
+  int? _readingWordBeforeSpeech;
   bool _ttsFollow = false;
   int? _speechWord;
   int? _speechEnd;
@@ -914,63 +919,94 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }
 
   void _speechChanged() {
-    if (!mounted || !_tts.belongsTo(this)) return;
+    if (!mounted) return;
     final status = _tts.status.value;
-    if (_speechWord == status.word && _speechEnd == status.endWord) return;
+    final owned = _tts.belongsTo(this);
+    final active = owned && status.active;
+    if (_speechActive == active &&
+        (!owned ||
+            (_speechWord == status.word && _speechEnd == status.endWord))) {
+      return;
+    }
     setState(() {
-      _speechWord = status.word ?? _savedSpeechWord;
-      _speechEnd =
-          status.endWord ??
-          (_savedSpeechWord == null ? null : _sentenceEnd(_savedSpeechWord!));
-      if (status.word != null) _savedSpeechWord = status.word;
+      _speechActive = active;
+      if (owned) {
+        _speechWord = status.word ?? _savedSpeechWord;
+        _speechEnd =
+            status.endWord ??
+            (_savedSpeechWord == null ? null : _sentenceEnd(_savedSpeechWord!));
+        if (status.word != null) _savedSpeechWord = status.word;
+      }
     });
   }
 
   void _openTts() {
     if (_guide != null) _exitGuide();
     _setPanels(false);
-    final settings = ref.read(settingsRepositoryProvider);
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => TtsPanel(
-        settings: settings,
-        playback: _tts,
-        start: _startTts,
-        pageWord: page.firstWord,
-        savedWord: _savedSpeechWord,
-        requestedWord: _speechRequestedWord,
-        wordCount: widget.opened.tokens.length,
-        sentenceStart: widget.opened.tokens.sentenceStartOf,
-        paragraphStart: _paragraphStart,
-        sentenceText: (word) {
-          final tokens = widget.opened.tokens;
-          return tokens.textBetween(word, _sentenceEnd(word) - 1);
-        },
-      ),
-    );
+    _readingWordBeforeSpeech ??= _word;
+    setState(() {
+      _speechMode = true;
+      _speechWord = _speechRequestedWord ?? _savedSpeechWord;
+      _speechEnd = _speechWord == null ? null : _sentenceEnd(_speechWord!);
+    });
+    final word = _speechWord;
+    if (word != null && word < widget.opened.tokens.length) {
+      final section = widget.opened.tokens.sectionOf(word);
+      final nextPage = _layoutOf(section).pageOfWord(word);
+      if (section != _section || nextPage != _page) {
+        _show(
+          section,
+          nextPage,
+          word: word,
+          fromSpeech: true,
+          saveReadingPosition: false,
+        );
+      }
+    }
+  }
+
+  void _closeTts() {
+    unawaited(_tts.stop());
+    final previous = _readingWordBeforeSpeech;
+    setState(() {
+      _speechMode = false;
+      _choosingSpeechWord = false;
+      _speechRequestedWord = null;
+      _readingWordBeforeSpeech = null;
+    });
+    if (previous != null && previous < widget.opened.tokens.length) {
+      final section = widget.opened.tokens.sectionOf(previous);
+      _show(section, _layoutOf(section).pageOfWord(previous), word: previous);
+    }
+  }
+
+  void _chooseSpeechWord(int word) {
+    setState(() {
+      _speechRequestedWord = word;
+      _speechWord = word;
+      _speechEnd = _sentenceEnd(word);
+      _choosingSpeechWord = false;
+    });
   }
 
   Future<void> _speakFrom(int word) async {
     _speechRequestedWord = word;
     final settings = ref.read(settingsRepositoryProvider);
-    final address = await settings.get(SettingKeys.ttsServerUrl);
-    final token = await settings.get(SettingKeys.ttsServerToken);
+    final connection = await loadTtsConnection(settings);
     if (!mounted) return;
-    final uri = address == null ? null : Uri.tryParse(address);
+    final uri = Uri.tryParse(connection.url);
     if (uri == null ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
-        token == null ||
-        token.isEmpty) {
+        connection.token.isEmpty) {
       _openTts();
       return;
     }
     final speed =
         int.tryParse(await settings.get(SettingKeys.ttsSpeed) ?? '') ?? 100;
+    final voice = await settings.get(SettingKeys.ttsVoice) ?? 'eugene';
     if (!mounted) return;
-    unawaited(_startTts(uri, token, word, speed));
     _openTts();
+    unawaited(_startTts(uri, connection.token, voice, word, speed));
   }
 
   int _paragraphStart(int word) {
@@ -981,7 +1017,51 @@ class ReaderViewState extends ConsumerState<ReaderView>
     return 0;
   }
 
-  Future<void> _startTts(Uri server, String token, int word, int speed) async {
+  Future<void> _jumpSpeech({
+    required bool forward,
+    bool paragraph = false,
+  }) async {
+    final tokens = widget.opened.tokens;
+    final current = _tts.currentWord ?? _savedSpeechWord ?? page.firstWord;
+    final int word;
+    if (forward) {
+      word = _tts.status.value.endWord ?? _sentenceEnd(current);
+      if (word >= tokens.length) return;
+    } else {
+      final start = paragraph
+          ? _paragraphStart(current)
+          : tokens.sentenceStartOf(current);
+      final previous = start <= 0 ? 0 : start - 1;
+      word = paragraph
+          ? _paragraphStart(previous)
+          : tokens.sentenceStartOf(previous);
+    }
+    final settings = ref.read(settingsRepositoryProvider);
+    final connection = await loadTtsConnection(settings);
+    final uri = Uri.tryParse(connection.url);
+    if (!mounted || uri == null || connection.token.isEmpty) return;
+    final voice = await settings.get(SettingKeys.ttsVoice) ?? 'eugene';
+    final speed = _tts.status.value.speed;
+    if (mounted) {
+      unawaited(_startTts(uri, connection.token, voice, word, speed));
+    }
+  }
+
+  Future<void> _changeSpeechSpeed(int delta) async {
+    final speed = (_tts.status.value.speed + delta).clamp(70, 130);
+    await ref
+        .read(settingsRepositoryProvider)
+        .set(SettingKeys.ttsSpeed, '$speed');
+    await _tts.setSpeechSpeed(speed);
+  }
+
+  Future<void> _startTts(
+    Uri server,
+    String token,
+    String voice,
+    int word,
+    int speed,
+  ) async {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
     final tokens = widget.opened.tokens;
@@ -990,6 +1070,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
       owner: this,
       server: server,
       token: token,
+      voice: voice,
       title: widget.opened.book.title,
       stopLabel: l10n.ttsStop,
       firstWord: word,
@@ -1012,7 +1093,14 @@ class ReaderViewState extends ConsumerState<ReaderView>
         final section = tokens.sectionOf(word);
         final nextPage = _layoutOf(section).pageOfWord(word);
         if (section == _section && nextPage == _page) return;
-        _show(section, nextPage, turned: true, word: word, fromSpeech: true);
+        _show(
+          section,
+          nextPage,
+          turned: true,
+          word: word,
+          fromSpeech: true,
+          saveReadingPosition: false,
+        );
       },
     );
   }
@@ -1123,6 +1211,7 @@ class ReaderViewState extends ConsumerState<ReaderView>
     bool turned = false,
     bool keepSelection = false,
     bool fromSpeech = false,
+    bool saveReadingPosition = true,
     int? word,
   }) {
     // A jump (contents, slider) does not carry a slide over; a turn starts
@@ -1151,7 +1240,9 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (!shown.hasWords) return;
     final books = ref.read(bookRepositoryProvider);
     final id = widget.opened.book.id;
-    unawaited(books.savePosition(id, widget.opened.tokens.positionOf(_word)));
+    if (saveReadingPosition) {
+      unawaited(books.savePosition(id, widget.opened.tokens.positionOf(_word)));
+    }
     // The last word of the book is on screen after a page turn: read (ADR
     // 0005, addendum 2). A slider or contents jump is only a look.
     if (turned && shown.endWord >= widget.opened.tokens.length) {
@@ -1332,6 +1423,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
     final word = hit?.chapter.wordAt(hit.page, hit.point);
     if (word == null) return;
+    if (_speechMode && _choosingSpeechWord) {
+      _chooseSpeechWord(word);
+      return;
+    }
     unawaited(HapticFeedback.selectionClick());
     if (_guide != null) {
       _guideSeek(word);
@@ -1865,6 +1960,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
     final x = details.localPosition.dx;
     final guide = _guide;
     final hit = _hitAt(details.localPosition);
+    if (_speechMode && _choosingSpeechWord) {
+      final word = hit?.chapter.wordAt(hit.page, hit.point);
+      if (word != null) _chooseSpeechWord(word);
+      return;
+    }
     if (_stripStopped) {
       // A tap on the moving strip only stops it (ADR 0003, addendum 5 п. 8).
       _stripStopped = false;
@@ -2062,12 +2162,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
     }
     _syncPageMeter();
     return PopScope(
-      canPop: _selection == null && !_panelsShown && _guide == null,
+      canPop:
+          _selection == null && !_panelsShown && _guide == null && !_speechMode,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         // Back closes the panels and the settings, then the highlight.
         if (_selection != null) {
           _dismissSelection();
+        } else if (_speechMode) {
+          _closeTts();
         } else if (_panelsShown) {
           _setPanels(false);
         } else if (_settingsShown) {
@@ -2078,221 +2181,258 @@ class ReaderViewState extends ConsumerState<ReaderView>
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            _turnWidth = constraints.maxWidth;
-            final area = insets.deflateSize(constraints.biggest);
-            final pageSize = readerPageOf(area, side);
-            _relayoutIfNeeded(pageSize, style);
-            if (_stripOn) _keepStrip(area.height - readerFooterHeight);
-            final chapter = layout;
-            final guide = _guide;
-            final numbers = _pageNumbers(l10n);
-            // Once per page, not on every rebuild (panels, highlight).
-            if (_precachedAround != (chapter, _page)) {
-              _precachedAround = (chapter, _page);
-              precachePageImages(context, chapter, [
-                _page - 1,
-                _page + 1,
-              ], _imagesDir);
-            }
-            // The percent read is always shown by the page (owner, 11а.3).
-            String labelOf(({String page, String total}) numbers) =>
-                l10n.readerPageAndPercent(
-                  l10n.readerPageOfBook(numbers.page, numbers.total),
-                  tenthPercentOf(_word, widget.opened.tokens.length),
-                );
-            final pageLabel = labelOf(numbers);
-            Widget footerOf(String label) => SizedBox(
-              height: readerFooterHeight,
-              child: Center(
-                // A new speed shows here for a moment.
-                child: Text(
-                  _guideSpeedHint
-                      ? l10n.speedWordsPerMinute(_guidePace.wordsPerMinute)
-                      : label,
-                  style: secondary,
-                ),
-              ),
-            );
-            return Stack(
-              children: [
-                Padding(
-                  padding: insets,
-                  child: GestureDetector(
-                    key: _pageGestureKey,
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (d) => _onTapUp(d, area.width),
-                    // In the strip a swipe sideways does not turn (п. 8).
-                    onHorizontalDragStart: _stripOn ? null : _onDragStart,
-                    onHorizontalDragUpdate: _stripOn ? null : _onDragUpdate,
-                    onHorizontalDragEnd: !_stripOn
-                        ? _onSwipe
-                        : guide != null && guide.isPlaying
-                        // The highlight goes back by a sentence (п. 10).
-                        ? (d) => _onGuideSwipe(d, vertical: false)
-                        : null,
-                    onHorizontalDragCancel: _stripOn ? null : _onDragCancel,
-                    onVerticalDragEnd: guide != null && guide.isPlaying
-                        ? (d) => _onGuideSwipe(d, vertical: true)
-                        : null,
-                    onLongPressStart: _onLongPress,
-                    onLongPressMoveUpdate: (d) {
-                      if (_selectionAnchor != null) {
-                        _dragSelection(d.localPosition);
-                      }
-                    },
-                    onLongPressEnd: (_) => _finishSelectionDrag(),
-                    onLongPressCancel: _finishSelectionDrag,
-                    child: _stripOn
-                        ? Column(
-                            children: [
-                              Expanded(
-                                child: Listener(
-                                  // After the strip's own hold of the touch.
-                                  onPointerDown: (_) =>
-                                      _stripStopped = _stripEndedNow,
-                                  // After this touch's tap, if any: a drag
-                                  // has none.
-                                  onPointerUp: (_) => scheduleMicrotask(
-                                    () => _stripStopped = false,
-                                  ),
-                                  onPointerCancel: (_) => _stripStopped = false,
-                                  child: NotificationListener<ScrollNotification>(
-                                    onNotification: _onStripNotification,
-                                    child: PageStrip(
-                                      key: ObjectKey(_stripScroll),
-                                      map: _strip!,
-                                      controller: _stripScroll!,
-                                      // A selection handle can scroll at the
-                                      // edge. Other touches scroll normally.
-                                      physics: guide != null && guide.isPlaying
-                                          ? const NeverScrollableScrollPhysics()
-                                          : null,
-                                      tile: (section, pages, index) =>
-                                          _stripTile(
-                                            pages as ChapterLayout,
-                                            index,
+        child: Column(
+          children: [
+            if (_speechMode) _speechHeader(context, insets),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  _turnWidth = constraints.maxWidth;
+                  final contentInsets = _speechMode
+                      ? insets.copyWith(top: 0, bottom: 0)
+                      : insets;
+                  final area = contentInsets.deflateSize(constraints.biggest);
+                  final pageSize = readerPageOf(area, side);
+                  _relayoutIfNeeded(pageSize, style);
+                  if (_stripOn) _keepStrip(area.height - readerFooterHeight);
+                  final chapter = layout;
+                  final guide = _guide;
+                  final numbers = _pageNumbers(l10n);
+                  // Once per page, not on every rebuild (panels, highlight).
+                  if (_precachedAround != (chapter, _page)) {
+                    _precachedAround = (chapter, _page);
+                    precachePageImages(context, chapter, [
+                      _page - 1,
+                      _page + 1,
+                    ], _imagesDir);
+                  }
+                  // The percent read is always shown by the page (owner, 11а.3).
+                  String labelOf(({String page, String total}) numbers) =>
+                      l10n.readerPageAndPercent(
+                        l10n.readerPageOfBook(numbers.page, numbers.total),
+                        tenthPercentOf(_word, widget.opened.tokens.length),
+                      );
+                  final pageLabel = labelOf(numbers);
+                  Widget footerOf(String label) => SizedBox(
+                    height: readerFooterHeight,
+                    child: Center(
+                      // A new speed shows here for a moment.
+                      child: Text(
+                        _guideSpeedHint
+                            ? l10n.speedWordsPerMinute(
+                                _guidePace.wordsPerMinute,
+                              )
+                            : label,
+                        style: secondary,
+                      ),
+                    ),
+                  );
+                  return Stack(
+                    children: [
+                      Padding(
+                        padding: contentInsets,
+                        child: GestureDetector(
+                          key: _pageGestureKey,
+                          behavior: HitTestBehavior.opaque,
+                          onTapUp: (d) => _onTapUp(d, area.width),
+                          // In the strip a swipe sideways does not turn (п. 8).
+                          onHorizontalDragStart: _stripOn ? null : _onDragStart,
+                          onHorizontalDragUpdate: _stripOn
+                              ? null
+                              : _onDragUpdate,
+                          onHorizontalDragEnd: !_stripOn
+                              ? _onSwipe
+                              : guide != null && guide.isPlaying
+                              // The highlight goes back by a sentence (п. 10).
+                              ? (d) => _onGuideSwipe(d, vertical: false)
+                              : null,
+                          onHorizontalDragCancel: _stripOn
+                              ? null
+                              : _onDragCancel,
+                          onVerticalDragEnd: guide != null && guide.isPlaying
+                              ? (d) => _onGuideSwipe(d, vertical: true)
+                              : null,
+                          onLongPressStart: _onLongPress,
+                          onLongPressMoveUpdate: (d) {
+                            if (_selectionAnchor != null) {
+                              _dragSelection(d.localPosition);
+                            }
+                          },
+                          onLongPressEnd: (_) => _finishSelectionDrag(),
+                          onLongPressCancel: _finishSelectionDrag,
+                          child: _stripOn
+                              ? Column(
+                                  children: [
+                                    Expanded(
+                                      child: Listener(
+                                        // After the strip's own hold of the touch.
+                                        onPointerDown: (_) =>
+                                            _stripStopped = _stripEndedNow,
+                                        // After this touch's tap, if any: a drag
+                                        // has none.
+                                        onPointerUp: (_) => scheduleMicrotask(
+                                          () => _stripStopped = false,
+                                        ),
+                                        onPointerCancel: (_) =>
+                                            _stripStopped = false,
+                                        child:
+                                            NotificationListener<
+                                              ScrollNotification
+                                            >(
+                                              onNotification:
+                                                  _onStripNotification,
+                                              child: PageStrip(
+                                                key: ObjectKey(_stripScroll),
+                                                map: _strip!,
+                                                controller: _stripScroll!,
+                                                // A selection handle can scroll at the
+                                                // edge. Other touches scroll normally.
+                                                physics:
+                                                    guide != null &&
+                                                        guide.isPlaying
+                                                    ? const NeverScrollableScrollPhysics()
+                                                    : null,
+                                                tile: (section, pages, index) =>
+                                                    _stripTile(
+                                                      pages as ChapterLayout,
+                                                      index,
+                                                      colors,
+                                                      dark: dark,
+                                                    ),
+                                              ),
+                                            ),
+                                      ),
+                                    ),
+                                    ValueListenableBuilder(
+                                      valueListenable: _stripMoved,
+                                      builder: (context, _, _) =>
+                                          footerOf(labelOf(_pageNumbers(l10n))),
+                                    ),
+                                  ],
+                                )
+                              : Padding(
+                                  padding: _margin,
+                                  child: Column(
+                                    children: [
+                                      _turning(
+                                        pageSize,
+                                        dark,
+                                        colors,
+                                        page: Semantics(
+                                          container: true,
+                                          label: chapter.pageText(_page),
+                                          child: _pageLayers(
+                                            chapter,
+                                            _page,
                                             colors,
                                             dark: dark,
                                           ),
-                                    ),
+                                        ),
+                                      ),
+                                      footerOf(pageLabel),
+                                    ],
                                   ),
                                 ),
-                              ),
-                              ValueListenableBuilder(
-                                valueListenable: _stripMoved,
-                                builder: (context, _, _) =>
-                                    footerOf(labelOf(_pageNumbers(l10n))),
-                              ),
-                            ],
-                          )
-                        : Padding(
-                            padding: _margin,
-                            child: Column(
-                              children: [
-                                _turning(
-                                  pageSize,
-                                  dark,
-                                  colors,
-                                  page: Semantics(
-                                    container: true,
-                                    label: chapter.pageText(_page),
-                                    child: _pageLayers(
-                                      chapter,
-                                      _page,
-                                      colors,
-                                      dark: dark,
-                                    ),
-                                  ),
-                                ),
-                                footerOf(pageLabel),
-                              ],
-                            ),
-                          ),
-                  ),
-                ),
-                if (_settingsShown)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: ReadingSettingsPanel(
-                      insets: insets,
-                      onClose: _closeSettings,
-                    ),
-                  )
-                else if (guide != null &&
-                    !_panelsShown &&
-                    !guide.isPlaying &&
-                    _guideStopImage == null)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: GuidePanel(
-                      insets: insets,
-                      started: _guideStarted,
-                      newChapter: guide.isStopped,
-                      finished: guide.isFinished,
-                      wpm: _guidePace.wordsPerMinute,
-                      pro: ref.watch(proUnlockedProvider),
-                      onPlay: _playGuide,
-                      onBack: guide.word > 0 ? _guideBack : null,
-                      onSpeed: _changeGuideSpeed,
-                      onMode: (mode) => unawaited(_switchFromGuide(mode)),
-                      onSettings: () => setState(() => _settingsShown = true),
-                      onExit: _exitGuide,
-                    ),
-                  )
-                else if (_panelsShown) ...[
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _topPanel(context, insets),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: _bottomPanel(
-                      context,
-                      insets,
-                      pageLabel: l10n.readerPageOfBook(
-                        numbers.page,
-                        numbers.total,
+                        ),
                       ),
-                      pagesLeft: _pagesLeftInChapter(chapter),
-                      fontSize: style.fontSize,
-                      showStats: settings.showStats,
+                      if (_settingsShown)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: ReadingSettingsPanel(
+                            insets: insets,
+                            onClose: _closeSettings,
+                          ),
+                        )
+                      else if (guide != null &&
+                          !_panelsShown &&
+                          !guide.isPlaying &&
+                          _guideStopImage == null)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: GuidePanel(
+                            insets: insets,
+                            started: _guideStarted,
+                            newChapter: guide.isStopped,
+                            finished: guide.isFinished,
+                            wpm: _guidePace.wordsPerMinute,
+                            pro: ref.watch(proUnlockedProvider),
+                            onPlay: _playGuide,
+                            onBack: guide.word > 0 ? _guideBack : null,
+                            onSpeed: _changeGuideSpeed,
+                            onMode: (mode) => unawaited(_switchFromGuide(mode)),
+                            onSettings: () =>
+                                setState(() => _settingsShown = true),
+                            onExit: _exitGuide,
+                          ),
+                        )
+                      else if (_panelsShown) ...[
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: _topPanel(context, insets),
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: _bottomPanel(
+                            context,
+                            insets,
+                            pageLabel: l10n.readerPageOfBook(
+                              numbers.page,
+                              numbers.total,
+                            ),
+                            pagesLeft: _pagesLeftInChapter(chapter),
+                            fontSize: style.fontSize,
+                            showStats: settings.showStats,
+                          ),
+                        ),
+                      ],
+                      if (_selection case final selection?)
+                        ..._selectionControls(
+                          selection.first,
+                          selection.last,
+                          contentInsets,
+                          area.height - readerFooterHeight,
+                          colors,
+                          l10n,
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            if (_speechMode)
+              _speechActive
+                  ? TtsPlayerBar(
+                      playback: _tts,
+                      backParagraph: () => unawaited(
+                        _jumpSpeech(forward: false, paragraph: true),
+                      ),
+                      backSentence: () =>
+                          unawaited(_jumpSpeech(forward: false)),
+                      forwardSentence: () =>
+                          unawaited(_jumpSpeech(forward: true)),
+                      changeSpeed: (delta) =>
+                          unawaited(_changeSpeechSpeed(delta)),
+                    )
+                  : TtsPanel(
+                      settings: ref.read(settingsRepositoryProvider),
+                      playback: _tts,
+                      start: _startTts,
+                      pageWord: page.firstWord,
+                      savedWord: _savedSpeechWord,
+                      requestedWord: _speechRequestedWord,
+                      choosingPlace: _choosingSpeechWord,
+                      choosePlace: () =>
+                          setState(() => _choosingSpeechWord = true),
                     ),
-                  ),
-                ],
-                if (_selection case final selection?)
-                  ..._selectionControls(
-                    selection.first,
-                    selection.last,
-                    insets,
-                    area.height - readerFooterHeight,
-                    colors,
-                    l10n,
-                  ),
-                Positioned(
-                  right: insets.right + 8,
-                  top: _panelsShown ? insets.top + 60 : null,
-                  bottom: _panelsShown
-                      ? null
-                      : insets.bottom + readerFooterHeight,
-                  child: TtsMiniPlayer(
-                    playback: _tts,
-                    open: _openTts,
-                    owner: this,
-                  ),
-                ),
-              ],
-            );
-          },
+          ],
         ),
       ),
     );
@@ -2487,8 +2627,8 @@ class ReaderViewState extends ConsumerState<ReaderView>
   }) {
     final lit = _litWord;
     final selection = _selection;
-    final speech = _speechWord;
-    final speechEnd = _speechEnd;
+    final speech = _speechMode ? _speechWord : null;
+    final speechEnd = _speechMode ? _speechEnd : null;
     return Stack(
       children: [
         if (_guide != null)
@@ -2557,6 +2697,41 @@ class ReaderViewState extends ConsumerState<ReaderView>
 
   /// «Библиотека» on the left; the table of contents and speed reading on
   /// the right.
+  Widget _speechHeader(BuildContext context, EdgeInsets insets) {
+    final l10n = AppLocalizations.of(context);
+    return Material(
+      color: context.readingColors.surface,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          insets.left + 20,
+          insets.top,
+          insets.right + 8,
+          0,
+        ),
+        child: SizedBox(
+          height: 52,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _speechActive ? widget.opened.book.title : l10n.ttsTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.ttsExit,
+                onPressed: _closeTts,
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _topPanel(BuildContext context, EdgeInsets insets) {
     final l10n = AppLocalizations.of(context);
     final buttonStyle = TextButton.styleFrom(

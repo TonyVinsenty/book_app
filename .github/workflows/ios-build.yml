@@ -47,7 +47,25 @@ jobs:
       # No signing here: Sideloadly signs the .ipa later on the owner's computer
       # with a free Apple ID, so no certificates are stored in CI.
       - name: Build iOS (unsigned)
-        run: flutter build ios --release --no-codesign
+        env:
+          VERSO_TTS_TOKEN: ${{ secrets.VERSO_TTS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERSO_TTS_TOKEN" ]; then
+            echo "::error::VERSO_TTS_TOKEN repository secret is missing"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          Path(os.environ['RUNNER_TEMP'], 'tts_config.json').write_text(
+              json.dumps({'VERSO_TTS_TOKEN': os.environ['VERSO_TTS_TOKEN']}),
+              encoding='utf-8',
+          )
+          PY
+          flutter build ios --release --no-codesign \
+            --dart-define-from-file="$RUNNER_TEMP/tts_config.json"
 
       - name: Check bundle id and read version
         run: |

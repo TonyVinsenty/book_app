@@ -861,6 +861,62 @@ void main() {
     await closeApp(tester);
   });
 
+  testWidgets('listening mode shows equal voice choices and selects a word', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpApp(tester);
+    await openBook(tester);
+    final readingWord = reader(tester).placeWord;
+    if (!reader(tester).panelsShown) await tapAt(tester, 0.5);
+    await tester.tap(find.byIcon(Icons.headphones));
+    await tester.pumpAndSettle();
+    // Development builds have no bundled server key, so setup opens once.
+    if (find.byType(AlertDialog).evaluate().isNotEmpty) {
+      await tester.tap(find.text('Отмена'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Режим озвучивания'), findsOneWidget);
+    expect(find.byType(TtsPanel), findsOneWidget);
+    final names = ['Евгений', 'Михаил', 'Ксения', 'Алиса'];
+    final widths = [
+      for (final name in names)
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.text(name),
+                matching: find.byWidgetPredicate(
+                  (widget) =>
+                      widget is FilledButton || widget is OutlinedButton,
+                ),
+              ),
+            )
+            .width,
+    ];
+    expect(
+      widths.every((width) => (width - widths.first).abs() < 1),
+      isTrue,
+      reason: '$widths',
+    );
+
+    await tester.tap(find.text('Выбрать место'));
+    await tester.pumpAndSettle();
+    expect(find.text('Нажмите на слово в книге'), findsOneWidget);
+    final word = reader(tester).page.firstWord + 2;
+    await tester.tapAt(wordPosition(tester, word));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TtsPanel>(find.byType(TtsPanel)).requestedWord, word);
+    expect(find.text('Выбрать место'), findsOneWidget);
+    await tester.tap(find.byTooltip('Закрыть режим озвучивания'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TtsPanel), findsNothing);
+    expect(reader(tester).placeWord, readingWord);
+    await closeApp(tester);
+  });
+
   for (final vertical in [false, true]) {
     testWidgets('copy a selection across pages (vertical: $vertical)', (
       tester,
