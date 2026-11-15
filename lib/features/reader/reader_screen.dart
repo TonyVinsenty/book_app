@@ -901,8 +901,10 @@ class ReaderViewState extends ConsumerState<ReaderView>
     if (word == null || word < 0 || word >= widget.opened.tokens.length) return;
     setState(() {
       _savedSpeechWord = word;
-      _speechWord = word;
-      _speechEnd = _sentenceEnd(word);
+      if (!_speechMode) {
+        _speechWord = word;
+        _speechEnd = _sentenceEnd(word);
+      }
     });
   }
 
@@ -947,8 +949,42 @@ class ReaderViewState extends ConsumerState<ReaderView>
     setState(() {
       _resetSelection();
       _speechMode = true;
-      _speechWord = _speechRequestedWord ?? _savedSpeechWord;
+      _speechWord = _speechRequestedWord ?? _currentSpeechPageWord;
       _speechEnd = _speechWord == null ? null : _sentenceEnd(_speechWord!);
+    });
+  }
+
+  int get _currentSpeechPageWord => _stripOn ? _word : page.firstWord;
+
+  String _speechStartPreview() {
+    final tokens = widget.opened.tokens;
+    final word = _speechWord ?? _currentSpeechPageWord;
+    if (word < 0 || word >= tokens.length) return '';
+    final text = tokens
+        .textBetween(word, _sentenceEnd(word) - 1)
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return text.length > 110 ? '${text.substring(0, 110)}…' : text;
+  }
+
+  void _selectCurrentSpeechPage() {
+    final word = _currentSpeechPageWord;
+    setState(() {
+      _choosingSpeechWord = false;
+      _speechRequestedWord = null;
+      _speechWord = word;
+      _speechEnd = _sentenceEnd(word);
+    });
+  }
+
+  void _backToSpeechOptions() {
+    unawaited(_tts.stop());
+    setState(() {
+      _speechActive = false;
+      _choosingSpeechWord = false;
+      _speechRequestedWord = null;
+      _speechWord = _currentSpeechPageWord;
+      _speechEnd = _sentenceEnd(_speechWord!);
     });
   }
 
@@ -2172,7 +2208,11 @@ class ReaderViewState extends ConsumerState<ReaderView>
         if (_selection != null) {
           _dismissSelection();
         } else if (_speechMode) {
-          _closeTts();
+          if (_speechActive) {
+            _backToSpeechOptions();
+          } else {
+            _closeTts();
+          }
         } else if (_panelsShown) {
           _setPanels(false);
         } else if (_settingsShown) {
@@ -2183,16 +2223,13 @@ class ReaderViewState extends ConsumerState<ReaderView>
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-        child: Column(
+        child: Stack(
           children: [
-            if (_speechMode) _speechHeader(context, insets),
-            Expanded(
+            Positioned.fill(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   _turnWidth = constraints.maxWidth;
-                  final contentInsets = _speechMode
-                      ? insets.copyWith(top: 0, bottom: 0)
-                      : insets;
+                  final contentInsets = insets;
                   final area = contentInsets.deflateSize(constraints.biggest);
                   final pageSize = readerPageOf(area, side);
                   _relayoutIfNeeded(pageSize, style);
@@ -2411,31 +2448,43 @@ class ReaderViewState extends ConsumerState<ReaderView>
               ),
             ),
             if (_speechMode)
-              _speechActive
-                  ? TtsPlayerBar(
-                      playback: _tts,
-                      backParagraph: () => unawaited(
-                        _jumpSpeech(forward: false, paragraph: true),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _speechHeader(context, insets),
+              ),
+            if (_speechMode)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _speechActive
+                    ? TtsPlayerBar(
+                        playback: _tts,
+                        backParagraph: () => unawaited(
+                          _jumpSpeech(forward: false, paragraph: true),
+                        ),
+                        backSentence: () =>
+                            unawaited(_jumpSpeech(forward: false)),
+                        forwardSentence: () =>
+                            unawaited(_jumpSpeech(forward: true)),
+                        changeSpeed: (delta) =>
+                            unawaited(_changeSpeechSpeed(delta)),
+                      )
+                    : TtsPanel(
+                        settings: ref.read(settingsRepositoryProvider),
+                        playback: _tts,
+                        start: _startTts,
+                        pageWord: _currentSpeechPageWord,
+                        startPreview: _speechStartPreview(),
+                        requestedWord: _speechRequestedWord,
+                        choosingPlace: _choosingSpeechWord,
+                        choosePlace: () =>
+                            setState(() => _choosingSpeechWord = true),
+                        selectCurrentPage: _selectCurrentSpeechPage,
                       ),
-                      backSentence: () =>
-                          unawaited(_jumpSpeech(forward: false)),
-                      forwardSentence: () =>
-                          unawaited(_jumpSpeech(forward: true)),
-                      changeSpeed: (delta) =>
-                          unawaited(_changeSpeechSpeed(delta)),
-                    )
-                  : TtsPanel(
-                      settings: ref.read(settingsRepositoryProvider),
-                      playback: _tts,
-                      start: _startTts,
-                      pageWord: page.firstWord,
-                      savedWord: _savedSpeechWord,
-                      savedPageDelta: _speechPageDelta(),
-                      requestedWord: _speechRequestedWord,
-                      choosingPlace: _choosingSpeechWord,
-                      choosePlace: () =>
-                          setState(() => _choosingSpeechWord = true),
-                    ),
+              ),
           ],
         ),
       ),
@@ -2732,27 +2781,15 @@ class ReaderViewState extends ConsumerState<ReaderView>
                 ),
               ),
               IconButton(
-                tooltip: l10n.ttsExit,
-                onPressed: _closeTts,
-                icon: const Icon(Icons.close),
+                tooltip: _speechActive ? l10n.ttsBackToOptions : l10n.ttsExit,
+                onPressed: _speechActive ? _backToSpeechOptions : _closeTts,
+                icon: Icon(_speechActive ? Icons.arrow_back : Icons.close),
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  int? _speechPageDelta() {
-    final saved = _savedSpeechWord;
-    final pagination = _pagination;
-    if (saved == null || pagination == null) return null;
-    final section = widget.opened.tokens.sectionOf(saved);
-    final chapterLayout = _layoutOf(section);
-    final savedPage =
-        pagination.pagesBefore(section).value + chapterLayout.pageOfWord(saved);
-    final visiblePage = pagination.pagesBefore(_section).value + _page;
-    return visiblePage - savedPage;
   }
 
   Widget _topPanel(BuildContext context, EdgeInsets insets) {

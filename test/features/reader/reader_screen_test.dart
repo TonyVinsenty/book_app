@@ -871,6 +871,8 @@ void main() {
     await pumpApp(tester);
     await openBook(tester);
     final readingWord = reader(tester).placeWord;
+    final pageWord = reader(tester).page.firstWord;
+    final pageSize = reader(tester).layout.pageSize;
     if (!reader(tester).panelsShown) await tapAt(tester, 0.5);
     await tester.tap(find.byIcon(Icons.headphones));
     await tester.pumpAndSettle();
@@ -882,6 +884,8 @@ void main() {
     expect(find.byTooltip('Закрыть режим озвучивания'), findsOneWidget);
     expect(find.byType(TtsPanel), findsOneWidget);
     expect(reader(tester).placeWord, readingWord);
+    expect(reader(tester).page.firstWord, pageWord);
+    expect(reader(tester).layout.pageSize, pageSize);
     expect(find.text('С начала текущей страницы'), findsOneWidget);
     final names = ['Евгений', 'Михаил', 'Ксения', 'Алиса'];
     final widths = [
@@ -912,6 +916,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<TtsPanel>(find.byType(TtsPanel)).requestedWord, word);
     expect(find.text('С выбранного слова'), findsOneWidget);
+    await tester.tap(find.text('С начала текущей страницы'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TtsPanel>(find.byType(TtsPanel)).requestedWord,
+      isNull,
+    );
+    final listenButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Слушать'),
+    );
+    expect(listenButton.onPressed, isNotNull);
     await tapAt(tester, 0.5);
     expect(reader(tester).panelsShown, isFalse);
     await tester.longPressAt(wordPosition(tester, word));

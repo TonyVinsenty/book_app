@@ -44,9 +44,18 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Скорость голоса 100%'), findsOneWidget);
+    expect(find.byTooltip('Скорость голоса 100%'), findsOneWidget);
     expect(find.byTooltip('Предыдущий абзац'), findsOneWidget);
     expect(find.byTooltip('Следующее предложение'), findsOneWidget);
+    final backY = tester.getCenter(find.byTooltip('Предыдущий абзац')).dy;
+    final playY = tester.getCenter(find.byTooltip('Пауза')).dy;
+    final speedY = tester.getCenter(find.byTooltip('Скорость голоса 100%')).dy;
+    expect((backY - playY).abs(), lessThan(2));
+    expect((speedY - playY).abs(), lessThan(2));
+    expect(tester.takeException(), isNull);
+    tester.view.physicalSize = const Size(430, 844);
+    await tester.pump();
+    expect(tester.getCenter(find.byTooltip('Пауза')).dx, closeTo(215, 1));
     expect(tester.takeException(), isNull);
   });
 }
