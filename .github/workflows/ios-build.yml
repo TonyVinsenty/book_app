@@ -92,6 +92,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           path: ${{ env.IPA_NAME }}
-          archive: false
           retention-days: 14
           if-no-files-found: error
